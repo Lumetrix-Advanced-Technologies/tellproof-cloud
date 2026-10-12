@@ -2,7 +2,7 @@
 
 ## Go
 
-- Go 1.23 or later, one module. `gofmt`, `go vet`, `staticcheck` and `govulncheck` must pass (`make check`).
+- Go 1.26 or later (`go.mod` minimum; CI builds with 1.27), one module. `gofmt`, `go vet`, `staticcheck` and `govulncheck` must pass (`make check`).
 - Packages are small and single-purpose. `internal/jcs`, `internal/dsse`, `internal/merkle` and `internal/pack` import only the standard library; they are open-sourced with the agent and verifier.
 - Errors: return them, wrap with `fmt.Errorf("…: %w", err)`, compare with `errors.Is/As`. No `panic` outside `main` and impossible-state assertions in tests.
 - Every function that does I/O takes `context.Context` first. Set timeouts on every `http.Client` (10 s default) and every DB query.
