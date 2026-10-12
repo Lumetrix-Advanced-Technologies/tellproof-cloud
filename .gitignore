@@ -1,0 +1,8 @@
+.env.local
+.env*.local
+.dev/
+.plumbline-agent/
+/bin/
+*.test
+coverage.out
+.DS_Store

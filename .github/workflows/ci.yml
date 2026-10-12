@@ -1,0 +1,29 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: plumbline }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL_OWNER: postgres://postgres:postgres@localhost:5432/plumbline?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.23" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install cryptography
+      - run: make check
+      - name: Migration and RLS tests
+        run: |
+          psql "$DATABASE_URL_OWNER" -v ON_ERROR_STOP=1 -f migrations/0001_init.sql
+          psql "$DATABASE_URL_OWNER" -f migrations/tests/0001_rls_and_append_only.sql | tee rls.out
+          grep -q "evidence is append-only" rls.out
+          grep -q "violates row-level security policy" rls.out

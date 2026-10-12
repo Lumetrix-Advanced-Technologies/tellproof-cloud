@@ -1,0 +1,117 @@
+# Build plan
+
+Tasks are sized for one PR each (roughly 2–6 hours with Claude Code). Do them in order within a phase unless "Depends on" says otherwise. Every task lists the tests that prove it is done.
+
+**Gate:** Phases 3–6 start only after `progress-tracker.md` shows `M1: PASSED` (target 22 Nov 2026). Before that, only Phase 0, Phase 1 and Phase C.
+
+---
+
+## Phase 0: Bootstrap (allowed now)
+
+**P0-1 Repo skeleton.** `go.mod` (module `github.com/lumetrix/plumbline`, rename if the org differs), folders from CLAUDE.md, `Makefile` targets, `docker-compose.yml`, `.github/workflows/ci.yml`, `.gitignore`.
+Done when: `make check` runs green on an empty `cmd/verify/main.go` that prints its version; CI runs on every PR.
+
+**P0-2 Spec checks.** A Go test in `internal/spec` that loads `spec/objectives.json`, `spec/framework-refs.json` and `spec/semconv-map.json` with `encoding/json` (`DisallowUnknownFields`) and validates that every objective's `maps_to` entries exist in `framework-refs.json` and every rule kind is one of the five.
+Done when: the test passes, and breaking any reference fails it with a clear message.
+
+## Phase 1: Trust core (allowed now; these packages are open source)
+
+**P1-1 `internal/jcs`.** RFC 8785 serializer and a strict parser (duplicate keys rejected, numbers as float64). Rules: `architecture.md` §2.1.
+Done when: every case in `spec/jcs-vectors.json` passes; a fuzz test round-trips parse → serialize → parse; the three pass vectors' payloads re-serialize byte-identically.
+Depends on: P0-1.
+
+**P1-2 `internal/dsse`.** PAE, envelope encode and decode, a `Signer` interface (`Sign(ctx, pae []byte) (sig []byte, keyID string, err error)`) with implementations: local ECDSA P-256 (tests and dev), local Ed25519 (agent). Verification for P-256 (DER signatures) and Ed25519.
+Done when: the pass vectors verify with `spec/vectors/test-public-key.pem`; `fail/tampered-payload` and `fail/wrong-key` fail with distinct errors.
+Depends on: P1-1.
+
+**P1-3 `internal/merkle`.** Build root, produce proof, verify proof, exactly as `architecture.md` §2.4 (odd node carried up).
+Done when: the disclosed proofs in all pass vectors verify; `fail/bad-merkle-proof` fails; property test that every leaf of random trees of size 1–1,000 proves to the root.
+
+**P1-4 `internal/pack`.** Statement and predicate types, `Digest(envelope)`, `CheckSubjectDigest`, `CheckChain(prev, next)`, and `Verify(envelope, jwks, prev)` that runs all checks and returns a structured result (`signature`, `subject_digest`, `chain`, `merkle`).
+Done when: results for every file in `spec/vectors/manifest.json` match its expected result exactly.
+Depends on: P1-1 to P1-3.
+
+**P1-5 `cmd/verify`.** CLI: `plumbline-verify --jwks <file|url> pack1.json [pack2.json …]` (oldest first), human output by default, `--json` for machines, exit code 0 only when everything verifies.
+Done when: running it over `spec/vectors/pass/*` prints VERIFIED and exits 0; each fail vector exits 1 with the right failed check named.
+
+**P1-6 `web/verify/`.** Port `reference/sample-verify-page.html` into `index.html`, `verify.js` (pure functions exported as an ES module: `jcs`, `pae`, `derToRaw`, `verifyEnvelope`, `verifyMerkle`) and `verify.css` using `web/brand.css` tokens. Loads the envelope from `?t=` via `GET /v1/verify/{token}` or from a local file picker (offline mode). Print stylesheet included.
+Done when: `node --test web/verify/verify.test.js` passes the whole vector manifest; the page renders the pass vectors from a file with no network; printing gives a clean PDF with the digest and share URL on every page.
+Depends on: P1-4 (for parity checks).
+
+## Phase C: Concierge (allowed now; Python; frozen after M1)
+
+**C-1 Ingest.** `concierge/evidencepack.py ingest` reads a Langfuse export (JSON or CSV) or an OTLP JSON dump and writes hourly aggregates in the batch `metrics` shape (`spec/batch.schema.json`), dropping all message content.
+Done when: a sample export produces aggregates; a grep for any prompt text in the output finds nothing.
+
+**C-2 Evaluate.** Compute the ten objectives from aggregates plus provider usage CSVs, using the rules in `spec/objectives.json`.
+Done when: output matches a hand calculation for one design partner's month.
+
+**C-3 Sign and chain.** Build the predicate, JCS, statement, PAE; sign with KMS via `boto3` (`MessageType='DIGEST'`, `ECDSA_SHA_256`) or a local key; set `seq_no` and `prev_pack_digest` from the previous pack file.
+Done when: `verify.py`, `cmd/verify` (once P1-5 exists) and the verify page all pass its output. Note: `concierge/verify.py`'s float handling only covers simple decimals; prefer integers and one-decimal percentages in concierge packs.
+
+**C-4 Share.** Publish the envelope as a static file next to the verify page with an unguessable name, and record per-verifier links in the CRM sheet.
+Done when: a verifier can open a link and see "Verified".
+
+## ⛔ Gate: Milestone 1 (22 Nov 2026)
+
+## Phase 3: Evidence agent
+
+**P3-1 OTLP JSON receiver + normaliser.** `internal/otlp`; `spec/semconv-map.json`; drops content attributes at parse.
+Done when: fixture exports from two SDKs parse; the content fuzz test passes; gzip bodies accepted.
+
+**P3-2 Hourly aggregator.** Windows, late-span handling, all `metrics` fields.
+Done when: aggregates for the fixture equal the concierge's C-1 output.
+
+**P3-3 Commitments.** Salted Merkle root per window (`internal/merkle`), salt secret from env or file.
+Done when: a disclosed trace from a window verifies against that window's root.
+
+**P3-4 Provider usage.** OpenAI and Anthropic pollers (`net/http`); Bedrock behind tag `bedrock`.
+Done when: against recorded API responses in `testdata/`, coverage matches a hand calculation within 0.1 point.
+
+**P3-5 Langfuse puller.** Observations v2 and Scores v3 with cursor paging and backoff.
+Done when: recorded responses produce the same aggregates as the OTLP path for the same traces.
+
+**P3-6 Enrolment and batch signing.** `agent enrol`, Ed25519 key, DSSE batch envelopes with `seq` and `prev`.
+
+**P3-7 Disk queue.** Append-only segments, fsync, retry with backoff, delete on 201.
+Done when: killing the agent mid-send and restarting loses no batch and sends none twice (server dedupes by `(agent_id, seq)`).
+
+**P3-8 `--dry-run` and config.** Prints envelopes; JSON config file plus env overrides.
+
+## Phase 4: Control plane core
+
+**P4-1 `cmd/server migrate` + `internal/store`.** Applies `migrations/`; `WithTenant` helper; role `plumbline_app` without BYPASSRLS.
+Done when: migrations apply to a fresh DB; a test proves tenant A cannot read tenant B's rows; UPDATE on `packs` raises.
+
+**P4-2 Enrol and ingest endpoints.** `POST /v1/agents/enrol`, `POST /v1/batches` (signature, seq, prev, size limit).
+Done when: valid batches return 201; bad signature 401; seq gap 409; duplicate seq returns the stored digest (idempotent).
+
+**P4-3 Jobs.** `jobs` table worker with `SKIP LOCKED`, retries, `prune_jobs`.
+
+**P4-4 Evaluator.** Five rule kinds, ten objectives, attention bands, `objective_set_hash`.
+Done when: parity test with the concierge on fixtures passes.
+
+**P4-5 Pack builder + KMS signer + chain.** `internal/kmssign` implements `dsse.Signer` with `DIGEST`; local verify before insert; unique `(ai_system_id, seq_no)`.
+Done when: 50 concurrent issue requests for one system yield one unbroken chain; all three verifiers pass the output.
+
+**P4-6 JWKS and key rotation.** `/.well-known/jwks.json` with `kid`, `nbf`, `exp`, revocation list.
+
+**P4-7 Daily checkpoint.** Merkle over the day's pack digests, signed, committed to the public repo.
+Done when: a script proves a given pack is in that day's checkpoint.
+
+## Phase 5: Sharing and the web app
+
+**P5-1 Share links + public verify API + view log.** Tokens hashed; 410 on revoke or expiry; `verifier_views` rows.
+
+**P5-2 Auth.** Supabase JWT verification with `crypto/ecdsa` against JWKS; `members` mapping.
+
+**P5-3 Web app screens.** AI systems, Sources (enrolment token, last batch), Packs (list, issue, download), Share links (create, revoke, views per organisation), Settings (Vanta). `html/template`, `web/brand.css`, forms that work without JS.
+Done when: a new partner goes from sign-up to first issued pack in under 30 minutes without help.
+
+## Phase 6: Integrations and launch
+
+**P6-1 Vanta private integration.** Hourly full-state PUT of `AIAssuranceControl`; pack documents; one token per customer.
+
+**P6-2 Release `cmd/verify` and `cmd/agent`.** CI matrix builds for linux/darwin/windows × amd64/arm64, checksums, signed release notes. Split `internal/{jcs,dsse,merkle,pack}`, `cmd/agent`, `cmd/verify` and `web/verify` into the public repo under Apache-2.0.
+
+**P6-3 Launch checklist.** Security page, docs site page for the agent, HN post draft, test vectors published.

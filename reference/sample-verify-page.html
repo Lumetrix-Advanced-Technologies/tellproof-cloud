@@ -1,0 +1,499 @@
+<title>Kestrel Sample Assurance Pack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a verifier's ledger. Identity + live verification seal up top, then signed content rendered straight from the payload, then the raw envelope. */
+:root {
+  --bg: #F3F4F7;
+  --surface: #FFFFFF;
+  --sunk: #ECEEF3;
+  --ink: #161A26;
+  --muted: #586074;
+  --line: #D8DCE5;
+  --accent: #2E3A8C;        /* security-print ink blue */
+  --accent-soft: #E3E6F6;
+  --pass: #23744A; --pass-soft: #E1F1E7;
+  --warn: #9A5B00; --warn-soft: #FBEFD9;
+  --fail: #B42318; --fail-soft: #FBE4E1;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1118; --surface: #171A23; --sunk: #1D212C; --ink: #E7E9F0; --muted: #9AA2B5; --line: #2B303D;
+    --accent: #A9B3FF; --accent-soft: #232A4D;
+    --pass: #6CCB95; --pass-soft: #16301F; --warn: #E8B04E; --warn-soft: #33270F; --fail: #F4837A; --fail-soft: #3A1A18;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1118; --surface: #171A23; --sunk: #1D212C; --ink: #E7E9F0; --muted: #9AA2B5; --line: #2B303D;
+  --accent: #A9B3FF; --accent-soft: #232A4D;
+  --pass: #6CCB95; --pass-soft: #16301F; --warn: #E8B04E; --warn-soft: #33270F; --fail: #F4837A; --fail-soft: #3A1A18;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1100px; margin: 0 auto; padding-inline: 20px; padding-block: 0 64px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: 0.005em; text-wrap: balance; margin: 0; }
+h2 { font-size: 1.35rem; }
+p { margin: 0; }
+.mono { font-family: var(--mono); font-size: 0.86em; }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+.sample-bar { background: var(--accent); color: var(--surface); font-size: 0.82rem; padding-block: 8px; }
+.sample-bar .wrap { padding-block: 0; display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: baseline; }
+.sample-bar strong { letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.74rem; }
+
+header.top { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 28px; padding-block: 32px 28px; align-items: start; }
+@media (max-width: 820px) { header.top { grid-template-columns: 1fr; } }
+.ident { display: grid; gap: 14px; min-width: 0; }
+.ident h1 { font-size: clamp(1.8rem, 4.2vw, 2.6rem); line-height: 1.08; }
+.ident .org { font-size: 1.05rem; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 20px; padding-top: 6px; }
+.facts div { display: grid; gap: 2px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 0.75rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 7px; color: var(--muted); background: var(--surface); white-space: nowrap; }
+.chip.ink { border-color: transparent; background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+
+/* verification seal */
+.seal { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 18px 16px; display: grid; gap: 14px; position: relative; min-width: 0; }
+.seal.ok { border-color: var(--pass); box-shadow: 0 0 0 3px var(--pass-soft); }
+.seal.bad { border-color: var(--fail); box-shadow: 0 0 0 3px var(--fail-soft); }
+.seal-head { display: flex; align-items: center; gap: 12px; }
+.stamp { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none; font-weight: 700; font-size: 1.3rem; border: 2px solid currentColor; }
+.ok .stamp { color: var(--pass); background: var(--pass-soft); }
+.bad .stamp { color: var(--fail); background: var(--fail-soft); }
+.wait .stamp { color: var(--muted); }
+.seal-title { font-family: var(--display); font-size: 1.3rem; font-weight: 600; line-height: 1.15; }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.checks li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; font-size: 0.88rem; align-items: start; }
+.checks .mk { font-weight: 700; text-align: center; }
+.checks .y { color: var(--pass); } .checks .n { color: var(--fail); } .checks .w { color: var(--muted); }
+.checks small { display: block; color: var(--muted); font-family: var(--mono); font-size: 0.72rem; overflow-wrap: anywhere; }
+.seal-actions { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+button { font: inherit; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.danger[aria-pressed="true"] { background: var(--fail-soft); border-color: var(--fail); color: var(--fail); }
+
+/* chain */
+.chain { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-bottom: 28px; }
+@media (max-width: 640px) { .chain { grid-template-columns: 1fr; } }
+.link { text-align: left; border-radius: 0; border: 1px solid var(--line); background: var(--surface); padding: 12px 14px; display: grid; gap: 4px; position: relative; }
+.chain .link + .link { border-left: none; }
+@media (max-width: 640px) { .chain .link + .link { border-left: 1px solid var(--line); border-top: none; } }
+.chain .link:first-child { border-radius: 8px 0 0 8px; }
+.chain .link:last-child { border-radius: 0 8px 8px 0; }
+@media (max-width: 640px) { .chain .link:first-child { border-radius: 8px 8px 0 0; } .chain .link:last-child { border-radius: 0 0 8px 8px; } }
+.link[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 0 -3px 0 var(--accent); }
+.link .lt { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.link .lt b { font-family: var(--display); font-size: 1rem; }
+.link .dg { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); overflow-wrap: anywhere; }
+.tag { font-size: 0.72rem; font-weight: 600; }
+.tag.y { color: var(--pass); } .tag.n { color: var(--fail); } .tag.w { color: var(--muted); }
+
+section { padding-block: 26px; border-top: 1px solid var(--line); display: grid; gap: 16px; }
+.sec-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
+.sec-head p { max-width: 64ch; }
+
+/* summary strip */
+.strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 720px) { .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 2px; min-width: 0; }
+.stat .v { font-family: var(--display); font-size: 1.7rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat .v.flag { color: var(--fail); }
+
+/* objectives */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th { text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--sunk); white-space: nowrap; }
+td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+.obj { min-width: 760px; }
+.obj td:first-child { width: 4px; padding: 0; }
+.stripe-pass { background: var(--pass); } .stripe-attention { background: var(--warn); } .stripe-fail { background: var(--fail); }
+.eo-id { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); }
+.eo-title { font-weight: 600; }
+.basis { font-size: 0.8rem; color: var(--muted); margin-top: 4px; max-width: 58ch; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 0.75rem; font-weight: 600; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.pill.pass { background: var(--pass-soft); color: var(--pass); }
+.pill.attention { background: var(--warn-soft); color: var(--warn); }
+.pill.fail { background: var(--fail-soft); color: var(--fail); }
+.edited { background: var(--fail-soft); color: var(--fail); border-radius: 3px; padding: 0 3px; }
+
+/* coverage */
+.cov-grid { display: grid; gap: 14px; }
+.cov-row { display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+@media (max-width: 640px) { .cov-row { grid-template-columns: 1fr auto; } .cov-row .bar { grid-column: 1 / -1; grid-row: 2; } }
+.bar { height: 12px; background: var(--sunk); border-radius: 3px; position: relative; overflow: hidden; border: 1px solid var(--line); }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 2px 0 0 2px; }
+.bar .thr { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); opacity: 0.55; }
+.cov-pct { font-family: var(--display); font-weight: 600; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+@media (max-width: 820px) { .two { grid-template-columns: 1fr; } }
+.two > div { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.log li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; font-size: 0.88rem; }
+.log time { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); padding-top: 2px; }
+.kind { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 600; margin-right: 6px; }
+
+.commit { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 10px; font-size: 0.88rem; }
+.kv { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 6px 12px; }
+@media (max-width: 560px) { .kv { grid-template-columns: 1fr; } }
+.kv dt { color: var(--muted); font-size: 0.8rem; }
+.kv dd { margin: 0; font-family: var(--mono); font-size: 0.78rem; overflow-wrap: anywhere; }
+
+.limits { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 75ch; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+summary { cursor: pointer; padding: 12px 16px; font-weight: 600; }
+details pre { margin: 0; padding: 14px 16px; border-top: 1px solid var(--line); overflow: auto; max-height: 460px; font-family: var(--mono); font-size: 0.74rem; line-height: 1.5; background: var(--sunk); white-space: pre; }
+.raw-actions { display: flex; gap: 8px; padding: 0 16px 12px; }
+pre.cmd { margin: 0; padding: 12px 14px; background: var(--sunk); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font-family: var(--mono); font-size: 0.78rem; }
+footer { padding-top: 24px; border-top: 1px solid var(--line); font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) { .seal { transition: box-shadow .25s, border-color .25s; } }
+</style>
+
+<div class="sample-bar"><div class="wrap"><strong>Sample</strong><span>Fictional vendor, synthetic telemetry, throwaway signing key. This shows the format; it is not evidence about any real company.</span></div></div>
+
+<div class="wrap">
+  <header class="top">
+    <div class="ident">
+      <div class="label">AI assurance pack · <span id="h-profiles"></span></div>
+      <h1 id="h-system">Claims Triage Agent</h1>
+      <p class="org"><span id="h-org"></span> · <span class="muted" id="h-env"></span></p>
+      <p class="muted" id="h-desc" style="max-width:62ch"></p>
+      <div class="facts">
+        <div><span class="label">Pack</span><span class="mono" id="h-pack"></span></div>
+        <div><span class="label">Period</span><span class="num" id="h-period"></span></div>
+        <div><span class="label">Issued</span><span class="num" id="h-issued"></span></div>
+        <div><span class="label">Assurance level</span><span id="h-level"></span></div>
+      </div>
+    </div>
+
+    <aside class="seal wait" id="seal" aria-live="polite">
+      <div class="seal-head">
+        <div class="stamp" id="stamp">…</div>
+        <div>
+          <div class="seal-title" id="seal-title">Checking this pack</div>
+          <div class="muted" style="font-size:.82rem">Checked in your browser. Nothing is sent anywhere.</div>
+        </div>
+      </div>
+      <ul class="checks" id="checks"></ul>
+      <div class="seal-actions">
+        <button type="button" id="btn-rerun">Re-run checks</button>
+        <button type="button" class="danger" id="btn-tamper" aria-pressed="false">Simulate an edited pack</button>
+      </div>
+    </aside>
+  </header>
+
+  <div class="label" style="margin-bottom:8px">Pack history · each pack signs the digest of the one before it</div>
+  <nav class="chain" id="chain" aria-label="Pack history"></nav>
+
+  <section>
+    <div class="sec-head">
+      <h2>Summary</h2>
+      <p class="muted">Everything on this page is rendered from the signed payload of the selected pack.</p>
+    </div>
+    <div class="strip" id="strip"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Evidence objectives</h2>
+      <p class="muted">Each objective is computed from telemetry, not self-reported. Framework references are IDs and short titles only.</p>
+    </div>
+    <div class="tbl"><table class="obj">
+      <thead><tr><th aria-label="Status stripe"></th><th>Objective</th><th>Measured this period</th><th>Rule</th><th>Status</th><th>Maps to</th></tr></thead>
+      <tbody id="obj-body"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Trace coverage</h2>
+      <p class="muted">Provider-billed usage reconciled against traced usage. This proves the logs are complete enough to rely on, not just unedited.</p>
+    </div>
+    <div class="cov-grid" id="cov"></div>
+    <div class="tbl"><table>
+      <thead><tr><th>Provider</th><th>Region</th><th>Billed tokens</th><th>Traced tokens</th><th>Billed requests</th><th>Traced requests</th></tr></thead>
+      <tbody id="cov-body"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="two">
+      <div>
+        <h2>Models in use</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Model</th><th>Role</th><th>Region</th><th>Calls</th></tr></thead>
+          <tbody id="lin-body"></tbody>
+        </table></div>
+        <div class="label" style="margin-top:6px">Sources</div>
+        <ul class="log" id="src"></ul>
+      </div>
+      <div>
+        <h2>Changes and incidents</h2>
+        <ul class="log" id="chg"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Trace commitment</h2>
+      <p class="muted">Every traced call is committed to a salted Merkle root. The vendor can reveal any single trace to an auditor without exposing the rest.</p>
+    </div>
+    <div class="commit">
+      <dl class="kv" id="commit"></dl>
+    </div>
+  </section>
+
+  <section>
+    <h2>What this pack does not prove</h2>
+    <ul class="limits" id="limits"></ul>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Raw signed pack</h2>
+      <p class="muted">DSSE envelope with an in-toto Statement. ECDSA P-256 over the DSSE pre-authentication encoding.</p>
+    </div>
+    <details id="raw-st">
+      <summary>Decoded statement (JSON)</summary>
+      <div class="raw-actions"><button type="button" data-copy="st">Copy</button></div>
+      <pre id="pre-st"></pre>
+    </details>
+    <details>
+      <summary>Envelope as delivered</summary>
+      <div class="raw-actions"><button type="button" data-copy="env">Copy</button></div>
+      <pre id="pre-env"></pre>
+    </details>
+    <details>
+      <summary>Issuer public key (JWKS)</summary>
+      <pre id="pre-jwk"></pre>
+    </details>
+    <div class="label">Verify offline</div>
+    <pre class="cmd">python verify.py sample-public-key.pem KST-CTA-0001.dsse.json KST-CTA-0002.dsse.json KST-CTA-0003.dsse.json</pre>
+  </section>
+
+  <footer>
+    <p>Format: assurance-pack v0.1 · RFC 8785 canonical JSON · in-toto Statement v1 · DSSE · ECDSA P-256 / SHA-256.</p>
+    <p>In production the signing key lives in AWS KMS (ap-southeast-2) and its public half is published at the issuer's /.well-known/jwks.json. Here it is a throwaway key embedded in the page.</p>
+  </footer>
+</div>
+
+<script type="application/json" id="bundle">__BUNDLE__</script>
+<script>
+(() => {
+  const B = JSON.parse(document.getElementById("bundle").textContent);
+  const JWK = B.jwks.keys[0];
+  const enc = new TextEncoder();
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const fmtN = (n) => Number(n).toLocaleString("en-AU");
+  const fmtD = (iso) => new Date(iso.length === 10 ? iso + "T00:00:00" : iso).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+
+  // ---- crypto helpers ----
+  const b64ToBytes = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const bytesToB64 = (bytes) => { let s = ""; bytes.forEach((b) => (s += String.fromCharCode(b))); return btoa(s); };
+  const hex = (buf) => Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+  const unhex = (h) => Uint8Array.from(h.match(/../g).map((x) => parseInt(x, 16)));
+  const sha = async (bytes) => new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  const concat = (...arrs) => { const out = new Uint8Array(arrs.reduce((n, a) => n + a.length, 0)); let o = 0; arrs.forEach((a) => { out.set(a, o); o += a.length; }); return out; };
+
+  // RFC 8785: keys sorted by UTF-16 code units, ECMAScript number serialisation
+  function jcs(v) {
+    if (v === null || typeof v !== "object") return JSON.stringify(v);
+    if (Array.isArray(v)) return "[" + v.map(jcs).join(",") + "]";
+    return "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + jcs(v[k])).join(",") + "}";
+  }
+  function pae(type, body) {
+    const t = enc.encode(type);
+    return concat(enc.encode(`DSSEv1 ${t.length} `), t, enc.encode(` ${body.length} `), body);
+  }
+  function derToRaw(der) {
+    let i = 2; if (der[1] & 0x80) i += der[1] & 0x7f;
+    const readInt = () => { i++; const len = der[i++]; let v = der.slice(i, i + len); i += len; while (v.length > 32 && v[0] === 0) v = v.slice(1); const out = new Uint8Array(32); out.set(v, 32 - v.length); return out; };
+    const r = readInt(); const s = readInt(); return concat(r, s);
+  }
+  let keyP = null;
+  const getKey = () => keyP || (keyP = crypto.subtle.importKey("jwk", { kty: JWK.kty, crv: JWK.crv, x: JWK.x, y: JWK.y, ext: true }, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]));
+
+  // ---- state ----
+  const packs = B.envelopes.map((env) => {
+    const payload = b64ToBytes(env.payload);
+    return { env, payload, st: JSON.parse(new TextDecoder().decode(payload)) };
+  });
+  let current = packs.length - 1;
+  let tampered = false;
+  let results = [];
+
+  function packFor(i) {
+    const p = packs[i];
+    if (!(tampered && i === current)) return p;
+    // An edit someone might try: nudge coverage above the rule and relabel the eval finding
+    const st = JSON.parse(JSON.stringify(p.st));
+    st.predicate.coverage.total_pct = 99.9;
+    const eo = st.predicate.objectives.find((o) => o.id === "EO-LOG-01");
+    eo.measured = "99.9% of billed tokens traced";
+    const ev = st.predicate.objectives.find((o) => o.id === "EO-EVAL-01");
+    if (ev.status !== "pass") { ev.status = "pass"; ev.measured = "Eval run on live prompt"; }
+    const payload = enc.encode(jcs(st));
+    return { env: { ...p.env, payload: bytesToB64(payload) }, payload, st, edited: true };
+  }
+
+  async function verifyOne(i, prevDigestHex) {
+    const p = packFor(i);
+    const out = { sig: false, digest: false, chain: null, merkle: false, payloadDigest: null };
+    try {
+      const der = b64ToBytes(p.env.signatures[0].sig);
+      out.sig = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, await getKey(), derToRaw(der), pae(p.env.payloadType, p.payload));
+    } catch (e) { out.sig = false; }
+    const pred = p.st.predicate;
+    out.digest = hex(await sha(enc.encode(jcs(pred)))) === p.st.subject[0].digest.sha256;
+    out.payloadDigest = hex(await sha(p.payload));
+    if (i > 0) out.chain = pred.prev_pack_digest === "sha256:" + prevDigestHex;
+    const c = pred.commitments, d = c.disclosed;
+    let h = await sha(concat(new Uint8Array([0]), unhex(d.salt), enc.encode(d.trace_id)));
+    for (const step of d.proof) {
+      const s = unhex(step.hash);
+      h = await sha(concat(new Uint8Array([1]), step.side === "L" ? s : h, step.side === "L" ? h : s));
+    }
+    out.merkle = hex(h) === c.trace_merkle_root;
+    out.ok = out.sig && out.digest && out.merkle && out.chain !== false;
+    return out;
+  }
+
+  async function verifyAll() {
+    $("seal").className = "seal wait"; $("stamp").textContent = "…"; $("seal-title").textContent = "Checking this pack";
+    if (!(window.crypto && crypto.subtle)) {
+      $("seal-title").textContent = "This browser cannot run the checks";
+      $("checks").innerHTML = `<li><span class="mk w">–</span><span>Web Crypto is unavailable here. Use the offline verifier below.</span></li>`;
+      return;
+    }
+    results = [];
+    let prev = null;
+    for (let i = 0; i < packs.length; i++) { const r = await verifyOne(i, prev); results.push(r); prev = hex(await sha(packs[i].payload)); }
+    renderSeal(); renderChain();
+  }
+
+  function renderSeal() {
+    const r = results[current], p = packFor(current);
+    const prevId = current > 0 ? packs[current - 1].st.predicate.pack_id : null;
+    const mk = (ok) => (ok ? '<span class="mk y">✓</span>' : '<span class="mk n">✕</span>');
+    const items = [
+      [r.sig, r.sig ? "Signature is valid" : "Signature does not match the content", `key ${JWK.kid} · ES256`],
+      [r.digest, r.digest ? "Contents match the signed digest" : "Contents differ from the signed digest", `sha256 ${p.st.subject[0].digest.sha256.slice(0, 24)}…`],
+      current > 0 ? [r.chain, r.chain ? `Links to previous pack ${prevId}` : `Does not link to ${prevId}`, `prev ${String(p.st.predicate.prev_pack_digest).slice(0, 31)}…`] : null,
+      [r.merkle, r.merkle ? "Disclosed trace is in the commitment" : "Disclosed trace is not in the commitment", `${p.st.predicate.commitments.disclosed.trace_id} · leaf ${fmtN(p.st.predicate.commitments.disclosed.leaf_index)} of ${fmtN(p.st.predicate.commitments.leaf_count)}`],
+    ].filter(Boolean);
+    $("checks").innerHTML = items.map(([ok, t, s]) => `<li>${mk(ok)}<span>${t}<small>${esc(s)}</small></span></li>`).join("") +
+      `<li><span class="mk w">i</span><span>Issuer key: sample key embedded in this page<small>production: /.well-known/jwks.json</small></span></li>`;
+    $("seal").className = "seal " + (r.ok ? "ok" : "bad");
+    $("stamp").textContent = r.ok ? "✓" : "✕";
+    $("seal-title").textContent = r.ok ? "Verified, unaltered since signing" : "Failed: this pack was changed after signing";
+  }
+
+  function renderChain() {
+    $("chain").innerHTML = packs.map((p, i) => {
+      const pr = packFor(i).st.predicate, r = results[i];
+      const tag = !r ? '<span class="tag w">checking</span>' : r.ok ? '<span class="tag y">✓ verified</span>' : '<span class="tag n">✕ failed</span>';
+      return `<button type="button" class="link" data-i="${i}" aria-current="${i === current}">
+        <span class="lt"><b>${esc(pr.pack_id)}</b>${tag}</span>
+        <span class="num" style="font-size:.85rem">${fmtD(pr.period.start)} – ${fmtD(pr.period.end)}</span>
+        <span class="dg">${r ? "sha256:" + r.payloadDigest.slice(0, 20) + "…" : ""}</span>
+      </button>`;
+    }).join("");
+    $("chain").querySelectorAll(".link").forEach((b) => b.addEventListener("click", () => { current = +b.dataset.i; tamperSync(); renderContent(); renderChain(); if (tampered) verifyAll(); else if (results.length) renderSeal(); }));
+  }
+
+  function renderContent() {
+    const p = packFor(current), pr = p.st.predicate, orig = packs[current].st.predicate;
+    const ed = (a, b, html) => (p.edited && a !== b ? `<span class="edited" title="Edited after signing">${html}</span>` : html);
+    $("h-profiles").textContent = pr.profiles.join(" + ");
+    $("h-system").textContent = pr.subject.ai_system;
+    $("h-org").textContent = pr.subject.organisation;
+    $("h-env").textContent = pr.subject.environment;
+    $("h-desc").textContent = pr.subject.description;
+    $("h-pack").textContent = `${pr.pack_id} · #${pr.seq_no}`;
+    $("h-period").textContent = `${fmtD(pr.period.start)} – ${fmtD(pr.period.end)}`;
+    $("h-issued").textContent = fmtD(pr.issued_at);
+    $("h-level").innerHTML = `Level ${pr.assurance_level.level} <span class="muted" style="font-size:.8rem">· vendor-supplied usage exports</span>`;
+
+    const counts = { pass: 0, attention: 0, fail: 0 };
+    pr.objectives.forEach((o) => counts[o.status]++);
+    const origCounts = { pass: 0, attention: 0, fail: 0 }; orig.objectives.forEach((o) => origCounts[o.status]++);
+    $("strip").innerHTML = [
+      ["Objectives passing", `${counts.pass}<span class="muted" style="font-size:1rem"> / ${pr.objectives.length}</span>`, p.edited && counts.pass !== origCounts.pass],
+      ["Need attention", counts.attention + counts.fail, p.edited && counts.attention !== origCounts.attention],
+      ["Trace coverage", `${pr.coverage.total_pct}%`, p.edited && pr.coverage.total_pct !== orig.coverage.total_pct],
+      ["Traced calls", fmtN(pr.commitments.leaf_count), false],
+    ].map(([l, v, flag]) => `<div class="stat"><span class="label">${l}</span><span class="v${flag ? " flag" : ""}">${v}</span></div>`).join("");
+
+    $("obj-body").innerHTML = pr.objectives.map((o, k) => {
+      const oo = orig.objectives[k];
+      return `<tr>
+        <td class="stripe-${o.status}"></td>
+        <td><div class="eo-id">${o.id}</div><div class="eo-title">${esc(o.title)}</div><div class="basis">${esc(o.basis)}</div></td>
+        <td class="num">${ed(o.measured, oo.measured, esc(o.measured))}</td>
+        <td class="muted" style="font-size:.82rem;max-width:22ch">${esc(o.threshold)}</td>
+        <td>${ed(o.status, oo.status, `<span class="pill ${o.status}">${o.status === "pass" ? "✓ Pass" : o.status === "attention" ? "! Attention" : "✕ Fail"}</span>`)}</td>
+        <td><div class="chips">${o.maps.map((m) => `<span class="chip">${esc(m)}</span>`).join("")}</div></td>
+      </tr>`;
+    }).join("");
+
+    const thr = 98.0, lo = 95;
+    const pos = (v) => Math.max(0, Math.min(100, ((v - lo) / (100 - lo)) * 100));
+    const rows = [["All providers", pr.coverage.total_pct, true]].concat(pr.coverage.providers.map((x) => [`${x.provider} · ${x.region}`, Math.round((1000 * x.traced_tokens) / x.billed_tokens) / 10, false]));
+    $("cov").innerHTML = rows.map(([n, v, main]) => `<div class="cov-row">
+        <span style="font-weight:${main ? 600 : 400}">${esc(n)}</span>
+        <div class="bar" role="img" aria-label="${v}% traced; rule 98%"><i style="width:${pos(v)}%"></i><span class="thr" style="left:${pos(thr)}%"></span></div>
+        <span class="cov-pct">${main ? ed(v, orig.coverage.total_pct, v + "%") : v + "%"}</span></div>`).join("") +
+      `<p class="muted" style="font-size:.8rem">Bars start at 95%. The dark tick marks the 98% rule.</p>`;
+    $("cov-body").innerHTML = pr.coverage.providers.map((x) => `<tr><td>${esc(x.provider)}</td><td class="mono">${esc(x.region)}</td>
+      <td class="num">${fmtN(x.billed_tokens)}</td><td class="num">${fmtN(x.traced_tokens)}</td><td class="num">${fmtN(x.billed_requests)}</td><td class="num">${fmtN(x.traced_requests)}</td></tr>`).join("");
+
+    $("lin-body").innerHTML = pr.lineage.map((m) => `<tr><td class="mono">${esc(m.model)}</td><td>${esc(m.role)}</td><td class="mono">${esc(m.region)}</td><td class="num">${m.share_of_calls_pct == null ? "—" : m.share_of_calls_pct + "%"}</td></tr>`).join("");
+    $("src").innerHTML = pr.sources.map((s) => `<li style="grid-template-columns:1fr"><span><span class="kind">${esc(s.kind.replace("_", " "))}</span>${esc(s.system)}<br><span class="muted" style="font-size:.8rem">${esc(s.method)}</span></span></li>`).join("");
+
+    const ev = pr.changes.map((c) => ({ d: c.date, html: `<span class="kind">${esc(c.kind)}</span>${esc(c.what)}` }))
+      .concat(pr.incidents.map((x) => ({ d: x.opened.slice(0, 10), html: `<span class="kind" style="color:var(--warn)">incident ${esc(x.id)}</span>${esc(x.summary)}<br><span class="muted" style="font-size:.8rem">Acknowledged in ${Math.round((new Date(x.acknowledged) - new Date(x.opened)) / 60000)} min · resolved in ${Math.round((new Date(x.resolved) - new Date(x.opened)) / 60000)} min</span>` })))
+      .sort((a, b) => a.d.localeCompare(b.d));
+    $("chg").innerHTML = ev.length ? ev.map((e) => `<li><time>${fmtD(e.d)}</time><span>${e.html}</span></li>`).join("") : '<li><span class="muted">No changes or incidents this period.</span></li>';
+
+    const c = pr.commitments;
+    $("commit").innerHTML = [
+      ["Merkle root", c.trace_merkle_root], ["Leaves", fmtN(c.leaf_count) + " traced calls"], ["Leaf", c.leaf], ["Node", c.node],
+      ["Disclosed trace", `${c.disclosed.trace_id} (leaf ${fmtN(c.disclosed.leaf_index)})`], ["Proof", `${c.disclosed.proof.length} sibling hashes`],
+    ].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
+
+    $("limits").innerHTML = pr.limitations.map((l) => `<li>${esc(l)}</li>`).join("");
+    $("pre-st").textContent = JSON.stringify(p.st, null, 2);
+    $("pre-env").textContent = JSON.stringify(p.env, null, 2);
+    $("pre-jwk").textContent = JSON.stringify(B.jwks, null, 2);
+  }
+
+  function tamperSync() {
+    const btn = $("btn-tamper");
+    btn.setAttribute("aria-pressed", String(tampered));
+    btn.textContent = tampered ? "Restore the original pack" : "Simulate an edited pack";
+  }
+
+  $("btn-rerun").addEventListener("click", verifyAll);
+  $("btn-tamper").addEventListener("click", () => { tampered = !tampered; tamperSync(); renderContent(); verifyAll(); });
+  document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => {
+    const pre = b.dataset.copy === "st" ? $("pre-st") : $("pre-env");
+    const done = () => { b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1500); };
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Selected, press Ctrl+C"; };
+    try { navigator.clipboard.writeText(pre.textContent).then(done, fallback); } catch (e) { fallback(); }
+  }));
+
+  renderContent(); renderChain(); verifyAll();
+})();
+</script>
