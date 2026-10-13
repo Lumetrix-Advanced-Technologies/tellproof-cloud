@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: { go-version: "1.23" }
+        with: { go-version: "1.27" }
       - uses: actions/setup-node@v4
         with: { node-version: "22" }
       - uses: actions/setup-python@v5
@@ -24,6 +24,6 @@ jobs:
       - name: Migration and RLS tests
         run: |
           psql "$DATABASE_URL_OWNER" -v ON_ERROR_STOP=1 -f migrations/0001_init.sql
-          psql "$DATABASE_URL_OWNER" -f migrations/tests/0001_rls_and_append_only.sql | tee rls.out
+          psql "$DATABASE_URL_OWNER" -f migrations/tests/0001_rls_and_append_only.sql 2>&1 | tee rls.out
           grep -q "evidence is append-only" rls.out
           grep -q "violates row-level security policy" rls.out

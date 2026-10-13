@@ -12,7 +12,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 
 | Task | Title | Status | Updated | Notes |
 | --- | --- | --- | --- | --- |
-| P0-1 | Repo skeleton | not started | | |
+| P0-1 | Repo skeleton | done | 2026-10-13 | `cmd/verify` prints its version; Go 1.26 min / CI 1.27, tool pins bumped (D-011); folder placeholders |
 | P0-2 | Spec checks | not started | | |
 | P1-1 | internal/jcs | not started | | |
 | P1-2 | internal/dsse | not started | | |
@@ -51,3 +51,5 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 ## Log
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
+
+- 2026-10-13 · P0-1 · PR pending · Repo skeleton in place and `make check` green on a version-printing `cmd/verify`.
