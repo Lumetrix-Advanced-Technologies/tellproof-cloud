@@ -74,6 +74,11 @@ type SemconvMap struct {
 	Note         string              `json:"note"`
 	Fields       map[string][]string `json:"fields"`
 	PresenceOnly []string            `json:"presence_only"`
+	// PresenceOnlyPrefixes: any attribute whose name starts with one of these is
+	// content too (indexed names such as gen_ai.prompt.0.content).
+	PresenceOnlyPrefixes []string `json:"presence_only_prefixes"`
+	// LLMOperations are the operation values that make a span an LLM call.
+	LLMOperations []string `json:"llm_operations"`
 }
 
 type ruleShape struct {
@@ -258,6 +263,18 @@ func (s *SemconvMap) Validate() error {
 		}
 	}
 
+	for _, prefix := range s.PresenceOnlyPrefixes {
+		if !strings.HasSuffix(prefix, ".") || len(prefix) < 2 {
+			errs = append(errs, fmt.Errorf("semconv-map.json: presence-only prefix %q must be a name followed by a dot", prefix))
+		}
+		for _, field := range fieldNames {
+			for _, attr := range s.Fields[field] {
+				if strings.HasPrefix(attr, prefix) {
+					errs = append(errs, fmt.Errorf("semconv-map.json: attribute %q of field %q falls under presence-only prefix %q; content values must never be read", attr, field, prefix))
+				}
+			}
+		}
+	}
 	seen := make(map[string]bool, len(s.PresenceOnly))
 	for _, attr := range s.PresenceOnly {
 		if field, ok := mappedTo[attr]; ok {

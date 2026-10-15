@@ -153,10 +153,24 @@ func TestBrokenSpecFails(t *testing.T) {
 			wantErr: `semconv-map.json: presence-only attribute "gen_ai.usage.input_tokens" is also mapped to field "input_tokens"; content values must never be read`,
 		},
 		{
+			name:    "mapped attribute under a content prefix",
+			file:    "semconv-map.json",
+			old:     `"gen_ai.request.model"`,
+			new:     `"gen_ai.prompt.model"`,
+			wantErr: `semconv-map.json: attribute "gen_ai.prompt.model" of field "request_model" falls under presence-only prefix "gen_ai.prompt."; content values must never be read`,
+		},
+		{
+			name:    "content prefix without a trailing dot",
+			file:    "semconv-map.json",
+			old:     `"llm.prompts."`,
+			new:     `"llm.prompts"`,
+			wantErr: `semconv-map.json: presence-only prefix "llm.prompts" must be a name followed by a dot`,
+		},
+		{
 			name:    "unknown field in semconv map",
 			file:    "semconv-map.json",
-			old:     `"version": "v1",`,
-			new:     `"version": "v1", "extra": 1,`,
+			old:     `"version": "v2",`,
+			new:     `"version": "v2", "extra": 1,`,
 			wantErr: `semconv-map.json: json: unknown field "extra"`,
 		},
 	}

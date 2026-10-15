@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P3-1 · OTLP JSON receiver and normaliser
+
+**Built.** `internal/otlp`: `Mapping` (a validated semconv map), `Parse` (one OTLP JSON export to content-free `Span` facts) and `Receiver` (`POST /v1/traces`). Package `spec` embeds the spec files. `semconv-map.json` v2 adopts the D-020 names, adds an operation alias, the LLM operation list and content prefixes; `internal/spec` validates the new parts; the concierge reads the same map (D-026).
+
+**Problems.** OpenLLMetry-style instrumentation writes content under indexed names (`gen_ai.prompt.0.content`) and marks calls with `llm.request.type` rather than `gen_ai.operation.name`, so exact-name content detection and operation matching both needed extending. My first fuzz seeds included strings equal to the span's legitimate mapped values ("openai"), a false positive in the test. staticcheck caught an unneeded `fmt.Sprint` in a test. A mutation that makes every attribute readable is not caught by tests, by design: values reach a span only through mapped-name lookups, and content is skipped before decoding, so the two guards back each other up.
+
+**Verified.** The concierge's collector-style sample parses to the same counts and token totals the Python ingest produces (240 traces, 320 LLM calls, 54 of 60 PII spans redacted, and so on). A hand-written OpenLLMetry/JavaScript-style export (numbers as JSON numbers, upper-case hex IDs, old attribute names, indexed and array content, content in events) parses exactly to four expected spans with two malformed spans rejected, and no field holds any of its marker text. `FuzzNoContentInSpans`: 198k inputs, no content in any span. Receiver: JSON and gzip accepted, charset parameter allowed, protobuf 415, GET 405, oversized body and gzip bomb 413, bad gzip 400, unknown encoding 415, partial success reported, no error echoes content. Injected bugs (content prefixes ignored, enum status codes ignored) are caught.
+
 ## 2026-10-15 · P3-0 · Batch schema v0.2
 
 **Built.** `spec/batch.schema.json` is now v0.2: a required `observed` object beside `metrics` with the models (`{provider, model}`) and model + prompt version pairs (`{model, prompt_version}`) live in the window. The v0.1 file is kept unchanged as `spec/batch-v0.1.schema.json`. The concierge emits and reads the object form.

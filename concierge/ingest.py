@@ -31,7 +31,7 @@ DEFAULT_ATTRIBUTES = {
     "high_impact": "plumbline.tool.high_impact",
     "approved": "plumbline.tool.approved",
     "escalation": "plumbline.escalation",
-    "llm_operations": ["chat", "text_completion", "generate_content", "embeddings"],
+    "llm_operations": ["chat", "text_completion", "generate_content", "embeddings", "completion", "embedding"],
     "anomaly": {"min_calls": 20, "error_rate": 0.05, "guardrail_block_rate": 0.03},
 }
 
@@ -89,7 +89,8 @@ def _span_from_values(trace_id, start, operation, values, presence_keys, error, 
     """values: only the attribute values we are allowed to read (already filtered)."""
     f = semconv["fields"]
     kind = _classify(operation, attrs)
-    content = langfuse_content or any(k in semconv["presence_only"] for k in presence_keys)
+    prefixes = tuple(semconv.get("presence_only_prefixes", []))
+    content = langfuse_content or any(k in semconv["presence_only"] or (prefixes and k.startswith(prefixes)) for k in presence_keys)
     model = _pick(values, f["response_model"]) or _pick(values, f["request_model"])
     return Span(
         trace_id=trace_id, start=start, kind=kind,
@@ -113,7 +114,7 @@ def _readable_names(semconv, attrs) -> set[str]:
     names = {n for ns in semconv["fields"].values() for n in ns}
     names |= {attrs[k] for k in ("pii_marker", "redacted", "guardrail_decision", "prompt_name", "prompt_version",
                                   "slot", "high_impact", "approved", "escalation")}
-    names |= {"service.name", "gen_ai.operation.name"}
+    names |= {"service.name"}
     return names
 
 
@@ -159,7 +160,7 @@ def parse_otlp(docs, semconv, attrs):
                     merged = {**res_values, **values}
                     error = (sp.get("status") or {}).get("code") in (2, "STATUS_CODE_ERROR")
                     yield _span_from_values(str(sp.get("traceId", "")), _ns_to_dt(sp["startTimeUnixNano"]),
-                                            merged.get("gen_ai.operation.name"), merged, keys, error, semconv, attrs)
+                                            _pick(merged, semconv["fields"]["operation"]), merged, keys, error, semconv, attrs)
 
 
 # ---------- Langfuse export (JSON array/JSONL of observations, or CSV) ----------
