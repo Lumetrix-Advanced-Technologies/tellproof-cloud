@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P3-4 · Provider usage
+
+**Built.** `internal/usage`: `OpenAI` and `Anthropic` pollers on `net/http`, a `Bedrock` CloudWatch poller behind `-tags bedrock`, merging into hourly `batch.Usage`, and `Reconcile` (coverage per provider and in total). `make check` now also vets, tests and vulnerability-scans the `bedrock` build.
+
+**Problems.** The library notes marked both APIs "(verify)". I checked them against the live documentation today: the Anthropic API reference gave the full response schema; OpenAI's API reference page refused the fetch, so its fields were checked against the official SDK's published TypeScript types. Anthropic splits input into uncached, cache-creation and cache-read tokens, so billed input is their sum, and the SDKs must count cached input the same way (D-028). Neither API carries a cloud region, so coverage is matched per provider. My fake CloudWatch first returned its paged results in random map order, so pages overlapped; the fake now has a fixed order.
+
+**Verified.** Recorded responses in the documented shapes (two OpenAI completions pages and an embeddings page; two Anthropic pages including an empty bucket; two CloudWatch pages): every hour and model maps as expected, including the request parameters and headers sent. Coverage against those responses matches a hand calculation written in the test within 0.1 point (OpenAI 99.0%, Anthropic 98.64%, total 98.85%), with a provider lacking usage listed but not counted. Errors never contain the key; bad windows and missing keys are refused; a server that pages forever stops at the limit.
+
 ## 2026-10-15 · P3-3 · Commitments
 
 **Built.** `internal/commitment`: `LoadSecret` (env or owner-only file, at least 16 bytes, never echoed), `ForWindow`/`FromLeaves` (the batch `commit` plus the leaves kept for disclosure), `Window.Disclose`, and `ForPeriod`/`Period.Disclose` for a period root over window roots.

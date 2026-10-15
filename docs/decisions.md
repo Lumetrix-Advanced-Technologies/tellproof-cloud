@@ -164,3 +164,12 @@ Adoption must feel like Sentry: install a package, add one line. Chosen model (o
 ## D-027 Period commitment = Merkle tree over window roots (15 Oct 2026)
 
 The agent commits each hourly window to a salted root and sends only that root and its leaf count; the server never sees leaves. A pack's `trace_merkle_root` (P4-5) is therefore the Merkle root over the period's non-empty window roots, in time order, combined with the ordinary node hash (`sha256(0x01 ‖ left ‖ right)`, odd node carried up), and `leaf_count` is the sum of the windows' leaves. A disclosure proof is the trace's proof to its window root followed by the window root's proof to the period root; every verifier checks it with the existing side/hash rule, unchanged. The agent keeps each window's leaves locally (`internal/commitment`) so a vendor can disclose one trace later; the server supplies the upper half of the proof. Concierge packs, built from all leaves at once, use a flat tree; both forms verify identically, and a proof still shows membership, not position (D-015). The salt secret comes from `PLUMBLINE_SALT_SECRET` or a file readable only by its owner, and must be at least 16 bytes.
+
+## D-028 Provider usage and coverage reconciliation (15 Oct 2026)
+
+`internal/usage` (P3-4) polls billed usage per hour and model: OpenAI (completions and embeddings, admin key), Anthropic (messages usage report, Admin API key), and Amazon Bedrock (CloudWatch `AWS/Bedrock` by `ModelId`, built only with `-tags bedrock`). Rules the evaluator (P4-4) and the SDKs (S-2, S-4) must follow:
+
+- **Tokens are input + output, and input includes cached tokens.** OpenAI's `input_tokens` already includes cached tokens; for Anthropic, billed input is uncached + cache creation (5 min and 1 h) + cache reads. The SDKs therefore record Anthropic input the same way, or coverage would read low for any app that uses prompt caching.
+- **Coverage is matched per provider.** OpenAI and Anthropic usage carries no cloud region (Anthropic's `inference_geo` is `global`, `us` or not available), so traced and billed tokens are compared per provider across regions; Bedrock usage is per region. Only providers with usage data count toward total coverage; a provider with traces but no usage is listed (and named in the pack's limitations).
+- **Never leak keys.** Errors name the endpoint and HTTP status only; response bodies are discarded on error; keys are never logged.
+- Each response is capped at 16 MB and a poll at 50 pages, so a misbehaving API cannot loop the agent.
