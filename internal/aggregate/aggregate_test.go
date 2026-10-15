@@ -190,6 +190,26 @@ func TestTransitionsCarryAcrossWindows(t *testing.T) {
 	}
 }
 
+// A chat model and an embeddings model used side by side in one service are
+// not model changes; a new chat model is (D-033).
+func TestModelsSideBySideByOperation(t *testing.T) {
+	var spans []otlp.Span
+	for i, model := range []string{"chat-1", "embed-1", "chat-1", "embed-1", "chat-2"} {
+		x := llm(string(rune('a'+i)), at(10, i))
+		x.Model, x.Slot, x.Operation = model, "claims-api", "chat"
+		if model == "embed-1" {
+			x.Operation = "embeddings"
+		}
+		spans = append(spans, x)
+	}
+	a := New(DefaultConfig())
+	a.Add(spans, at(10, 30))
+	got := a.FlushAll()[0].Metrics.Transitions
+	if len(got) != 1 || got[0].From != "chat-1" || got[0].To != "chat-2" {
+		t.Errorf("transitions = %+v; want only chat-1 -> chat-2", got)
+	}
+}
+
 func TestAnomalyThresholds(t *testing.T) {
 	cfg := DefaultConfig()
 	mk := func(n, errs, blocked int) []otlp.Span {

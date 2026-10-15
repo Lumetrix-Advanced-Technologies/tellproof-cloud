@@ -6,9 +6,9 @@ GO_PKGS := ./...
 STATICCHECK := honnef.co/go/tools/cmd/staticcheck@2026.2.2
 GOVULNCHECK := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
-.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test db db-test run-server run-worker agent-dry concierge-verify
+.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test run-server run-worker agent-dry concierge-verify
 
-check: fmt-check vet staticcheck vuln test vectors concierge-test
+check: fmt-check vet staticcheck vuln test vectors concierge-test sdk-test
 
 fmt-check:
 	@out=$$(gofmt -l . | grep -v '^reference/' || true); if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
@@ -55,6 +55,9 @@ agent-dry:
 
 concierge-test:
 	python3 -m unittest discover -s concierge/tests
+
+sdk-test:
+	python3 -m unittest discover -s sdk/python/tests
 
 concierge-verify:
 	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/*.dsse.json

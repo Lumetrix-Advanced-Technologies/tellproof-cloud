@@ -33,7 +33,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P3-6 | Enrolment and batch signing | done | 2026-10-15 | Ed25519 identity (0600), enrol over https; canonical v0.2 batches signed and chained by seq/prev; server-side Verify (D-030) |
 | P3-7 | Disk queue | done | 2026-10-15 | SIGKILLed three times mid-send: no batch lost, none stored twice; crash recovery; backoff; refusals keep the batch (D-031) |
 | P3-8 | Dry-run and config | done | 2026-10-15 | `plumbline-agent` enrol/run/version; strict config with env overrides; dry-run prints envelope + payload and touches nothing; replay; end-to-end receive → sign → deliver test (D-032) |
-| S-1 | Python SDK core | not started | | |
+| S-1 | Python SDK core | done | 2026-10-15 | `plumbline.init()`, helpers as context managers/decorators, bounded exporter; shared scenario aggregates identically in agent and concierge; model history per slot and operation (D-033) |
 | S-2 | Python auto-instrumentation | not started | | |
 | S-3 | TypeScript SDK core | not started | | |
 | S-4 | TypeScript auto-instrumentation | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · S-1 · PR pending · `pip install plumbline` + one line sends evidence spans to the agent, with no dependencies and no content.
 - 2026-10-15 · P3-8 · PR pending · The agent runs end to end: `make agent-dry` shows exactly what would leave, and a live run delivers verified batches.
 - 2026-10-15 · P3-7 · PR pending · A durable outbox that survives kill -9 mid-send without losing or duplicating a batch.
 - 2026-10-15 · P3-6 · PR pending · The agent enrols with a one-time token and signs chained, canonical batches the server can verify.
