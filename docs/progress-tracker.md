@@ -24,7 +24,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | C-2 | Concierge evaluate | done | 2026-10-15 | ten objectives match a hand calculation for a fixture partner month (mixed pass/attention/fail); full Python JCS; objective_set_hash matches the browser JCS (D-021) |
 | C-3 | Concierge sign and chain | done | 2026-10-15 | a two-pack chain passes verify.py, cmd/verify and the verify page's verifier; local key or KMS by digest; schema-checked and self-verified (D-022) |
 | C-4 | Concierge share | done | 2026-10-15 | headless Chrome opens a share link and sees Verified (chain checked on pack 2); revoked link shows no pack; tokens never logged (D-023) |
-| P3-0 | Batch schema v0.2 | not started | | |
+| P3-0 | Batch schema v0.2 | done | 2026-10-15 | `observed` (live models and model + prompt versions) beside metrics; v0.1 kept; concierge windows validate |
 | P3-1 | OTLP JSON receiver + normaliser | not started | | |
 | P3-2 | Hourly aggregator | not started | | |
 | P3-3 | Commitments | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · P3-0 · PR pending · Batch schema v0.2 carries the live model and prompt versions eval freshness needs.
 - 2026-10-15 · D-024, D-025 · PR pending · Build the whole product before trials; one-line SDK integration (Python, TypeScript) feeding the local agent.
 - 2026-10-15 · Docs · #16 · README rewritten for setup, usage and architecture; technical and executive whitepapers written as shared docs.
 - 2026-10-15 · C-4 · #13, #17 · `evidencepack.py share` publishes verified packs on a static site; a verifier opening the link sees Verified. Phase C complete; Phases 0, 1 and C are done and the M1 gate is next.

@@ -62,12 +62,13 @@ Predicate fields (schema: `spec/pack.schema.json`): `pack_schema`, `pack_id`, `s
 - Leaf: `sha256(0x00 || salt16 || utf8(trace_id))`. Node: `sha256(0x01 || left || right)`. An odd node at the end of a level is carried up unchanged (not duplicated).
 - Proof: list of `{side: "L"|"R", hash: hex}` from leaf to root; levels where the node was carried up contribute no entry.
 
-### 2.5 Agent batch payload (schema: `spec/batch.schema.json`)
+### 2.5 Agent batch payload (schema: `spec/batch.schema.json`, v0.2; v0.1 kept as `spec/batch-v0.1.schema.json`)
 
 ```json
-{"schema": "plumbline-batch/v0.1", "agent_id": "agt_…", "seq": 1842, "prev": "sha256:<hex of previous batch payload> | null",
+{"schema": "plumbline-batch/v0.2", "agent_id": "agt_…", "seq": 1842, "prev": "sha256:<hex of previous batch payload> | null",
  "window": {"start": "2026-11-30T13:00:00Z", "end": "2026-11-30T14:00:00Z"}, "semconv_map": "v1",
  "metrics": {"tokens": [...], "pii": {...}, "content_present_spans": 0, "guardrails": {...}, "evals": [...], "agent": {...}, "transitions": [...]},
+ "observed": {"models": [{"provider": "aws.bedrock", "model": "..."}], "versions": [{"model": "...", "prompt_version": "14"}]},
  "usage": [{"provider": "aws.bedrock", "model": "...", "region": "...", "input_tokens": 0, "output_tokens": 0, "requests": 0}],
  "commit": {"root": "<hex>", "leaves": 402}}
 ```

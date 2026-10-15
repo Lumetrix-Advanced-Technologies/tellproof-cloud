@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P3-0 · Batch schema v0.2
+
+**Built.** `spec/batch.schema.json` is now v0.2: a required `observed` object beside `metrics` with the models (`{provider, model}`) and model + prompt version pairs (`{model, prompt_version}`) live in the window. The v0.1 file is kept unchanged as `spec/batch-v0.1.schema.json`. The concierge emits and reads the object form.
+
+**Problems.** The concierge had emitted `observed` as bare pairs (`[provider, model]`); JSON Schema describes objects more clearly than positional arrays, so the format moved to objects and the fixture month was converted.
+
+**Verified.** Go: v0.2 differs from v0.1 only in the version const, `$id`, title and `observed` (every other property byte-identical). Python: every ingest window's `window`, `metrics`, `observed` and `commit` validate against v0.2; a v0.1 batch validates against the v0.1 schema and fails v0.2 until it carries the v0.2 const and `observed`. All 44 concierge tests pass, including the hand-calculated month.
+
 ## 2026-10-15 · C-4 · Concierge share
 
 **Built.** `concierge/share.py` and `evidencepack.py share` / `unshare`: a self-contained static site (verify page, brand tokens, issuer JWKS, one file per share at `/v1/verify/<token>` in the future API's response shape), random 16-byte tokens, a share log with token hashes only, verification of every pack before it is published, and revocation by deleting the share file.
