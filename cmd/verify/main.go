@@ -73,15 +73,20 @@ func run(ctx context.Context, cfg config, args []string, stdout, stderr io.Write
 
 	var reports []packReport
 	var prev *dsse.Envelope
-	for _, file := range opts.files {
+	for i, file := range opts.files {
 		data, err := readFile(file, maxPackBytes)
 		if err != nil {
 			fmt.Fprintf(stderr, "plumbline-verify: %v\n", err)
 			return 2
 		}
 		rep := verifyOne(file, data, keys, prev)
+		// The previous file was not an envelope, so nothing can link to it (D-017).
+		if i > 0 && prev == nil && rep.Error == "" {
+			broken := false
+			rep.Chain, rep.Verified = &broken, false
+		}
 		reports = append(reports, rep)
-		prev = rep.env // nil if the file was not an envelope: the next chain check then fails
+		prev = rep.env
 	}
 
 	verified := true
