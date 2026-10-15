@@ -8,6 +8,7 @@ Every SDK internal is wrapped so that it cannot raise into the app.
 
 from __future__ import annotations
 
+import collections
 import contextvars
 import functools
 import inspect
@@ -113,14 +114,42 @@ def _child(attrs: dict | None = None, span_id: str | None = None, guard: Guardra
     return _Frame(parent.trace_id, span_id or parent.span_id, merged, guard or parent.guard)
 
 
+_CURRENT = object()
+_later: collections.deque = collections.deque()  # work queued where taking locks is unsafe (finalizers)
+
+
+def later(fn: Callable[[], None]) -> None:
+    """Run fn on the next record() or flush; deque.append takes no lock."""
+    _later.append(fn)
+
+
+def run_later() -> None:
+    while True:
+        try:
+            fn = _later.popleft()
+        except IndexError:
+            return
+        try:
+            fn()
+        except Exception:
+            _fail("deferred")
+
+
+def current_frame() -> _Frame | None:
+    return _frame.get()
+
+
 def record(name: str, kind: int, start: int, end: int, attrs: dict, error: bool, *, llm: bool = False,
-           span_id: str | None = None, trace_id: str | None = None) -> None:
-    """Emit one span in the current context. LLM spans inside a guardrail scope
-    wait for its decision."""
+           span_id: str | None = None, trace_id: str | None = None, frame: Any = _CURRENT) -> None:
+    """Emit one span in the current context (or the given frame, for a call
+    that started there and ends later, such as a stream). LLM spans inside a
+    guardrail scope wait for its decision."""
     c = _client
     if not c.enabled:
         return
-    parent = _frame.get()
+    if _later:
+        run_later()
+    parent = _frame.get() if frame is _CURRENT else frame
     a = dict(parent.attrs) if parent else {}
     a.update(attrs)
     span = {"trace_id": parent.trace_id if parent else (trace_id or c.ids(16)), "span_id": span_id or c.ids(8),
@@ -248,6 +277,7 @@ class Guardrail(_Scope):
         self._calls = 0
         self._start = 0
         self._outer: Guardrail | None = None
+        self._closed = False
         self.decision = decision
 
     @property
@@ -275,7 +305,13 @@ class Guardrail(_Scope):
         return Guardrail(self._decision, provider=self._provider, model=self._model)
 
     def _defer(self, span: dict) -> bool:
+        """Hold an LLM span for the decision. After the scope has ended (a
+        stream finishing late) the decision is stamped at once."""
         self._calls += 1
+        if self._closed:
+            if self._decision and GUARDRAIL not in span["attrs"]:
+                span["attrs"][GUARDRAIL] = self._decision
+            return self._outer._defer(span) if self._outer is not None else False
         if len(self._pending) >= MAX_DEFERRED:
             return False
         self._pending.append(span)
@@ -291,6 +327,7 @@ class Guardrail(_Scope):
     def _exit(self, error: bool) -> None:
         if not _client.enabled:
             return
+        self._closed = True
         frame = _frame.get()
         outer = self._outer
         if self._calls == 0 and self._decision == "block":
