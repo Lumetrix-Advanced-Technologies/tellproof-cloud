@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · C-3 · Concierge sign and chain
+
+**Built.** `concierge/sign.py` and `evidencepack.py sign`: predicate from `evaluation.json`, period commitment from the leaves file with an optional disclosed trace, statement, JCS payload, PAE, ECDSA P-256 signature by a local key or KMS, chain fields from `--prev`, and `--jwks-out`. `concierge/schema.py`: the JSON Schema keywords the pack and batch schemas use, so every predicate is checked before signing. `evaluate` now carries `sources` and `assurance_level` from the system file.
+
+**Problems.** boto3 is not installed on this machine and installing it means downloading packages, so the KMS path is exercised with a fake client that checks the call shape (DIGEST, 32-byte message, ECDSA_SHA_256); real KMS use needs boto3 and credentials. A leaves file could silently disagree with the evaluated windows, so its count must equal the evaluation's `leaf_count`.
+
+**Verified.** 8 sign tests (35 concierge tests in all): a two-pack chain signed with a fresh key verifies in `concierge/verify.py`, in `go run ./cmd/verify --json` (signature, subject digest, chain and Merkle all true) and in the verify page's `verify.js` under Node, which is the acceptance test. The KMS signer sends the PAE digest with the right parameters; a signer whose public key differs is refused; bad pack IDs, timestamps, leaf counts, unknown traces and wrong salt secrets are refused; the CLI chains two packs and refuses a world-readable key file.
+
 ## 2026-10-15 · C-2 · Concierge evaluate
 
 **Built.** `concierge/evaluate.py` and `evidencepack.py evaluate`: a generic engine over the five rule kinds in `spec/objectives.json`, coverage per provider and region, lineage with roles, registers filtered to the period, limitations, input fingerprints and `objective_set_hash`. `concierge/canon.py`: full RFC 8785 in Python (the existing `verify.py` subset only handles simple decimals), needed for the hash now and for signing in C-3. C-1 output gains a per-window `observed` record of live model and prompt versions.

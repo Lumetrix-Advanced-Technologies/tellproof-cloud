@@ -110,3 +110,14 @@ The core manifest covers eight cases; the verifiers could still disagree on malf
 - **Input formats** (concierge): `system.json` (declarations), usage CSV `provider,model,region,start,end,input_tokens,output_tokens,requests` (provider IDs as in telemetry; founders convert each provider's export), changes CSV `date,kind,what`, incidents CSV `id,opened,acknowledged,resolved,summary`, evals CSV `suite,model,prompt_version,ran_at,pass_rate`.
 - **Schema gap**: eval freshness needs the versions live in each window, which the batch `metrics` schema cannot carry (`additionalProperties: false`). Concierge aggregates put an `observed` record beside `metrics`; P3/P4 need a batch schema change (a new version) before the agent can support EO-EVAL-01.
 - `objective_set_hash` is `sha256:` + SHA-256 of JCS(`spec/objectives.json`); the test checks it against the browser verifier's JCS.
+
+## D-022 Concierge signing: schema-checked, self-verified, KMS by digest (15 Oct 2026)
+
+`evidencepack.py sign` (C-3) builds the predicate from `evaluation.json`, commits to the period's leaves and signs. Choices:
+
+- **Signers.** A local P-256 PEM (mode 0600) for pilots and tests, or AWS KMS through boto3 with `MessageType=DIGEST` and the 32-byte SHA-256 of the PAE (D-006). boto3 is imported only for KMS, so the rest of the concierge needs only `cryptography`.
+- **Checks before anything is written.** The predicate must pass `spec/pack.schema.json` (a small built-in validator for the keywords the schema uses); the payload must be exactly JCS(statement) (D-018); and the signature is verified with the signer's public key (from KMS `GetPublicKey` for KMS), so a key mix-up never produces a pack.
+- **Chain.** `--prev` sets `seq_no` to the previous pack's plus one and `prev_pack_digest` to the SHA-256 of its payload. Pack IDs follow the schema pattern (for example `WRN-RS-0001`).
+- **Commitment.** The leaves file must hold exactly the leaves of the evaluated windows (its count must equal the evaluation's `leaf_count`). `--disclose TRACE_ID` reveals one trace: the salt is re-derived from the vendor's secret and the leaf must already be in the commitment, so a wrong trace ID or secret fails instead of producing a proof that cannot verify.
+- **Optional fields** are left out rather than written empty (`sample_notice`, a subject `description`, incident `acknowledged`/`resolved`), as the verifiers require. Concierge packs carry `objective_set_hash`; `batch_digests` is for production packs only.
+- `--jwks-out` writes the signer's public key as the JWKS the verifiers take.
