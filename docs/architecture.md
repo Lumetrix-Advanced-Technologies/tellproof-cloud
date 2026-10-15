@@ -72,7 +72,13 @@ Predicate fields (schema: `spec/pack.schema.json`): `pack_schema`, `pack_id`, `s
  "commit": {"root": "<hex>", "leaves": 402}}
 ```
 
-## 3. Evidence agent (`cmd/agent`)
+## 3. One-line SDKs (`sdk/python`, `sdk/js`) and the evidence agent
+
+### 3.0 SDKs (D-025)
+
+`pip install plumbline` / `npm install @plumbline/sdk`, then one line: `plumbline.init()`. The SDK patches the LLM clients the app uses (OpenAI, Anthropic, AWS Bedrock Runtime; sync, async, streaming) and records one span per call with provider, model, region, token usage, operation, duration and error status. Helpers add what no client knows: `prompt(name, version)`, `guardrail(decision)`, `personal_data(redacted)`, `tool(name, high_impact, approved)`, `escalation()`, `agent_run(name)` (attribute names from D-020). Spans go as OTLP JSON to the agent (`http://127.0.0.1:4318/v1/traces`, or `PLUMBLINE_AGENT_URL`) from a bounded background queue that drops rather than blocks. No message content is ever read. No runtime dependencies. Apps already on OpenTelemetry can skip the SDK and point an OTLP JSON exporter at the agent.
+
+## 3.1 Evidence agent (`cmd/agent`)
 
 - **Inputs:** OTLP/HTTP JSON receiver on `127.0.0.1:4318` path `/v1/traces` (no protobuf); Langfuse puller (Observations v2, Scores v3); provider usage pollers (OpenAI Usage API, Anthropic Usage & Cost API, Bedrock CloudWatch with build tag `bedrock`); register files (CSV for changes and incidents).
 - **Normaliser:** `spec/semconv-map.json` maps old and new OTel GenAI attribute names to internal fields. The map version is recorded in each batch. Message-content attributes are dropped on parse; only their presence is counted.

@@ -11,7 +11,7 @@ A pack reports ten evidence objectives for one AI system over one period (trace 
 | Trust core (`internal/jcs`, `dsse`, `merkle`, `pack`) | Built and tested |
 | Verifiers: `plumbline-verify` CLI, browser verify page, `concierge/verify.py` | Built; all three agree on every test vector |
 | Concierge CLI (`concierge/evidencepack.py`: ingest, evaluate, sign, share) | Built; used to hand-build packs for design partners |
-| Evidence agent, control plane, web app, Vanta integration | Planned (build plan Phases 3–6), gated on Milestone 1 |
+| One-line SDKs (Python, TypeScript), evidence agent, control plane, web app, Vanta integration | In progress (build plan Phases 3, S, 4, 5, 6; D-024, D-025) |
 
 Progress per task: [`docs/progress-tracker.md`](docs/progress-tracker.md). What was built and how it was tested: [`docs/engineering-log.md`](docs/engineering-log.md).
 

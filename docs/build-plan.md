@@ -2,7 +2,7 @@
 
 Tasks are sized for one PR each (roughly 2–6 hours with Claude Code). Do them in order within a phase unless "Depends on" says otherwise. Every task lists the tests that prove it is done.
 
-**Gate:** Phases 3–6 start only after `progress-tracker.md` shows `M1: PASSED` (target 22 Nov 2026). Before that, only Phase 0, Phase 1 and Phase C.
+**Order (D-024):** the founders chose to build the whole product before trial runs, so the Milestone 1 gate no longer blocks Phases 3–6; M1's criteria are the goal of the trial runs instead. Work in this order: Phase 3 (agent), Phase S (SDKs), Phase 4 (control plane), Phase 5 (sharing and web app), S-5 and S-6 (one-command install, end to end), Phase 6 (integrations and launch).
 
 ---
 
@@ -52,9 +52,12 @@ Done when: `verify.py`, `cmd/verify` (once P1-5 exists) and the verify page all 
 **C-4 Share.** Publish the envelope as a static file next to the verify page with an unguessable name, and record per-verifier links in the CRM sheet.
 Done when: a verifier can open a link and see "Verified".
 
-## ⛔ Gate: Milestone 1 (22 Nov 2026)
+## Milestone 1 (22 Nov 2026): the goal of the trial runs (D-024)
 
 ## Phase 3: Evidence agent
+
+**P3-0 Batch schema v0.2.** `spec/batch.schema.json` gains an `observed` object beside `metrics` (models and model + prompt version pairs live in the window), so the agent can support EO-EVAL-01 (D-021 gap). `schema` const becomes `plumbline-batch/v0.2`; v0.1 batches stay valid for ingest. `internal/spec` checks it.
+Done when: the concierge aggregates' windows validate against v0.2; a v0.1 example still validates against the v0.1 file kept as `spec/batch-v0.1.schema.json`.
 
 **P3-1 OTLP JSON receiver + normaliser.** `internal/otlp`; `spec/semconv-map.json`; drops content attributes at parse.
 Done when: fixture exports from two SDKs parse; the content fuzz test passes; gzip bodies accepted.
@@ -77,6 +80,28 @@ Done when: recorded responses produce the same aggregates as the OTLP path for t
 Done when: killing the agent mid-send and restarting loses no batch and sends none twice (server dedupes by `(agent_id, seq)`).
 
 **P3-8 `--dry-run` and config.** Prints envelopes; JSON config file plus env overrides.
+
+## Phase S: SDKs and one-line integration (D-025)
+
+Zero-dependency SDKs that make adoption one line of code, like Sentry: `plumbline.init()` instruments the LLM clients an app already uses and streams spans (OTLP JSON, no content) to the local evidence agent. The SDKs never capture prompt or completion text.
+
+**S-1 Python SDK core (`sdk/python`, package `plumbline`).** `plumbline.init(agent_url=None, service=None)` (default `http://127.0.0.1:4318`, env `PLUMBLINE_AGENT_URL`); a background exporter that batches spans as OTLP JSON and never blocks or raises into the app; manual helpers for the D-020 attributes: `plumbline.prompt(name, version)`, `plumbline.guardrail(decision)`, `plumbline.personal_data(redacted=…)`, `plumbline.tool(name, high_impact=…, approved=…)`, `plumbline.escalation()`, `plumbline.agent_run(name)`. Standard library only.
+Done when: spans the SDK exports parse in `internal/otlp` (shared fixture) and aggregate to the expected counts; the exporter drops on overload instead of blocking; a fuzz-style test proves no argument text reaches an exported span.
+
+**S-2 Python auto-instrumentation.** `init()` patches, when installed: `openai` (chat completions, responses, embeddings; sync, async and streaming), `anthropic` (messages; sync, async, streaming), `boto3` Bedrock Runtime (`converse`, `invoke_model`). Each call becomes a span with provider, model, region, token usage, error status; message content is never read.
+Done when: against fake clients with the real libraries' call shapes (and the real libraries when installed), every call type yields the right span; streaming usage is counted once; `plumbline.shutdown()` flushes.
+
+**S-3 TypeScript SDK core (`sdk/js`, package `@plumbline/sdk`).** The S-1 API for Node 18+ (ES module and CommonJS builds without a bundler: the package ships plain `.js` with `.d.ts`), using `fetch`; no dependencies.
+Done when: as S-1, tested with `node --test`.
+
+**S-4 TypeScript auto-instrumentation.** `openai`, `@anthropic-ai/sdk`, `@aws-sdk/client-bedrock-runtime` (middleware), including streams.
+Done when: as S-2.
+
+**S-5 One-command agent install and connect flow.** Agent container image and a static binary per platform; `plumbline-agent connect <enrolment token>` enrols and starts; the web app's Sources screen shows a copy-paste snippet (one `docker run` line plus the one-line `init()` for Python and TypeScript) with the token filled in. Depends on P3-6, P5-3.
+Done when: on a clean machine, the snippet from the Sources screen gets a sample app's calls into a batch the server accepts, in under five minutes.
+
+**S-6 End to end.** A sample Python app and a sample TypeScript app → SDK → agent → server → evaluation → signed pack → share link verified in a browser, in CI.
+Done when: the CI job passes from a clean database.
 
 ## Phase 4: Control plane core
 

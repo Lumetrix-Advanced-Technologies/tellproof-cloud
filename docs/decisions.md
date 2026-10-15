@@ -130,3 +130,24 @@ The core manifest covers eight cases; the verifiers could still disagree on malf
 - **Nothing unverified is published**: `share` checks the signature against the JWKS it publishes, canonical form, subject digest, the chain against `--prev` (required for any pack after the first) and the disclosed proof. A kid already published with a different key is refused.
 - **Revoking** deletes the share file (`unshare --token` or `--token-sha256` from the log); the page then reports no pack at the link. Static hosting cannot return 410 or log views; both arrive with P5-1.
 - **Framework map labels** (supersedes the format in D-021): "framework ref title" using our own short titles (for example "AIUC-1 E Accountability"), or "framework: title" where the ref adds nothing (APRA letter themes, CPS 230), asterisked when unverified.
+
+## D-024 Build the whole product before trial runs; the M1 gate no longer blocks Phases 3–6 (15 Oct 2026)
+
+Decided by a founder on 15 Oct 2026, to be confirmed by the other founder in review. The plan was to validate demand with concierge pilots before building the platform: Phases 3–6 were blocked until `M1: PASSED` (≥15 qualified calls, ≥40% with a deal blocked in AI review, ≥3 paid pilots at ≥A$3K, ≥60% choosing the telemetry pack). The founders now want a complete, self-serve product to pitch, so trials run on the real product rather than on hand-built packs.
+
+- Phases 3–6 and the new Phase S (D-025) are unblocked, in the order in `build-plan.md`.
+- M1's criteria are unchanged and become the goal of the trial runs. The tracker never says `M1: PASSED` until they are actually met.
+- The concierge CLI stays usable for early pilots until the platform issues packs; it is frozen (bug fixes with vectors only) from then.
+- Risk accepted: building weeks of platform before demand is proven. Mitigations: keep tasks one PR each, ship the SDK and agent early so a design partner can try them before the web app exists, and keep the open-source verifier and agent as the first public artefacts.
+
+Supersedes the gate in CLAUDE.md ("Respect the gate") and in `build-plan.md`.
+
+## D-025 One-line integration: zero-dependency SDKs that feed the local evidence agent (15 Oct 2026)
+
+Adoption must feel like Sentry: install a package, add one line. Chosen model (over an SDK that signs and uploads from inside the app, which is weak in serverless and multi-worker apps and puts signing keys in every process):
+
+- **SDKs** `plumbline` (Python, `sdk/python`) and `@plumbline/sdk` (TypeScript, `sdk/js`). `plumbline.init()` patches the LLM clients the app already uses (OpenAI, Anthropic, AWS Bedrock Runtime; sync, async and streaming) and exports spans as OTLP JSON to the agent at `http://127.0.0.1:4318` (override with `PLUMBLINE_AGENT_URL`). Manual helpers set the facts no client knows: prompt name and version, guardrail decisions, personal-data tags and redaction, tool calls (high impact, approved), escalations, agent runs, using the attribute names of D-020.
+- **No content, by construction.** The SDKs record only provider, model, region, token usage, operation, duration, error status and the helper attributes. They never read message arguments or responses beyond the usage block, so there is nothing to drop. Tests prove argument text never reaches an exported span.
+- **No dependencies.** Python standard library only; TypeScript uses only `fetch` and Node built-ins, shipped as plain `.js` with `.d.ts` (no bundler, no build step). The SDKs have no runtime dependencies to audit; tests use fakes shaped like the real client libraries, plus the real libraries when installed. This extends the "standard library first" rule to the SDKs; publishing to PyPI and npm is a release step (P6-2).
+- **Never break the app.** Instrumentation errors are swallowed and counted; the exporter is a bounded background queue that drops (and counts drops) rather than block a request; `init()` is idempotent and a no-op when disabled (`PLUMBLINE_DISABLED=1`).
+- **The agent stays the trust boundary.** It aggregates, salts, signs (Ed25519) and queues batches to one host, exactly as §3 describes, and also accepts spans from any OpenTelemetry SDK or collector. The one-command install (S-5) is a `docker run` line or a static binary with `plumbline-agent connect <token>`; the web app shows both lines with the token filled in.

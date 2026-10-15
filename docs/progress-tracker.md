@@ -4,7 +4,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 
 ## Milestones
 
-- M1: PENDING (target 22 Nov 2026). Platform phases 3–6 stay blocked until a founder changes this line to `M1: PASSED`.
+- M1: PENDING (target 22 Nov 2026). Since D-024 it no longer blocks Phases 3–6: the whole product is built first and M1 is the goal of the trial runs. Only a founder changes this line, and only to `M1: PASSED` when its criteria are met.
 - M2: PENDING (target 20 Dec 2026)
 - M3: PENDING (target 31 Jan 2027)
 
@@ -24,27 +24,34 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | C-2 | Concierge evaluate | done | 2026-10-15 | ten objectives match a hand calculation for a fixture partner month (mixed pass/attention/fail); full Python JCS; objective_set_hash matches the browser JCS (D-021) |
 | C-3 | Concierge sign and chain | done | 2026-10-15 | a two-pack chain passes verify.py, cmd/verify and the verify page's verifier; local key or KMS by digest; schema-checked and self-verified (D-022) |
 | C-4 | Concierge share | done | 2026-10-15 | headless Chrome opens a share link and sees Verified (chain checked on pack 2); revoked link shows no pack; tokens never logged (D-023) |
-| P3-1 | OTLP JSON receiver + normaliser | blocked (M1) | | |
-| P3-2 | Hourly aggregator | blocked (M1) | | |
-| P3-3 | Commitments | blocked (M1) | | |
-| P3-4 | Provider usage | blocked (M1) | | |
-| P3-5 | Langfuse puller | blocked (M1) | | |
-| P3-6 | Enrolment and batch signing | blocked (M1) | | |
-| P3-7 | Disk queue | blocked (M1) | | |
-| P3-8 | Dry-run and config | blocked (M1) | | |
-| P4-1 | Migrate + store | blocked (M1) | | |
-| P4-2 | Enrol and ingest endpoints | blocked (M1) | | |
-| P4-3 | Jobs | blocked (M1) | | |
-| P4-4 | Evaluator | blocked (M1) | | |
-| P4-5 | Pack builder + KMS + chain | blocked (M1) | | |
-| P4-6 | JWKS and rotation | blocked (M1) | | |
-| P4-7 | Daily checkpoint | blocked (M1) | | |
-| P5-1 | Share links + verify API | blocked (M1) | | |
-| P5-2 | Auth | blocked (M1) | | |
-| P5-3 | Web app screens | blocked (M1) | | |
-| P6-1 | Vanta integration | blocked (M1) | | |
-| P6-2 | Release + open-source split | blocked (M1) | | |
-| P6-3 | Launch checklist | blocked (M1) | | |
+| P3-0 | Batch schema v0.2 | not started | | |
+| P3-1 | OTLP JSON receiver + normaliser | not started | | |
+| P3-2 | Hourly aggregator | not started | | |
+| P3-3 | Commitments | not started | | |
+| P3-4 | Provider usage | not started | | |
+| P3-5 | Langfuse puller | not started | | |
+| P3-6 | Enrolment and batch signing | not started | | |
+| P3-7 | Disk queue | not started | | |
+| P3-8 | Dry-run and config | not started | | |
+| S-1 | Python SDK core | not started | | |
+| S-2 | Python auto-instrumentation | not started | | |
+| S-3 | TypeScript SDK core | not started | | |
+| S-4 | TypeScript auto-instrumentation | not started | | |
+| P4-1 | Migrate + store | not started | | |
+| P4-2 | Enrol and ingest endpoints | not started | | |
+| P4-3 | Jobs | not started | | |
+| P4-4 | Evaluator | not started | | |
+| P4-5 | Pack builder + KMS + chain | not started | | |
+| P4-6 | JWKS and rotation | not started | | |
+| P4-7 | Daily checkpoint | not started | | |
+| P5-1 | Share links + verify API | not started | | |
+| P5-2 | Auth | not started | | |
+| P5-3 | Web app screens | not started | | |
+| S-5 | One-command agent install and connect flow | not started | | |
+| S-6 | End to end in CI | not started | | |
+| P6-1 | Vanta integration | not started | | |
+| P6-2 | Release + open-source split | not started | | |
+| P6-3 | Launch checklist | not started | | |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
@@ -52,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · D-024, D-025 · PR pending · Build the whole product before trials; one-line SDK integration (Python, TypeScript) feeding the local agent.
 - 2026-10-15 · Docs · #16 · README rewritten for setup, usage and architecture; technical and executive whitepapers written as shared docs.
 - 2026-10-15 · C-4 · #13, #17 · `evidencepack.py share` publishes verified packs on a static site; a verifier opening the link sees Verified. Phase C complete; Phases 0, 1 and C are done and the M1 gate is next.
 - 2026-10-15 · C-3 · #12 · `evidencepack.py sign` issues chained, signed packs that all three verifiers accept.
