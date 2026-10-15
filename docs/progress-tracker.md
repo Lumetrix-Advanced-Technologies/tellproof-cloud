@@ -16,7 +16,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P0-2 | Spec checks | done | 2026-10-13 | `internal/spec.Check`; 18 tests incl. rule shapes, title cap, presence-only exclusivity (D-012) |
 | P1-1 | internal/jcs | done | 2026-10-14 | 8/8 JCS vectors, 3/3 must-reject, pass payloads byte-identical; numbers cross-checked vs Node on 3,119 doubles; fuzzed (D-013) |
 | P1-2 | internal/dsse | done | 2026-10-15 | pass vectors verify; tampered/wrong-key both ErrBadSignature (indistinguishable at this layer, D-014); P-256 DER + Ed25519 signers; Go-signed pack verified by Python and JS |
-| P1-3 | internal/merkle | not started | | |
+| P1-3 | internal/merkle | done | 2026-10-15 | disclosed proofs match manifest; Go rebuilds all 3 pass-vector trees (root, salt, exact proof); every leaf of sizes 1–1,000 proves (D-015) |
 | P1-4 | internal/pack | not started | | |
 | P1-5 | cmd/verify | not started | | |
 | P1-6 | web/verify | not started | | |
@@ -52,6 +52,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · P1-3 · PR pending · Salted Merkle commitment with odd-node carry-up; Go reproduces the vectors' roots and disclosed proofs exactly.
 - 2026-10-15 · P1-2 · PR pending · DSSE PAE, strict envelope decode, P-256 and Ed25519 signers and keyid-based verification; the pass vectors verify with the test key.
 - 2026-10-14 · P1-1 · #4 · RFC 8785 serializer and strict parser pass every JCS vector and reproduce the pass-vector payloads byte for byte.
 - 2026-10-13 · P0-2 · #2, #3 · Spec files load strictly and cross-check, and breaking any reference fails with a message naming the file, item and value.
