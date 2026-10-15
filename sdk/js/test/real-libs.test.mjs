@@ -28,8 +28,8 @@ const libs = { openai: load('openai'), anthropic: load('@anthropic-ai/sdk'), bed
 const sse = (events) => events.map(([name, data]) => (name ? `event: ${name}\n` : '') + `data: ${typeof data === 'string' ? data : JSON.stringify(data)}\n\n`).join('');
 const CHAT = { id: 'c', object: 'chat.completion', created: 1, model: 'gpt-4.1-mini-2025-04-14',
   choices: [{ index: 0, message: { role: 'assistant', content: MARK }, finish_reason: 'stop' }], usage: { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15 } };
-const chunk = (content, usage = null, finish = null) => ({ id: 'c', object: 'chat.completion.chunk', created: 1, model: 'gpt-4.1-mini-2025-04-14',
-  choices: content === null ? [] : [{ index: 0, delta: { content }, finish_reason: finish }], usage });
+const chunk = (content, usage = null, finish = null, role = undefined) => ({ id: 'c', object: 'chat.completion.chunk', created: 1, model: 'gpt-4.1-mini-2025-04-14',
+  choices: content === null ? [] : [{ index: 0, delta: role ? { role, content } : { content }, finish_reason: finish }], usage });
 const MSG_USAGE = { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 2, cache_read_input_tokens: 3 };
 const MESSAGE = { id: 'm', type: 'message', role: 'assistant', model: 'claude-test-model-20250929', content: [{ type: 'text', text: MARK }],
   stop_reason: 'end_turn', stop_sequence: null, usage: MSG_USAGE };
@@ -58,7 +58,8 @@ before(async () => {
       };
       if (req.url.endsWith('/chat/completions')) {
         if (!body.stream) return send(JSON.stringify(CHAT));
-        const ev = [[null, chunk(MARK)], [null, chunk(MARK)], [null, chunk('', null, 'stop')]];
+        // As the API streams: the role on the first delta, finish_reason on the last.
+        const ev = [[null, chunk(MARK, null, null, 'assistant')], [null, chunk(MARK)], [null, chunk('', null, 'stop')]];
         if (body.stream_options && body.stream_options.include_usage) ev.push([null, chunk(null, { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15 })]);
         return send(sse([...ev, [null, '[DONE]']]), 'text/event-stream');
       }
