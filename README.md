@@ -12,8 +12,9 @@ A pack reports ten evidence objectives for one AI system over one period (trace 
 | Verifiers: `plumbline-verify` CLI, browser verify page, `concierge/verify.py` | Built; all three agree on every test vector |
 | Concierge CLI (`concierge/evidencepack.py`: ingest, evaluate, sign, share) | Built; used to hand-build packs for design partners |
 | Evidence agent (`plumbline-agent`: OTLP receiver, Langfuse puller, usage pollers, signed batches, durable queue, `--dry-run`) | Built; waits for the control plane's ingest API |
-| Python SDK (`sdk/python`, core helpers) | Built; automatic OpenAI/Anthropic/Bedrock instrumentation next |
-| TypeScript SDK, control plane, web app, Vanta integration | In progress (build plan Phases S, 4, 5, 6; D-024, D-025) |
+| Python SDK (`sdk/python`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
+| TypeScript SDK (`sdk/js`, core helpers) | Built; automatic instrumentation next |
+| Control plane, web app, Vanta integration | In progress (build plan Phases S, 4, 5, 6; D-024, D-025) |
 
 Progress per task: [`docs/progress-tracker.md`](docs/progress-tracker.md). What was built and how it was tested: [`docs/engineering-log.md`](docs/engineering-log.md).
 
@@ -195,6 +196,7 @@ The normative description is [`docs/architecture.md`](docs/architecture.md) §2.
 | `cmd/server/` | Control plane (planned) |
 | `internal/agent/`, `otlp/`, `langfuse/`, `usage/`, `aggregate/`, `commitment/`, `enrol/`, `batchsign/`, `queue/` | The agent's pipeline |
 | `sdk/python/` | Python SDK (`plumbline.init()`), standard library only |
+| `sdk/js/` | Node.js/TypeScript SDK (`@plumbline/sdk`), no dependencies |
 | `sdk/testdata/` | The shared SDK scenario every SDK and the agent must agree on |
 | `internal/jcs/` | RFC 8785 serializer and strict parser |
 | `internal/dsse/` | DSSE envelopes, PAE, P-256 and Ed25519 signers, verification |

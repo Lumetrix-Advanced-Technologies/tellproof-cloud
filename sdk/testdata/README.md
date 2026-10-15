@@ -1,6 +1,6 @@
 # Shared SDK scenario
 
-Every SDK implements the same small app (`sdk/python/tests/scenario.py`, and the TypeScript twin in S-3) with a fixed clock and fixed IDs, and commits what it would export as `<sdk>-export.jsonl`, one OTLP JSON export per line.
+Every SDK implements the same small app (`sdk/python/tests/scenario.py`, and `sdk/js/test/scenario.mjs`) with a fixed clock and fixed IDs, and commits what it would export as `<sdk>-export.jsonl`, one OTLP JSON export per line.
 
 `internal/aggregate` (`TestSDKScenarioExports`) parses every `*-export.jsonl` with the agent's own receiver code and requires it to aggregate to `expected-windows.json`; the concierge's ingest must agree. So the SDKs, the agent and the concierge cannot drift apart on attribute names or semantics.
 

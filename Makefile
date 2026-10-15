@@ -58,6 +58,7 @@ concierge-test:
 
 sdk-test:
 	python3 -m unittest discover -s sdk/python/tests
+	node --test sdk/js/test/sdk.test.mjs
 
 concierge-verify:
 	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/*.dsse.json

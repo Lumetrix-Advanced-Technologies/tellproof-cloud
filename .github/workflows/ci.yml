@@ -50,3 +50,14 @@ jobs:
       - run: pip install openai anthropic boto3
       - run: pip list | grep -Ei '^(openai|anthropic|boto3|botocore) '
       - run: python -m unittest discover -s sdk/python/tests -v
+
+  sdk-js:
+    # The SDK supports Node 18+ with no dependencies; test the oldest and newest.
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { node: ["18", "24"] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ matrix.node }}" }
+      - run: node --test sdk/js/test/sdk.test.mjs
