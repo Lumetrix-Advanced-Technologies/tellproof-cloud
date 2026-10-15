@@ -19,7 +19,7 @@ main { padding-block: var(--space-8) 64px; display: grid; gap: var(--space-8); }
 .notice-fail { border-color: var(--fail); background: var(--fail-tint); }
 .notice-fail h1 { color: var(--fail); }
 .notice { background: var(--attention-tint); color: var(--ink); border-radius: var(--radius-sm); padding: 10px 14px; }
-.sample-notice { border-left: 4px solid var(--brass); }
+.sample-notice { border: 1px solid var(--brass); }
 
 .offline-form { display: grid; gap: var(--space-4); max-width: 520px; }
 .field { display: grid; gap: var(--space-1); }
