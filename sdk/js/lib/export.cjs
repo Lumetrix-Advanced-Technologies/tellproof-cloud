@@ -83,17 +83,25 @@ class Exporter {
     }
   }
 
-  // Resolves true once everything offered so far was sent (or dropped), false on timeout.
+  // Resolves true once everything offered so far was sent (or dropped), false
+  // on timeout. Unlike the background timers, a flush keeps the process alive
+  // while it waits: the caller asked to wait (a script's last line, a
+  // serverless handler), so the event loop must not exit under it.
   flush(timeoutMs = 2000) {
     if (!this._buf.length && !this._inflight) return Promise.resolve(true);
     return new Promise((resolve) => {
-      const t = setTimeout(() => resolve(false), timeoutMs);
-      if (typeof t.unref === 'function') t.unref();
+      const t = setTimeout(() => resolve(false), timeoutMs); // ref'd on purpose; cleared when done
       this._waiters.push((v) => {
         clearTimeout(t);
         resolve(v);
       });
-      if (!this._inflight) this._schedule(0);
+      if (!this._inflight) {
+        if (this._timer !== null) {
+          clearTimeout(this._timer);
+          this._timer = null;
+        }
+        this._drain();
+      }
     });
   }
 

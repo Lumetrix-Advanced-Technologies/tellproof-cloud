@@ -262,3 +262,13 @@ test('content never reaches an export', async () => {
   assert.equal(blob.split('"spanId"').length - 1, 24);
   assert.ok(!blob.includes('CONTENT-MARKER'));
 });
+
+test('the ES module finder follows exports, never the bundler-only module field', async () => {
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  const dir = join(app, 'node_modules', 'only-module');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'only-module', main: './cjs.js', module: './es/index.js' }));
+  const req = createRequire(join(app, 'app.js'));
+  assert.equal(ins.esmEntry('only-module', req), null); // Node serves import from main: one copy
+  assert.ok(ins.esmEntry('openai', req).endsWith('/node_modules/openai/index.mjs'));
+});
