@@ -11,6 +11,9 @@ jobs:
         options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
     env:
       DATABASE_URL_OWNER: postgres://postgres:postgres@localhost:5432/plumbline?sslmode=disable
+      # Database tests create and drop their own databases on this server; in CI they must run, not skip.
+      PLUMBLINE_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+      PLUMBLINE_REQUIRE_DB: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
