@@ -51,7 +51,7 @@ run-worker:
 	set -a; source .env.local; set +a; go run ./cmd/server work
 
 agent-dry:
-	go run ./cmd/agent --config agent.example.json --dry-run
+	PLUMBLINE_SALT_SECRET=$${PLUMBLINE_SALT_SECRET:-dry-run-salt-not-a-secret} go run ./cmd/agent --config agent.example.json --dry-run --replay concierge/testdata/otlp-sample.jsonl
 
 concierge-test:
 	python3 -m unittest discover -s concierge/tests

@@ -14,9 +14,10 @@ import (
 // Admin API key. It reports tokens only, no request counts. Docs:
 // platform.claude.com, Usage and Cost API (checked 15 Oct 2026).
 type Anthropic struct {
-	BaseURL  string // default https://api.anthropic.com
-	AdminKey string
-	HTTP     *http.Client
+	BaseURL      string // default https://api.anthropic.com
+	AdminKey     string
+	WorkspaceIDs []string // optional: only these workspaces (production keys)
+	HTTP         *http.Client
 }
 
 type anthropicPage struct {
@@ -60,6 +61,9 @@ func (a *Anthropic) Poll(ctx context.Context, start, end time.Time) ([]HourUsage
 			"bucket_width": {"1h"},
 			"group_by[]":   {"model", "inference_geo"},
 			"limit":        {"168"},
+		}
+		for _, w := range a.WorkspaceIDs {
+			q.Add("workspace_ids[]", w)
 		}
 		if page != "" {
 			q.Set("page", page)

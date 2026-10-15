@@ -31,7 +31,7 @@ make vectors        # cross-implementation vector suite (Go + node --test on web
 make db             # start local Postgres 16 (docker compose) and apply migrations
 make run-server     # go run ./cmd/server serve   (env from .env.local)
 make run-worker     # go run ./cmd/server work
-make agent-dry      # go run ./cmd/agent --config agent.example.json --dry-run
+make agent-dry      # go run ./cmd/agent --config agent.example.json --dry-run --replay concierge/testdata/otlp-sample.jsonl
 python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/*.dsse.json
 ```
 

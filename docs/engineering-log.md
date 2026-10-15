@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P3-8 · Agent command, config and dry-run
+
+**Built.** `internal/agent` (`LoadConfig`, `New`, `Receiver`, `Replay`, `Tick`, `Shutdown`, `Deliver`, `Run`) wiring the receiver, Langfuse puller, aggregator, usage pollers, commitments, batch signing and the queue; `cmd/agent` (`enrol`, `run`, `version`, `--dry-run`, `--replay`); Bedrock usage only in `-tags bedrock` builds (a clear error otherwise). Anthropic usage gained `workspace_ids`. `agent.example.json` lost its register files (now a web app upload) and gained the aggregation settings. `make agent-dry` replays the sample export.
+
+**Problems.** The first end-to-end run failed because the test's provider-redirecting transport also redirected batch delivery to the fake OpenAI server; the transport now rewrites only the provider host. Emitting the open window at shutdown means an hour can arrive in two batches after a restart; recorded in D-032 as a requirement on the server (windows are additive). `config` from the AWS SDK brings in its own indirect modules (credentials, sso, sts); it is on the allowed list and only compiled with the bedrock tag.
+
+**Verified.** Config: the example loads, env overrides apply, unknown fields, trailing data, plain http to a remote server, a non-loopback listener and an out-of-range grace are refused; an enabled source without its key names the variable. Dry-run replay of the sample prints two envelopes whose decoded payloads match the signed ones, contains no prompt text, PII sample or trace ID, makes no request and creates no data directory. End to end: enrol against a fake server, post the sample to the receiver, tick past the grace, deliver: the server verifies and stores seq 1 and 2 with the OpenAI usage for each hour, and the leaves files match each commit. CLI: dry-run replay exits 0 with two batches; six usage errors exit 2; `version` works.
+
 ## 2026-10-15 · P3-7 · Disk queue
 
 **Built.** `internal/queue`: `Open` (recovers the chain state), `Enqueue` (durable write of batch, then state), `Pending`, `Envelope`, `Remove`, and `Sender.Drain` (seq order, one host, delete on 201 or matching 200, backoff on transient errors, stop on refusals).

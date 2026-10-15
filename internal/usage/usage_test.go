@@ -110,7 +110,7 @@ func TestAnthropicPoller(t *testing.T) {
 	}}
 	srv := httptest.NewServer(api)
 	defer srv.Close()
-	p := &Anthropic{BaseURL: srv.URL, AdminKey: "sk-ant-admin01-test", HTTP: srv.Client()}
+	p := &Anthropic{BaseURL: srv.URL, AdminKey: "sk-ant-admin01-test", HTTP: srv.Client(), WorkspaceIDs: []string{"wrkspc_prod"}}
 	got, err := p.Poll(context.Background(), h10, h13)
 	if err != nil {
 		t.Fatalf("Poll: %v", err)
@@ -127,7 +127,7 @@ func TestAnthropicPoller(t *testing.T) {
 	q := r.URL.Query()
 	if r.Header.Get("x-api-key") != "sk-ant-admin01-test" || r.Header.Get("anthropic-version") != "2023-06-01" ||
 		q.Get("bucket_width") != "1h" || q.Get("starting_at") != "2025-10-01T10:00:00Z" || q.Get("ending_at") != "2025-10-01T13:00:00Z" ||
-		strings.Join(q["group_by[]"], ",") != "model,inference_geo" {
+		strings.Join(q["group_by[]"], ",") != "model,inference_geo" || q.Get("workspace_ids[]") != "wrkspc_prod" {
 		t.Errorf("request = %s %v", r.URL, r.Header)
 	}
 }
