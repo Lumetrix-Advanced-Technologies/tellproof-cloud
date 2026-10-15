@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · C-1 · Concierge ingest
+
+**Built.** `concierge/evidencepack.py ingest` with `ingest.py` (OTLP JSON or JSONL; Langfuse JSON, JSONL or CSV) and `merkle.py` (§2.4 in Python). Hourly UTC windows in the batch `metrics` shape, a salted Merkle `commit` per window, and a leaves file for the period commitment in C-3. `testdata/make_samples.py` writes the same synthetic traffic in all three formats, with a content marker in every content field. `make concierge-test` added to `make check`.
+
+**Problems.** The repo defines no attribute names for PII, guardrails, prompt versions, tool approval or escalation, and no anomaly rule; chose documented `plumbline.*` defaults with per-partner overrides (D-020). Naive model-transition detection would flip on every call when two models run side by side; transitions are tracked per agent slot. The Langfuse export format is unconfirmed; fields read are listed and marked (verify).
+
+**Verified.** 12 unittest cases: totals match a count made directly from the generator's traces (not from ingest); Langfuse JSON, Langfuse CSV and OTLP give identical windows and leaves; no marker text, customer name, policy number or trace ID appears in any output (acceptance grep, also run by hand on the CLI output: 0 hits against 800 in the input); every window validates against `spec/batch.schema.json`; window roots and a disclosed trace's proof verify; the Python Merkle code rebuilds pass vector 1's root and exact proof; attribute overrides merge; the salt secret is required and a secret file must be mode 0600.
+
 ## 2026-10-15 · P1-6 · `web/verify/`
 
 **Built.** `verify.js` (pure, Web Crypto: `jcs`, `pae`, `derToRaw`, `verifyEnvelope`, `verifyMerkle`, plus strict envelope, statement and JWKS decoding), `page.js` (share-link and offline loading, DOM rendering), `index.html`, `verify.css` with a print stylesheet. Shared extra vectors (`spec/vectors/extra/`, 14 cases) that Go and JS both run (D-018).
