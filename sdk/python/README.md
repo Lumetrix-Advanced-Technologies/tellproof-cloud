@@ -15,7 +15,25 @@ The SDK records one span per model call with provider, model, region, token coun
 - Proxies are never used: the agent is local.
 - Works across threads, `asyncio` tasks and forked workers (gunicorn, uWSGI).
 
-Automatic instrumentation of the OpenAI, Anthropic and Bedrock clients comes in the next release. Until then, record a call with `llm_call`.
+## Automatic instrumentation
+
+`init()` instruments the client libraries that are installed. Nothing to configure:
+
+| Library | Calls |
+| --- | --- |
+| `openai` | `chat.completions.create` / `parse` / `stream`, `responses.create` / `parse` / `stream`, `embeddings.create`, `completions.create`; sync, async, streaming. Azure OpenAI is reported as `azure.ai.openai`; other OpenAI-compatible endpoints by their host name. |
+| `anthropic` | `messages.create` and `messages.stream` (and `beta.messages`); sync, async, streaming. `AnthropicBedrock` and `AnthropicVertex` are reported as `aws.bedrock` and `gcp.vertex_ai` with their region. |
+| `boto3` (Bedrock Runtime) | `converse`, `converse_stream`, `invoke_model`, `invoke_model_with_response_stream` |
+
+Per call it reads the request's model and stream flag, and from the response only the model, the usage block, the stop reason and Bedrock's token-count headers. Input tokens follow what the provider bills (Anthropic: uncached + cache writes + cache reads; Bedrock: `inputTokens`, as CloudWatch counts them), so Plumbline can reconcile traced against billed tokens.
+
+Things to know:
+
+- **Streams** are recorded when they end, are closed, or leave a `with` block, once, with the usage they reported. A stream dropped half-read is recorded on the next call or flush.
+- **OpenAI streamed chat completions** report usage only if asked. `plumbline.init(stream_usage=True)` sets `stream_options={"include_usage": True}` when the app has not set it; the stream then ends with one extra chunk with no `choices`. Off by default, so the app's streams are unchanged.
+- **Bedrock guardrails**: a Converse call with `guardrailConfig` is a guarded call, `block` when the stop reason is `guardrail_intervened`, else `allow`.
+- `invoke_model_with_response_stream` reports its token counts only inside the streamed body, which the SDK never reads, so those calls are counted without tokens. `with_raw_response` calls are counted without tokens too.
+- `plumbline.init(instrument=False)` turns automatic instrumentation off; the helpers still work.
 
 ## What the helpers record
 

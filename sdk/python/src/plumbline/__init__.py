@@ -18,7 +18,7 @@ import os
 import sys
 import threading
 
-from . import _core, _otlp
+from . import _core, _instrument, _otlp
 from ._core import (Guardrail, agent_run, escalation, guardrail, llm_call, personal_data, prompt, tool,
                     trace)
 from ._export import Exporter, Transport, http_transport
@@ -30,6 +30,7 @@ __all__ = ["init", "shutdown", "flush", "stats", "is_enabled", "trace", "prompt"
 DEFAULT_AGENT_URL = "http://127.0.0.1:4318"
 _lock = threading.Lock()
 _atexit = False
+_instrumented: list[str] = []
 
 
 def _resource(service: str | None, environment: str | None) -> dict:
@@ -46,9 +47,17 @@ def _resource(service: str | None, environment: str | None) -> dict:
 
 
 def init(agent_url: str | None = None, service: str | None = None, *, environment: str | None = None,
-         transport: Transport | None = None) -> bool:
-    """Start the SDK. Safe to call more than once; returns whether it is on."""
-    global _atexit
+         instrument: bool = True, stream_usage: bool = False, transport: Transport | None = None) -> bool:
+    """Start the SDK and instrument the installed LLM clients (OpenAI,
+    Anthropic, Bedrock via boto3). Safe to call more than once; returns
+    whether it is on.
+
+    stream_usage: ask OpenAI for usage on streamed chat completions
+    (stream_options.include_usage) when the app has not set stream_options.
+    The stream then ends with one extra chunk that has no choices; leave it
+    off if the app indexes choices[0] on every chunk.
+    """
+    global _atexit, _instrumented
     with _lock:
         if _core.current_client().enabled:
             return True
@@ -60,6 +69,7 @@ def init(agent_url: str | None = None, service: str | None = None, *, environmen
             exporter = Exporter(transport or http_transport(url + "/v1/traces"),
                                 lambda spans: _otlp.encode(spans, resource, __version__))
             _core.set_client(_core.Client(exporter, service=resource["service.name"]))
+            _instrumented = _instrument.install(stream_usage) if instrument else []
             if not _atexit:
                 atexit.register(shutdown)
                 _atexit = True
@@ -75,6 +85,7 @@ def flush(timeout: float = 2.0) -> bool:
     if c.exporter is None:
         return True
     try:
+        _core.run_later()
         return c.exporter.flush(timeout)
     except Exception:
         return False
@@ -104,4 +115,4 @@ def stats() -> dict:
     e = c.exporter
     return {"enabled": c.enabled, "spans": c.stats.spans, "instrumentation_errors": c.stats.instrumentation_errors,
             "exported": e.exported if e else 0, "dropped": e.dropped if e else 0,
-            "export_errors": e.export_errors if e else 0}
+            "export_errors": e.export_errors if e else 0, "instrumented": list(_instrumented) if c.enabled else []}
