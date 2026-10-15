@@ -52,15 +52,16 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
-- 2026-10-15 · C-4 · PR pending · `evidencepack.py share` publishes verified packs on a static site; a verifier opening the link sees Verified. Phase C complete; Phases 0, 1 and C are done and the M1 gate is next.
-- 2026-10-15 · C-3 · PR pending · `evidencepack.py sign` issues chained, signed packs that all three verifiers accept.
-- 2026-10-15 · C-2 · PR pending · `evidencepack.py evaluate` computes the ten objectives, coverage and lineage, matching a hand calculation for one partner month.
-- 2026-10-15 · C-1 · PR pending · `evidencepack.py ingest` turns OTLP or Langfuse exports into hourly batch-shaped aggregates with no content and salted trace commitments.
-- 2026-10-15 · P1-6 · PR pending · Static verify page with a tested browser verifier that agrees with Go on all core and extra vectors; Phase 1 complete.
-- 2026-10-15 · P1-5 · PR pending · `plumbline-verify` verifies a chain of packs offline, with human and JSON output and exit codes 0/1/2.
-- 2026-10-15 · P1-4 · PR pending · Pack Verify returns signature, subject digest, chain and Merkle results that match every case in manifest.json.
-- 2026-10-15 · P1-3 · PR pending · Salted Merkle commitment with odd-node carry-up; Go reproduces the vectors' roots and disclosed proofs exactly.
-- 2026-10-15 · P1-2 · PR pending · DSSE PAE, strict envelope decode, P-256 and Ed25519 signers and keyid-based verification; the pass vectors verify with the test key.
+- 2026-10-15 · Docs · #16 · README rewritten for setup, usage and architecture; technical and executive whitepapers written as shared docs.
+- 2026-10-15 · C-4 · #13, #17 · `evidencepack.py share` publishes verified packs on a static site; a verifier opening the link sees Verified. Phase C complete; Phases 0, 1 and C are done and the M1 gate is next.
+- 2026-10-15 · C-3 · #12 · `evidencepack.py sign` issues chained, signed packs that all three verifiers accept.
+- 2026-10-15 · C-2 · #11 · `evidencepack.py evaluate` computes the ten objectives, coverage and lineage, matching a hand calculation for one partner month.
+- 2026-10-15 · C-1 · #10 · `evidencepack.py ingest` turns OTLP or Langfuse exports into hourly batch-shaped aggregates with no content and salted trace commitments.
+- 2026-10-15 · P1-6 · #9 · Static verify page with a tested browser verifier that agrees with Go on all core and extra vectors; Phase 1 complete.
+- 2026-10-15 · P1-5 · #8 · `plumbline-verify` verifies a chain of packs offline, with human and JSON output and exit codes 0/1/2.
+- 2026-10-15 · P1-4 · #7 · Pack Verify returns signature, subject digest, chain and Merkle results that match every case in manifest.json.
+- 2026-10-15 · P1-3 · #6, #15 · Salted Merkle commitment with odd-node carry-up; Go reproduces the vectors' roots and disclosed proofs exactly.
+- 2026-10-15 · P1-2 · #5 · DSSE PAE, strict envelope decode, P-256 and Ed25519 signers and keyid-based verification; the pass vectors verify with the test key.
 - 2026-10-14 · P1-1 · #4 · RFC 8785 serializer and strict parser pass every JCS vector and reproduce the pass-vector payloads byte for byte.
 - 2026-10-13 · P0-2 · #2, #3 · Spec files load strictly and cross-check, and breaking any reference fails with a message naming the file, item and value.
 - 2026-10-13 · P0-1 · #1 · Repo skeleton in place and `make check` green on a version-printing `cmd/verify`.
