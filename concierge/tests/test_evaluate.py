@@ -88,8 +88,13 @@ class EvaluateTest(unittest.TestCase):
         for o in self.ev["objectives"]:
             spec = next(x for x in json.loads((ROOT / "spec/objectives.json").read_text())["objectives"] if x["id"] == o["id"])
             for ref_id, label in zip(spec["maps_to"], o["maps"]):
-                self.assertTrue(label.startswith(f"{refs[ref_id]['framework']} {refs[ref_id]['ref']}"))
-                self.assertEqual(label.endswith("*"), not refs[ref_id]["verified"], label)
+                r = refs[ref_id]
+                self.assertTrue(label.startswith(r["framework"]) and r["title"] in label, label)
+                self.assertEqual(label.endswith("*"), not r["verified"], label)
+        self.assertEqual(self.by_id["EO-LOG-01"]["maps"], ["EU AI Act Art. 12 Record-keeping (automatic logging)", "AIUC-1 E Accountability*",
+                                                         "ISO/IEC 42001 A.6.2.8 AI system event logs*",
+                                                         "APRA AI letter (30 Apr 2026): Continuous monitoring of AI*"])
+        self.assertIn("APRA CPS 230: Operational risk: service providers", self.by_id["EO-INC-01"]["maps"])
 
     @unittest.skipIf(shutil.which("node") is None, "node not installed")
     def test_objective_set_hash_matches_the_browser_jcs(self):

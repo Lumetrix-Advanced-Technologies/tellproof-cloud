@@ -79,6 +79,25 @@ def cmd_sign(args) -> int:
     return 0
 
 
+def cmd_share(args) -> int:
+    import share
+
+    url, row = share.share(args.pack, args.jwks, args.site_dir, args.base_url, args.verifier, args.prev, args.log, args.note or "")
+    print(f"evidencepack: shared {row['pack_id']} #{row['seq_no']} with {row['verifier_org']}; logged token sha256 {row['token_sha256']}",
+          file=sys.stderr)
+    print("evidencepack: the link is shown once; copy it into the CRM now. Publish the site directory to make it live.", file=sys.stderr)
+    print(url)
+    return 0
+
+
+def cmd_unshare(args) -> int:
+    import share
+
+    h = share.revoke(args.site_dir, token=args.token, token_sha256=args.token_sha256)
+    print(f"evidencepack: removed share {h}; publish the site directory to take the link down", file=sys.stderr)
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="evidencepack", description=__doc__.splitlines()[0])
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -116,6 +135,22 @@ def main(argv=None) -> int:
     s.add_argument("--jwks-out", help="also write the signer's public key as a JWKS")
     s.add_argument("--out", required=True)
     s.set_defaults(fn=cmd_sign)
+    sh = sub.add_parser("share", help="publish a pack behind an unguessable link on the static verify site")
+    sh.add_argument("--pack", required=True)
+    sh.add_argument("--prev", help="the previous pack, so the verifier sees the chain checked")
+    sh.add_argument("--jwks", required=True, help="issuer JWKS to publish at /.well-known/jwks.json")
+    sh.add_argument("--site-dir", required=True, help="static site root to publish (page, keys, shares)")
+    sh.add_argument("--base-url", required=True, help="where the site is served, e.g. https://verify.example")
+    sh.add_argument("--verifier", required=True, help="the verifier organisation the link is for")
+    sh.add_argument("--note", help="free text for the share log")
+    sh.add_argument("--log", help="share log CSV (default: share-log.csv beside the site directory, never inside it)")
+    sh.set_defaults(fn=cmd_share)
+    un = sub.add_parser("unshare", help="revoke a share link")
+    un.add_argument("--site-dir", required=True)
+    who = un.add_mutually_exclusive_group(required=True)
+    who.add_argument("--token")
+    who.add_argument("--token-sha256", help="as recorded in the share log")
+    un.set_defaults(fn=cmd_unshare)
     args = p.parse_args(argv)
     return args.fn(args)
 

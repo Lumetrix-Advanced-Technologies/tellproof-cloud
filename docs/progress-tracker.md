@@ -23,7 +23,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | C-1 | Concierge ingest | done | 2026-10-15 | OTLP, Langfuse JSON and CSV give identical aggregates; grep finds no prompt text or trace IDs in output; batch-schema metrics; salted commits (D-020) |
 | C-2 | Concierge evaluate | done | 2026-10-15 | ten objectives match a hand calculation for a fixture partner month (mixed pass/attention/fail); full Python JCS; objective_set_hash matches the browser JCS (D-021) |
 | C-3 | Concierge sign and chain | done | 2026-10-15 | a two-pack chain passes verify.py, cmd/verify and the verify page's verifier; local key or KMS by digest; schema-checked and self-verified (D-022) |
-| C-4 | Concierge share | not started | | |
+| C-4 | Concierge share | done | 2026-10-15 | headless Chrome opens a share link and sees Verified (chain checked on pack 2); revoked link shows no pack; tokens never logged (D-023) |
 | P3-1 | OTLP JSON receiver + normaliser | blocked (M1) | | |
 | P3-2 | Hourly aggregator | blocked (M1) | | |
 | P3-3 | Commitments | blocked (M1) | | |
@@ -52,6 +52,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · C-4 · PR pending · `evidencepack.py share` publishes verified packs on a static site; a verifier opening the link sees Verified. Phase C complete; Phases 0, 1 and C are done and the M1 gate is next.
 - 2026-10-15 · C-3 · PR pending · `evidencepack.py sign` issues chained, signed packs that all three verifiers accept.
 - 2026-10-15 · C-2 · PR pending · `evidencepack.py evaluate` computes the ten objectives, coverage and lineage, matching a hand calculation for one partner month.
 - 2026-10-15 · C-1 · PR pending · `evidencepack.py ingest` turns OTLP or Langfuse exports into hourly batch-shaped aggregates with no content and salted trace commitments.
