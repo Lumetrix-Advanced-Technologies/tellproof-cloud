@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import * as esm from '../lib/index.mjs';
 import { FIXTURE, Capture, exportLines } from './scenario.mjs';
@@ -322,4 +324,17 @@ test('init sends OTLP JSON to the agent URL', async () => {
   );
   assert.equal(rs.scopeSpans[0].spans.length, 1);
   assert.equal(plumbline.isEnabled(), false);
+});
+
+test('a script that awaits flush() is not cut short by the unref\'d timers', () => {
+  // Nothing else keeps this child's event loop alive: if flush() waited only
+  // on unref'd timers, the process would exit before printing.
+  const exportPath = fileURLToPath(new URL('../lib/export.cjs', import.meta.url));
+  const script = `
+    const { Exporter } = require(${JSON.stringify(exportPath)});
+    const exp = new Exporter(() => new Promise((r) => setTimeout(r, 30)), () => 'x', { intervalMs: 60000 });
+    exp.offer({});
+    exp.flush(5000).then((ok) => console.log('flushed', ok, exp.exported));`;
+  const out = execFileSync(process.execPath, ['-e', script], { encoding: 'utf8', timeout: 10000 });
+  assert.equal(out.trim(), 'flushed true 1');
 });
