@@ -272,14 +272,16 @@ func (a *Aggregator) build(h time.Time, w *open) Window {
 	return Window{Window: batch.Window{Start: iso(h), End: iso(end)}, Start: h, Metrics: m, Observed: obs, TraceIDs: traces}
 }
 
-// transitions records a model change within the span's slot and a prompt
-// version change within its prompt name.
+// transitions records a model change within the span's slot and operation
+// (so a chat model and an embeddings model used side by side are not read as
+// changes, D-033) and a prompt version change within its prompt name.
 func (a *Aggregator) transitions(m *batch.Metrics, s otlp.Span) {
 	if s.Model != "unknown" {
 		slot := s.Slot
 		if slot == "" {
 			slot = "default"
 		}
+		slot += "\x00" + s.Operation
 		if prev, ok := a.lastModel[slot]; ok && prev != s.Model {
 			m.Transitions = append(m.Transitions, batch.Transition{At: iso(s.Start), Kind: "model", From: prev, To: s.Model})
 		}

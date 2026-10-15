@@ -11,7 +11,9 @@ A pack reports ten evidence objectives for one AI system over one period (trace 
 | Trust core (`internal/jcs`, `dsse`, `merkle`, `pack`) | Built and tested |
 | Verifiers: `plumbline-verify` CLI, browser verify page, `concierge/verify.py` | Built; all three agree on every test vector |
 | Concierge CLI (`concierge/evidencepack.py`: ingest, evaluate, sign, share) | Built; used to hand-build packs for design partners |
-| One-line SDKs (Python, TypeScript), evidence agent, control plane, web app, Vanta integration | In progress (build plan Phases 3, S, 4, 5, 6; D-024, D-025) |
+| Evidence agent (`plumbline-agent`: OTLP receiver, Langfuse puller, usage pollers, signed batches, durable queue, `--dry-run`) | Built; waits for the control plane's ingest API |
+| Python SDK (`sdk/python`, core helpers) | Built; automatic OpenAI/Anthropic/Bedrock instrumentation next |
+| TypeScript SDK, control plane, web app, Vanta integration | In progress (build plan Phases S, 4, 5, 6; D-024, D-025) |
 
 Progress per task: [`docs/progress-tracker.md`](docs/progress-tracker.md). What was built and how it was tested: [`docs/engineering-log.md`](docs/engineering-log.md).
 
@@ -147,7 +149,7 @@ Input formats, attribute names and evaluation rules are described in [`concierge
 ```mermaid
 flowchart LR
   subgraph vendor["Vendor environment"]
-    app["AI application<br/>OpenTelemetry or Langfuse"] --> agent["Evidence agent<br/>drops content at parse<br/>signs hourly aggregates"]
+    app["AI application<br/>plumbline.init(), OpenTelemetry or Langfuse"] --> agent["Evidence agent<br/>drops content at parse<br/>signs hourly aggregates"]
     usage["Provider usage APIs<br/>OpenAI, Anthropic, Bedrock"] --> agent
   end
   subgraph cp["Plumbline control plane (Sydney)"]
@@ -165,7 +167,7 @@ flowchart LR
   work -- "daily signed root" --> repo
 ```
 
-One Go module builds three binaries: `cmd/agent` (evidence agent), `cmd/server` (`serve`, `work`, `migrate`) and `cmd/verify`. The agent and the control plane are planned; the formats, verifiers and concierge pipeline they rely on exist today.
+One Go module builds three binaries: `cmd/agent` (evidence agent), `cmd/server` (`serve`, `work`, `migrate`) and `cmd/verify`. The SDKs in `sdk/` send spans to the agent. The control plane is planned; the formats, verifiers, agent and concierge pipeline it relies on exist today.
 
 ### Formats
 
@@ -189,7 +191,11 @@ The normative description is [`docs/architecture.md`](docs/architecture.md) §2.
 | Path | What |
 | --- | --- |
 | `cmd/verify/` | `plumbline-verify` CLI |
-| `cmd/agent/`, `cmd/server/` | Evidence agent and control plane (planned) |
+| `cmd/agent/` | `plumbline-agent`: enrol, run, `--dry-run`, `--replay` |
+| `cmd/server/` | Control plane (planned) |
+| `internal/agent/`, `otlp/`, `langfuse/`, `usage/`, `aggregate/`, `commitment/`, `enrol/`, `batchsign/`, `queue/` | The agent's pipeline |
+| `sdk/python/` | Python SDK (`plumbline.init()`), standard library only |
+| `sdk/testdata/` | The shared SDK scenario every SDK and the agent must agree on |
 | `internal/jcs/` | RFC 8785 serializer and strict parser |
 | `internal/dsse/` | DSSE envelopes, PAE, P-256 and Ed25519 signers, verification |
 | `internal/merkle/` | Salted trace commitment, proofs |

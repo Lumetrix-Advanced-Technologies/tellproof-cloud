@@ -27,3 +27,14 @@ jobs:
           psql "$DATABASE_URL_OWNER" -f migrations/tests/0001_rls_and_append_only.sql 2>&1 | tee rls.out
           grep -q "evidence is append-only" rls.out
           grep -q "violates row-level security policy" rls.out
+
+  sdk-python:
+    # The SDK supports Python 3.10+ with no dependencies; test the oldest and newest.
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { python: ["3.10", "3.13"] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python }}" }
+      - run: python -m unittest discover -s sdk/python/tests -v
