@@ -14,7 +14,24 @@ The SDK records one span per model call with provider, model, region, token coun
 - `PLUMBLINE_DISABLED=1` turns it off. `init()` is safe to call more than once.
 - Buffered spans are flushed when the event loop drains. In serverless handlers and short scripts, `await plumbline.flush()` before returning.
 
-Automatic instrumentation of the OpenAI, Anthropic and Bedrock clients comes in the next release. Until then, record a call with `llmCall`.
+## Automatic instrumentation
+
+`init()` instruments the client libraries the app has installed, both their CommonJS and their ES module copies:
+
+| Library | Calls |
+| --- | --- |
+| `openai` | `chat.completions.create` (and `parse`, `stream`, `runTools`, which go through it), `responses.create` (and `stream`, `parse`), `embeddings.create`, `completions.create`. Azure OpenAI is reported as `azure.ai.openai`; other OpenAI-compatible endpoints by their host name. |
+| `@anthropic-ai/sdk` | `messages.create` (and `messages.stream`), `beta.messages.create`. `AnthropicBedrock` and `AnthropicVertex` are reported as `aws.bedrock` and `gcp.vertex_ai` with their region. |
+| `@aws-sdk/client-bedrock-runtime` | `ConverseCommand`, `ConverseStreamCommand`, `InvokeModelCommand`, `InvokeModelWithResponseStreamCommand` sent with `client.send()` (also `BedrockRuntime`'s methods) |
+
+Per call it reads the request's model and stream flag, and from the response only the model, the usage block, the stop reason and Bedrock's token-count headers. Input tokens follow what the provider bills (Anthropic: uncached + cache writes + cache reads; Bedrock: `inputTokens`, as CloudWatch counts them). You get the library's own objects back: `withResponse()` still works and streams are the same objects.
+
+- **ES modules**: the CommonJS copies are instrumented inside `init()`, the ES module copies a moment later. If a module calls a model straight after `init()`, `await plumbline.ready()` first.
+- **Bundled apps or strict package managers** where the SDK cannot find the libraries: `plumbline.instrument({ openai: OpenAI, anthropic: Anthropic, bedrock: await import('@aws-sdk/client-bedrock-runtime') })`.
+- **Streams** are recorded once, when they end, error, or are left early (`break`). A stream dropped half-read is recorded after it is garbage-collected. Streams split with `tee()` or `toReadableStream()` are counted without tokens.
+- **OpenAI streamed chat completions** report usage only if asked. `plumbline.init({ streamUsage: true })` asks for it (`stream_options.include_usage`) when the app has not set `stream_options`; the stream then ends with one extra chunk with no `choices`. The app's own request object is never changed.
+- **Bedrock guardrails**: a Converse call with `guardrailConfig` is a guarded call, `block` when the stop reason is `guardrail_intervened`, else `allow`. `InvokeModelWithResponseStream` reports token counts only inside the streamed body, which the SDK never reads, so those calls are counted without tokens. Callback-style `send(command, callback)` is not instrumented.
+- `plumbline.init({ instrument: false })` turns automatic instrumentation off; the helpers still work.
 
 ## What the helpers record
 
@@ -64,6 +81,6 @@ Point an OTLP/HTTP **JSON** exporter at the agent (`http://127.0.0.1:4318/v1/tra
 ## Development
 
 ```bash
-node --test sdk/js/test/sdk.test.mjs
+node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs
 node sdk/js/test/scenario.mjs   # rewrite sdk/testdata/js-export.jsonl
 ```

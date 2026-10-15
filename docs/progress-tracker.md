@@ -36,7 +36,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | S-1 | Python SDK core | done | 2026-10-15 | `plumbline.init()`, helpers as context managers/decorators, bounded exporter; shared scenario aggregates identically in agent and concierge; model history per slot and operation (D-033) |
 | S-2 | Python auto-instrumentation | done | 2026-10-15 | openai, anthropic, Bedrock (botocore) sync/async/streaming; usage only, billed-input rules per provider; stream proxies record once; real libraries tested in CI (D-034) |
 | S-3 | TypeScript SDK core | done | 2026-10-15 | `@plumbline/sdk`: same API as Python with callback scopes over AsyncLocalStorage; one CJS core with ESM re-export; shared scenario aggregates identically (D-035) |
-| S-4 | TypeScript auto-instrumentation | not started | | |
+| S-4 | TypeScript auto-instrumentation | done | 2026-10-15 | openai, @anthropic-ai/sdk, Bedrock client (CJS and ESM copies); returns the library's own APIPromise and streams; real libraries tested in CI (D-036) |
 | P4-1 | Migrate + store | not started | | |
 | P4-2 | Enrol and ingest endpoints | not started | | |
 | P4-3 | Jobs | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · S-4 · PR pending · Node apps now get every OpenAI, Anthropic and Bedrock call recorded with billed tokens from `plumbline.init()`, without content.
 - 2026-10-15 · S-3 · PR pending · `npm install @plumbline/sdk` + one line gives Node apps the same evidence helpers, with no dependencies.
 - 2026-10-15 · S-2 · PR pending · `plumbline.init()` now records every OpenAI, Anthropic and Bedrock call with its billed tokens, without reading content.
 - 2026-10-15 · S-1 · PR pending · `pip install plumbline` + one line sends evidence spans to the agent, with no dependencies and no content.
