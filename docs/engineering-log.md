@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P1-6 · `web/verify/`
+
+**Built.** `verify.js` (pure, Web Crypto: `jcs`, `pae`, `derToRaw`, `verifyEnvelope`, `verifyMerkle`, plus strict envelope, statement and JWKS decoding), `page.js` (share-link and offline loading, DOM rendering), `index.html`, `verify.css` with a print stylesheet. Shared extra vectors (`spec/vectors/extra/`, 14 cases) that Go and JS both run (D-018).
+
+**Problems.** The reference page loads Google Fonts, builds most markup with `innerHTML` (some payload strings unescaped), renders contents before verifying, ignores `keyid`, accepts loose DER, and crashes on `disclosed: null`; rebuilt rather than ported line by line. Writing the extra vectors exposed two Go gaps, now fixed in `internal/pack`: a non-canonical payload was accepted, and `null` passed for required arrays (encoding/json decodes it to a nil slice that re-encodes as null). Added the safe-integer check so Go and JS read the same numbers. `concierge/verify.py` crashed on the no-disclosure vector; fixed. Found a bug in the P1-5 CLI while designing the page's multi-file flow: after a file that is not an envelope, the next pack's chain was "not checked" instead of failed as D-017 says; fixed with a test. UI copy: "Sample. SAMPLE." doubled (the signed notice already starts with SAMPLE); status word and text ran together for screen readers.
+
+**Verified.** `node --test web/verify/verify.test.js`: 44 pass (8 manifest cases, 14 extra cases, JCS vectors and must-reject, DER, JWKS and envelope strictness). Go passes the same 14 extra cases. 3 injected JS bugs caught (canonical check off, kid ignored, null disclosure failing). In the browser pane: three pass vectors given out of order were sorted and verified with zero network requests; tampered, wrong-key, duplicate-key and no-disclosure packs render the right verdicts, with contents hidden when the signature fails. Share-link mode against a local mock API: chain checked against `prev_envelope_digest`, only first-party requests, clean console. Headless Chrome print to PDF: 5 pages, light theme, full digest and share URL on every page.
+
 ## 2026-10-15 · P1-5 · `cmd/verify`
 
 **Built.** `plumbline-verify --jwks <file|https-url> [--json] pack...`, oldest pack first. Reuses `internal/pack.Verify`; the CLI only reads files, loads keys, chains packs and formats output. Exit codes 0/1/2 (D-017).

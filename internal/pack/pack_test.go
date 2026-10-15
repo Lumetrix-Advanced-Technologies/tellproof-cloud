@@ -337,6 +337,9 @@ func TestVerifyMalformedStatement(t *testing.T) {
 		}), "exactly"},
 		{"two keys differing only in case", edit(func(st map[string]any) { predicateOf(st)["Prev_Pack_Digest"] = "sha256:" + strings.Repeat("0", 64) }), "exactly"},
 		{"wrong pack_schema", edit(func(st map[string]any) { predicateOf(st)["pack_schema"] = "assurance-pack/v9" }), "pack_schema"},
+		{"integer beyond 2^53", edit(func(st map[string]any) {
+			predicateOf(st)["commitments"].(map[string]any)["leaf_count"] = float64(1 << 54)
+		}), "safe integer"},
 		{"merkle root not hex", edit(func(st map[string]any) {
 			predicateOf(st)["commitments"].(map[string]any)["trace_merkle_root"] = "xyz"
 		}), "trace_merkle_root"},
@@ -408,6 +411,53 @@ func TestParseJWKS(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if keys, err := ParseJWKS([]byte(tt.input)); err == nil {
 				t.Errorf("ParseJWKS accepted it: %v", keys)
+			}
+		})
+	}
+}
+
+// spec/vectors/extra-manifest.json: cases every verifier must agree on beyond
+// the core manifest, including packs that must be refused ("error").
+func TestExtraVectors(t *testing.T) {
+	b, err := os.ReadFile(vectorPath("extra-manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct {
+		Cases []struct {
+			Name   string          `json:"name"`
+			File   string          `json:"file"`
+			Expect json.RawMessage `json:"expect"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.Cases) == 0 {
+		t.Fatal("extra manifest has no cases")
+	}
+	keys := testJWKS(t)
+	for _, c := range m.Cases {
+		t.Run(c.Name, func(t *testing.T) {
+			got, err := Verify(loadEnvelope(t, c.File), keys, nil)
+			if string(c.Expect) == `"error"` {
+				if err == nil {
+					t.Fatalf("Verify = %s with no error; the pack must be refused", checksOf(got))
+				}
+				if got.Verified {
+					t.Error("refused pack reported as verified")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Verify error: %v", err)
+			}
+			var want checks
+			if err := json.Unmarshal(c.Expect, &want); err != nil {
+				t.Fatal(err)
+			}
+			if checksOf(got).String() != want.String() {
+				t.Errorf("Verify = %s\nexpected  %s", checksOf(got), want)
 			}
 		})
 	}

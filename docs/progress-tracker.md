@@ -19,7 +19,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P1-3 | internal/merkle | done | 2026-10-15 | disclosed proofs match manifest; Go rebuilds all 3 pass-vector trees (root, salt, exact proof); every leaf of sizes 1–1,000 proves (D-015) |
 | P1-4 | internal/pack | done | 2026-10-15 | all 8 manifest cases match exactly; typed predicate round-trips byte-identically; strict statement and JWKS decoding (D-016) |
 | P1-5 | cmd/verify | done | 2026-10-15 | pass chain VERIFIED exit 0; every fail vector exit 1 naming its failed checks; --json matches manifest; JWKS file or https URL (D-017) |
-| P1-6 | web/verify | not started | | |
+| P1-6 | web/verify | done | 2026-10-15 | 44 node tests (manifest + 14 shared extra vectors); renders from files with no network; print repeats digest and share URL on every page (D-018, D-019) |
 | C-1 | Concierge ingest | not started | | |
 | C-2 | Concierge evaluate | not started | | |
 | C-3 | Concierge sign and chain | not started | | |
@@ -52,6 +52,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · P1-6 · PR pending · Static verify page with a tested browser verifier that agrees with Go on all core and extra vectors; Phase 1 complete.
 - 2026-10-15 · P1-5 · PR pending · `plumbline-verify` verifies a chain of packs offline, with human and JSON output and exit codes 0/1/2.
 - 2026-10-15 · P1-4 · PR pending · Pack Verify returns signature, subject digest, chain and Merkle results that match every case in manifest.json.
 - 2026-10-15 · P1-3 · PR pending · Salted Merkle commitment with odd-node carry-up; Go reproduces the vectors' roots and disclosed proofs exactly.

@@ -320,3 +320,28 @@ func TestJWKSFromURL(t *testing.T) {
 		t.Errorf("untrusted certificate: exit %d, stderr %q", code, errOut)
 	}
 }
+
+// A file that is not an envelope breaks the chain: the next pack's link to it
+// fails instead of being skipped (D-017).
+func TestChainBreaksAfterAFileThatIsNotAPack(t *testing.T) {
+	junk := filepath.Join(t.TempDir(), "junk.json")
+	if err := os.WriteFile(junk, []byte(`{"hello":"world"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, out, _ := runCLI(t, "--jwks", testJWKSPath, "--json", vec("pass/KST-CTA-0001.dsse.json"), junk, vec("pass/KST-CTA-0002.dsse.json"))
+	if code != 1 {
+		t.Fatalf("exit %d, want 1\n%s", code, out)
+	}
+	var report struct {
+		Packs []struct {
+			Chain    *bool `json:"chain"`
+			Verified bool  `json:"verified"`
+		} `json:"packs"`
+	}
+	if err := json.Unmarshal([]byte(out), &report); err != nil || len(report.Packs) != 3 {
+		t.Fatalf("report: %v\n%s", err, out)
+	}
+	if last := report.Packs[2]; last.Chain == nil || *last.Chain || last.Verified {
+		t.Errorf("pack after the junk file: chain %v verified %v; want chain false, not verified", last.Chain, last.Verified)
+	}
+}

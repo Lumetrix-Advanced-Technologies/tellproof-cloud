@@ -52,6 +52,9 @@ def check(pubkey, path, prev_digest):
         ok &= link
     c = pred["commitments"]
     disc = c["disclosed"]
+    if disc is None:  # schema-valid: no trace disclosed, so there is no proof to check (D-016)
+        print("  disclosed trace ...... none disclosed (not checked)")
+        return hashlib.sha256(payload).hexdigest(), ok
     h = hashlib.sha256(b"\x00" + bytes.fromhex(disc["salt"]) + disc["trace_id"].encode()).digest()
     for step in disc["proof"]:
         s = bytes.fromhex(step["hash"])

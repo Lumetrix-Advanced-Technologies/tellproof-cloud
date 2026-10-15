@@ -31,6 +31,7 @@ vectors:
 	node --test reference/verify-reference.test.mjs
 	@if [ -f web/verify/verify.test.js ]; then node --test web/verify/verify.test.js; fi
 	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/KST-CTA-0001.dsse.json spec/vectors/pass/KST-CTA-0002.dsse.json spec/vectors/pass/KST-CTA-0003.dsse.json
+	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/extra/pass-no-disclosure.dsse.json
 
 db:
 	docker compose up -d db
