@@ -292,7 +292,7 @@ function renderContent(p) {
   box.append(section("Summary", "Everything below is rendered from the signed pack.",
     el("div", { class: "strip" }, [
       ["Objectives passing", `${counts.pass} / ${p.objectives.length}`],
-      ["Need attention", String(counts.attention + counts.fail)],
+      ["Not passing", `${counts.attention} attention · ${counts.fail} fail`],
       ["Trace coverage", `${p.coverage.total_pct}%`],
       ["Traced calls", fmtN(p.commitments.leaf_count)],
     ].map(([l, v]) => el("div", { class: "stat" }, el("span", { class: "label" }, l), el("span", { class: "v" }, v))))));

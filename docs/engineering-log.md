@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · C-4 · Concierge share
+
+**Built.** `concierge/share.py` and `evidencepack.py share` / `unshare`: a self-contained static site (verify page, brand tokens, issuer JWKS, one file per share at `/v1/verify/<token>` in the future API's response shape), random 16-byte tokens, a share log with token hashes only, verification of every pack before it is published, and revocation by deleting the share file.
+
+**Problems.** The verify page had no static mode; rather than add one, the concierge writes files at the API's paths so the existing share-link mode works and links survive the move to P5-1. A screenshot of a real concierge pack (the fixture month: mixed results) showed three presentation problems, fixed here: framework labels read "APRA AI letter (30 Apr 2026) theme" and "APRA CPS 230 CPS 230" (labels now use our short titles, D-023); the "Need attention" tile counted failures as well (now "Not passing: n attention · n fail"); status pills wrapped onto two lines.
+
+**Verified.** 6 share tests (41 concierge tests in all): site layout matches the API; tokens are 16 random bytes, differ per share, and never appear in the log or on stderr, and the log is not inside the published site; tampered packs, a missing or wrong `--prev`, and a JWKS kid clash are refused. End to end with headless Chrome against a local server: both links render "Verified, unaltered since signing" (pack 2 with "Links to the previous pack"), and after `unshare` the link shows "No pack at this link". Looked at a full-page screenshot of the fixture month's pack.
+
 ## 2026-10-15 · C-3 · Concierge sign and chain
 
 **Built.** `concierge/sign.py` and `evidencepack.py sign`: predicate from `evaluation.json`, period commitment from the leaves file with an optional disclosed trace, statement, JCS payload, PAE, ECDSA P-256 signature by a local key or KMS, chain fields from `--prev`, and `--jwks-out`. `concierge/schema.py`: the JSON Schema keywords the pack and batch schemas use, so every predicate is checked before signing. `evaluate` now carries `sources` and `assurance_level` from the system file.

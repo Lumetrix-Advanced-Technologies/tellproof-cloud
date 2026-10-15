@@ -121,3 +121,12 @@ The core manifest covers eight cases; the verifiers could still disagree on malf
 - **Commitment.** The leaves file must hold exactly the leaves of the evaluated windows (its count must equal the evaluation's `leaf_count`). `--disclose TRACE_ID` reveals one trace: the salt is re-derived from the vendor's secret and the leaf must already be in the commitment, so a wrong trace ID or secret fails instead of producing a proof that cannot verify.
 - **Optional fields** are left out rather than written empty (`sample_notice`, a subject `description`, incident `acknowledged`/`resolved`), as the verifiers require. Concierge packs carry `objective_set_hash`; `batch_digests` is for production packs only.
 - `--jwks-out` writes the signer's public key as the JWKS the verifiers take.
+
+## D-023 Concierge sharing: a static site in the API's shape; tokens never logged (15 Oct 2026)
+
+`evidencepack.py share` (C-4) writes a static site: the verify page (`web/verify` plus `web/brand.css`), the issuer keys at `/.well-known/jwks.json`, and one file per share at `/v1/verify/<token>` holding exactly what `GET /v1/verify/{token}` will return (`{envelope, prev_envelope_digest, pack_meta}`). The verify page's share-link mode therefore works unchanged, and when P5-1 moves sharing to the server, links keep their form (`<base>/verify/?t=<token>`). Choices:
+
+- **Tokens**: 16 random bytes, base64url (§4.6). The token is printed once for the founders to paste into the CRM; the share log (`share-log.csv`, written beside the site directory, never inside it) records only `sha256(token)`, the pack, its digest and the verifier organisation, because CLAUDE.md forbids logging share tokens.
+- **Nothing unverified is published**: `share` checks the signature against the JWKS it publishes, canonical form, subject digest, the chain against `--prev` (required for any pack after the first) and the disclosed proof. A kid already published with a different key is refused.
+- **Revoking** deletes the share file (`unshare --token` or `--token-sha256` from the log); the page then reports no pack at the link. Static hosting cannot return 410 or log views; both arrive with P5-1.
+- **Framework map labels** (supersedes the format in D-021): "framework ref title" using our own short titles (for example "AIUC-1 E Accountability"), or "framework: title" where the ref adds nothing (APRA letter themes, CPS 230), asterisked when unverified.

@@ -270,8 +270,13 @@ def evaluate_objective(o, f: Facts, refs) -> dict:
 
 
 def map_label(ref) -> str:
-    """Framework ID and our short reference, asterisked when not yet verified (CLAUDE.md)."""
-    return f"{ref['framework']} {ref['ref']}" + ("" if ref["verified"] else "*")
+    """Framework, reference and our own short title, asterisked when not yet verified (CLAUDE.md).
+    When the reference adds nothing (APRA letter themes, or a ref already in the framework's
+    name such as CPS 230), the label is "framework: title"."""
+    star = "" if ref["verified"] else "*"
+    if ref["ref"] == "theme" or ref["ref"] in ref["framework"]:
+        return f"{ref['framework']}: {ref['title']}{star}"
+    return f"{ref['framework']} {ref['ref']} {ref['title']}{star}"
 
 
 def _local_date(t: dt.datetime, f: Facts) -> dt.date:
