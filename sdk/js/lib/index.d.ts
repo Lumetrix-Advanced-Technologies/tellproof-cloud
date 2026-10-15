@@ -37,6 +37,10 @@ export declare function flush(timeoutMs?: number): Promise<boolean>;
 export declare function shutdown(timeoutMs?: number): Promise<boolean>;
 export declare function isEnabled(): boolean;
 export declare function stats(): Stats;
+/** Resolves (with the instrumented library names) once the ES module copies of the client libraries are instrumented too. */
+export declare function ready(): Promise<string[]>;
+/** Instrument client libraries the SDK cannot find itself (bundlers, strict package managers). Pass the module or class you import. */
+export declare function instrument(libs: { openai?: unknown; anthropic?: unknown; bedrock?: unknown }): string[];
 
 /** Group everything inside into one trace (for example one web request). */
 export declare function trace<T>(fn: () => T): T;
@@ -101,6 +105,8 @@ declare const sdk: {
   shutdown: typeof shutdown;
   isEnabled: typeof isEnabled;
   stats: typeof stats;
+  ready: typeof ready;
+  instrument: typeof instrument;
   trace: typeof trace;
   prompt: typeof prompt;
   personalData: typeof personalData;

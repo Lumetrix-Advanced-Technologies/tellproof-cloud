@@ -53,9 +53,13 @@ function init(opts = {}) {
     instrumented = [];
     if (o.instrument !== false) {
       try {
-        instrumented = require('./instrument.cjs').install({ streamUsage: !!o.streamUsage });
+        const ins = require('./instrument.cjs');
+        instrumented = ins.install({ streamUsage: !!o.streamUsage });
+        ins.ready().then((list) => {
+          instrumented = [...new Set([...instrumented, ...list])];
+        });
       } catch (e) {
-        if (e && e.code !== 'MODULE_NOT_FOUND') core.fail('instrument', e);
+        core.fail('instrument', e);
       }
     }
     if (!exitHook) {
@@ -96,6 +100,30 @@ async function shutdown(timeoutMs = 2000) {
   }
 }
 
+// Resolves once the ES module copies of the client libraries are instrumented
+// too (CommonJS copies are instrumented inside init()). Await it in an ES
+// module that calls a model right after init().
+async function ready() {
+  try {
+    await require('./instrument.cjs').ready();
+  } catch {}
+  return stats().instrumented;
+}
+
+// Instrument client libraries the SDK cannot find on its own (bundled apps,
+// strict package managers): pass what you import, for example
+// plumbline.instrument({ openai: OpenAI, anthropic: Anthropic, bedrock: await import('@aws-sdk/client-bedrock-runtime') }).
+function instrument(libs) {
+  try {
+    const list = require('./instrument.cjs').instrument(libs || {});
+    instrumented = [...new Set([...instrumented, ...list])];
+    return list;
+  } catch (e) {
+    core.fail('instrument', e);
+    return [];
+  }
+}
+
 function isEnabled() {
   return core.currentClient().enabled;
 }
@@ -122,6 +150,8 @@ module.exports = {
   shutdown,
   isEnabled,
   stats,
+  ready,
+  instrument,
   trace: core.trace,
   prompt: core.prompt,
   personalData: core.personalData,

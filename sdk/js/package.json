@@ -17,6 +17,6 @@
   "engines": { "node": ">=18" },
   "sideEffects": false,
   "dependencies": {},
-  "scripts": { "test": "node --test test/sdk.test.mjs" },
+  "scripts": { "test": "node --test test/sdk.test.mjs test/instrument.test.mjs test/real-libs.test.mjs" },
   "repository": { "type": "git", "url": "git+https://github.com/Lumetrix-Advanced-Technologies/plumbline.git", "directory": "sdk/js" }
 }
