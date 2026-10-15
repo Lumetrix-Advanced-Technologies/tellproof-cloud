@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P3-6 · Enrolment and batch signing
+
+**Built.** `internal/enrol` (Ed25519 key generation, the enrol call, owner-only key and identity files written atomically, `Load` that refuses loose permissions) and `internal/batchsign` (`Builder.Build`: canonical v0.2 payload, DSSE signature keyed by agent ID, next seq/prev state; `Verify`: the server-side check; `Digest`).
+
+**Problems.** The build plan gives no acceptance test for this task; I used the properties ingest will rely on (below). Crash safety of seq/prev is a queue concern, so `Build` returns the state rather than saving it (D-030). A leftover no-op line in a test was removed.
+
+**Verified.** Enrolment sends the token as a bearer header and a PEM public key the server can parse; the key file is 0600 in a 0700 directory and loads back to the same key; re-enrolment is refused; failed enrolments (401, 500, a malformed agent ID) leave no key and never echo the token; plain http to a remote host is refused. Two batches from the sample chain correctly (seq 1 then 2, prev null then the first payload's digest), verify with the enrolled public key, are canonical, and validate against `spec/batch.schema.json` with the concierge's validator. `Verify` rejects a tampered payload, another agent's key, a keyid mismatch, unknown fields, the old schema version, non-canonical payloads and an agent_id that differs from the signer; `Build` refuses counts beyond 2^53.
+
 ## 2026-10-15 · P3-5 · Langfuse puller
 
 **Built.** `internal/langfuse`: `Puller.Pull` over Observations API v2 and Scores API v3 with cursor paging, Basic auth and backoff; observations mapped through `otlp.Mapping.Build` (a small refactor of `internal/otlp` so both sources share one mapping); eval runs from configured scores. `aggregate.AddEvals` files eval runs into windows. `testdata/make_pages.py` writes recorded pages for the same synthetic traffic as the OTLP sample.
