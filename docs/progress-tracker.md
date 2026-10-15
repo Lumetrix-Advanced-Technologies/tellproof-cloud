@@ -31,7 +31,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P3-4 | Provider usage | done | 2026-10-15 | OpenAI, Anthropic (schemas checked today), Bedrock behind tag; coverage within 0.1 point of a hand calculation (D-028) |
 | P3-5 | Langfuse puller | done | 2026-10-15 | recorded v2/v3 pages aggregate identically to the OTLP path; evals from scores; backoff (D-029) |
 | P3-6 | Enrolment and batch signing | done | 2026-10-15 | Ed25519 identity (0600), enrol over https; canonical v0.2 batches signed and chained by seq/prev; server-side Verify (D-030) |
-| P3-7 | Disk queue | not started | | |
+| P3-7 | Disk queue | done | 2026-10-15 | SIGKILLed three times mid-send: no batch lost, none stored twice; crash recovery; backoff; refusals keep the batch (D-031) |
 | P3-8 | Dry-run and config | not started | | |
 | S-1 | Python SDK core | not started | | |
 | S-2 | Python auto-instrumentation | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · P3-7 · PR pending · A durable outbox that survives kill -9 mid-send without losing or duplicating a batch.
 - 2026-10-15 · P3-6 · PR pending · The agent enrols with a one-time token and signs chained, canonical batches the server can verify.
 - 2026-10-15 · P3-5 · PR pending · Langfuse observations and scores feed the agent, aggregating exactly as OTLP spans do.
 - 2026-10-15 · P3-4 · PR pending · Hourly billed usage from OpenAI, Anthropic and Bedrock, reconciled against traced tokens per provider.

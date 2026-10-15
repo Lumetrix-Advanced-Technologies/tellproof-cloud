@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P3-7 · Disk queue
+
+**Built.** `internal/queue`: `Open` (recovers the chain state), `Enqueue` (durable write of batch, then state), `Pending`, `Envelope`, `Remove`, and `Sender.Drain` (seq order, one host, delete on 201 or matching 200, backoff on transient errors, stop on refusals).
+
+**Problems.** The first run failed one test for a real reason: `MkdirAll` does not tighten an existing directory's mode, so a pre-existing queue directory stayed group-readable; `Open` now sets 0700 explicitly.
+
+**Verified.** The acceptance test starts the test binary as a separate agent process against a server that stores batches by seq the way P4-2 must, kills it with SIGKILL three times at different points mid-send, then lets it finish: all 12 batches are stored exactly once and the queue ends empty (stable across repeated runs, with the race detector). Also: state recovered from the newest batch after a crash between the two writes; a response lost after the server stored a batch leads to a resend answered 200 and stored once; 409, 401 and 400 stop delivery and keep the batch; a different digest under the same seq is reported; backoff doubles to the cap with jitter; out-of-order enqueues are refused. Injected bugs (deleting refused batches, not recovering state) are caught.
+
 ## 2026-10-15 · P3-6 · Enrolment and batch signing
 
 **Built.** `internal/enrol` (Ed25519 key generation, the enrol call, owner-only key and identity files written atomically, `Load` that refuses loose permissions) and `internal/batchsign` (`Builder.Build`: canonical v0.2 payload, DSSE signature keyed by agent ID, next seq/prev state; `Verify`: the server-side check; `Digest`).
