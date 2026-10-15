@@ -57,6 +57,28 @@ def cmd_evaluate(args) -> int:
     return 0
 
 
+def cmd_sign(args) -> int:
+    import sign
+
+    ev = json.loads(Path(args.evaluation).read_text(encoding="utf-8"))
+    leaves = Path(args.leaves).read_text().split()
+    prev = json.loads(Path(args.prev).read_text()) if args.prev else None
+    secret = salt_secret(args) if args.disclose else None
+    if args.kms_key_id:
+        signer = sign.KMSSigner(args.kms_key_id, args.kid, region=args.kms_region)
+    else:
+        signer = sign.LocalSigner(read_secret_file(args.key), args.kid)
+    issued = args.issued_at or sign.issued_now(ev["period"]["timezone"])
+    predicate = sign.build_predicate(ev, leaves, args.pack_id, issued, prev, args.disclose, secret, args.sample_notice)
+    env = sign.sign_predicate(predicate, signer)
+    Path(args.out).write_text(json.dumps(env, indent=2) + "\n")
+    if args.jwks_out:
+        Path(args.jwks_out).write_text(json.dumps(sign.jwks(signer.public_key(), args.kid), indent=2) + "\n")
+    print(f"evidencepack: {predicate['pack_id']} #{predicate['seq_no']} {sign.pack_digest(env)} signed by {args.kid} -> {args.out}",
+          file=sys.stderr)
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="evidencepack", description=__doc__.splitlines()[0])
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -77,6 +99,23 @@ def main(argv=None) -> int:
     e.add_argument("--evals", help="eval runs CSV")
     e.add_argument("--out", required=True)
     e.set_defaults(fn=cmd_evaluate)
+    s = sub.add_parser("sign", help="evaluation + leaves -> a signed pack chained to the previous one")
+    s.add_argument("--evaluation", required=True)
+    s.add_argument("--leaves", required=True, help="leaves file from ingest for the evaluated windows")
+    s.add_argument("--pack-id", required=True, help="e.g. WRN-RS-0001")
+    s.add_argument("--prev", help="the previous pack in this system's chain (sets seq_no and prev_pack_digest)")
+    s.add_argument("--issued-at", help="RFC 3339 time; default now in the period's timezone")
+    s.add_argument("--disclose", metavar="TRACE_ID", help="reveal one trace with its Merkle proof (needs the salt secret)")
+    s.add_argument("--salt-secret-file")
+    s.add_argument("--sample-notice", help="mark a sample pack (never on a real customer pack)")
+    s.add_argument("--kid", required=True, help="key ID published in the JWKS")
+    key = s.add_mutually_exclusive_group(required=True)
+    key.add_argument("--key", help="local P-256 private key, PEM, mode 0600")
+    key.add_argument("--kms-key-id", help="AWS KMS key ID or ARN (ECC_NIST_P256); needs boto3")
+    s.add_argument("--kms-region", default="ap-southeast-2")
+    s.add_argument("--jwks-out", help="also write the signer's public key as a JWKS")
+    s.add_argument("--out", required=True)
+    s.set_defaults(fn=cmd_sign)
     args = p.parse_args(argv)
     return args.fn(args)
 

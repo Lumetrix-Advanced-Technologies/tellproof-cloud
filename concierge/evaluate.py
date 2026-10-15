@@ -19,7 +19,8 @@ import canon
 SPEC = Path(__file__).resolve().parent.parent / "spec"
 SCHEMA = "plumbline-concierge-evaluation/v0.1"
 SYSTEM_KEYS = {"organisation", "ai_system", "environment", "description", "profiles", "timezone", "period",
-               "declared_models", "declared_regions", "providers", "limitations"}
+               "declared_models", "declared_regions", "providers", "limitations", "sources", "assurance_level"}
+DEFAULT_ASSURANCE = {"level": 1, "meaning": "Telemetry and provider-usage exports supplied by the vendor; reconciliation computed by the issuer."}
 REGISTER_COLUMNS = {
     "usage": ["provider", "model", "region", "start", "end", "input_tokens", "output_tokens", "requests"],
     "changes": ["date", "kind", "what"],
@@ -369,6 +370,8 @@ def evaluate(system_path, aggregate_paths, usage_paths, changes_path=None, incid
                    "utc_end": end.strftime("%Y-%m-%dT%H:%M:%SZ")},
         "subject": {k: system[k] for k in ("organisation", "ai_system", "environment", "description") if k in system},
         "profiles": system.get("profiles", []),
+        "assurance_level": system.get("assurance_level", DEFAULT_ASSURANCE),
+        "sources": system.get("sources", []),
         "objectives": results,
         "coverage": {"basis": "tokens", "total_pct": pct_floor(num, den), "providers": [{k: v for k, v in r.items() if k != "has_usage"} for r in cov_rows]},
         "lineage": lineage,
