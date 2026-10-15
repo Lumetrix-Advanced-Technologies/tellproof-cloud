@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P3-5 · Langfuse puller
+
+**Built.** `internal/langfuse`: `Puller.Pull` over Observations API v2 and Scores API v3 with cursor paging, Basic auth and backoff; observations mapped through `otlp.Mapping.Build` (a small refactor of `internal/otlp` so both sources share one mapping); eval runs from configured scores. `aggregate.AddEvals` files eval runs into windows. `testdata/make_pages.py` writes recorded pages for the same synthetic traffic as the OTLP sample.
+
+**Problems.** The Langfuse paths, field groups and the Scores v3 `subject` object were checked against the docs today; two things still need a partner to confirm (the stored metadata shape of OpenTelemetry-ingested spans, and whether `inputUsage` includes cached tokens). Counting content needs `input`/`output`; they are fetched but only tested for emptiness (D-029). The first draft kept a package-level map, against the standards; it is now a function. `max` does not order `time.Time`; replaced with an explicit comparison.
+
+**Verified.** Acceptance: the recorded pages (800 observations newest first over three cursor pages, metadata in the nested OpenTelemetry form, content in `input`/`output` and in metadata) aggregate to exactly the same windows, observed versions and trace lists as the OTLP sample through the OTLP path. Eval runs: 21 eval scores across two pages give one run at 16/21; a categorical annotation is ignored. 429 then 502 are retried with the right waits; persistent 500s give up after five attempts without leaking the key; 401 fails at once; a cursor that never ends stops at the page limit. Injected bugs (ERROR level ignored, nested metadata ignored, paging stopped early) are caught.
+
 ## 2026-10-15 · P3-4 · Provider usage
 
 **Built.** `internal/usage`: `OpenAI` and `Anthropic` pollers on `net/http`, a `Bedrock` CloudWatch poller behind `-tags bedrock`, merging into hourly `batch.Usage`, and `Reconcile` (coverage per provider and in total). `make check` now also vets, tests and vulnerability-scans the `bedrock` build.

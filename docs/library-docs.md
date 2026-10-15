@@ -22,9 +22,11 @@ Working notes on every external interface, as of October 2026. Items marked **(v
 ## Langfuse
 
 - Auth: HTTP Basic with the project public key as user and secret key as password.
-- Regions: EU, US, JP and a HIPAA region; **no Australian region**. The customer's region decides the base URL.
-- Use the Observations API v2 (cursor pagination, up to 1,000 per page) and Scores API v3 (100 per page). The legacy ingestion API is switched off on Langfuse Cloud on **16 Nov 2026**; do not build on v1 endpoints. (verify exact paths)
-- Docs: https://langfuse.com/docs/api-and-data-platform/features/public-api
+- Base URLs: EU `https://cloud.langfuse.com`, US `https://us.cloud.langfuse.com`, Japan `https://jp.cloud.langfuse.com`, HIPAA `https://hipaa.cloud.langfuse.com`; **no Australian region**. Self-hosted instances have their own URL and no enforced rate limit.
+- **Observations API v2**: `GET /api/public/v2/observations` with `fromStartTime`, `toStartTime` (ISO 8601; start inclusive, end exclusive), `fields` (groups: `core` always; `basic`, `time`, `io`, `metadata`, `model`, `usage`, `prompt`, `metrics`), `limit` (max 1,000), `cursor`. Response `{data: [...], meta: {cursor}}`, newest first; follow `meta.cursor` until null. Fields used: `traceId`, `startTime`, `type` (`GENERATION`, `EMBEDDING`, `AGENT`, `TOOL`, `SPAN`, `EVENT`, `CHAIN`, `RETRIEVER`, `EVALUATOR`, `GUARDRAIL`), `level`, `providedModelName`, `inputUsage`, `outputUsage`, `promptName`, `promptVersion`, `metadata`; `input`/`output` for presence only. Metadata is truncated to 200 characters per value unless `expandMetadata` is set.
+- **Scores API v3**: `GET /api/public/v3/scores` with `fromTimestamp`, `toTimestamp`, `name` (comma-separated), `fields` (`core`, `details`, `subject`, `annotation`), `limit` (max 100), `cursor`. Each score has `name`, `value`, `dataType` (`NUMERIC`, `BOOLEAN`, `CATEGORICAL`, `TEXT`, `CORRECTION`), `timestamp` and `subject: {kind: trace | observation | session | experiment, id, traceId?}`.
+- The legacy Ingestion API is switched off on Langfuse Cloud on **16 Nov 2026**; v1 observations are deprecated. Paths and fields above checked against the Langfuse docs on 15 Oct 2026. Still to verify with a partner: the exact metadata shape Langfuse stores for OpenTelemetry-ingested spans (assumed `{attributes, resourceAttributes}`), and whether `inputUsage` includes cached tokens.
+- Docs: https://langfuse.com/docs/api-and-data-platform/features/public-api, https://langfuse.com/docs/api-and-data-platform/features/observations-api, https://langfuse.com/docs/api-and-data-platform/features/scores-api
 
 ## OpenAI usage (for trace coverage)
 

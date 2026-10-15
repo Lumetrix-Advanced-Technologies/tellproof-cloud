@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/batch"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/otlp"
 )
 
@@ -264,5 +265,17 @@ func TestConcurrentAdd(t *testing.T) {
 	w := a.FlushAll()
 	if len(w) != 1 || w[0].Metrics.Guardrails.LLMCalls != 800 || len(w[0].TraceIDs) != 800 {
 		t.Errorf("windows %d, calls %d, traces %d", len(w), w[0].Metrics.Guardrails.LLMCalls, len(w[0].TraceIDs))
+	}
+}
+
+func TestEvalsGoIntoTheirHour(t *testing.T) {
+	a := New(DefaultConfig())
+	a.Add([]otlp.Span{llm("t1", at(10, 5))}, at(10, 6))
+	a.AddEvals([]batch.Eval{{Suite: "s", Model: "m", PromptVersion: "1", RanAt: "2026-10-01T10:30:00Z", PassRate: 0.9}, {RanAt: "bad"}}, at(10, 31))
+	a.Flush(at(11, 6))
+	a.AddEvals([]batch.Eval{{Suite: "late", RanAt: "2026-10-01T10:45:00Z"}}, at(11, 20)) // its hour is closed
+	w := a.FlushAll()
+	if len(w) != 1 || len(w[0].Metrics.Evals) != 1 || w[0].Metrics.Evals[0].Suite != "late" || w[0].Window.Start != "2026-10-01T11:00:00Z" {
+		t.Fatalf("late eval windows = %+v", w)
 	}
 }

@@ -226,6 +226,47 @@ func (m *Mapping) normalise(raw rawSpan, resVals map[string]value) (Span, bool) 
 			content = true
 		}
 	}
+	return m.build(traceID, time.Unix(0, start).UTC(), spanVals, resVals, statusError(raw.Status.Code), content), true
+}
+
+// Build makes a Span from attributes other sources already decoded (the
+// Langfuse puller): Go strings, bools and numbers by attribute name. Like the
+// OTLP path, it reads only mapped names, and a content attribute among them
+// only marks the span as carrying content. traceID must be non-empty.
+func (m *Mapping) Build(traceID string, start time.Time, attrs, resource map[string]any, isError, content bool) (Span, bool) {
+	if traceID == "" || len(traceID) > 256 || start.IsZero() {
+		return Span{}, false
+	}
+	conv := func(in map[string]any) map[string]value {
+		out := map[string]value{}
+		for k, v := range in {
+			if m.isContent(k) {
+				content = true
+				continue
+			}
+			if !m.canRead(k) {
+				continue
+			}
+			switch x := v.(type) {
+			case string:
+				out[k] = value{s: x}
+			case bool:
+				out[k] = value{b: x, isB: true}
+			case float64:
+				out[k] = value{n: x, isNum: true}
+			case int:
+				out[k] = value{n: float64(x), isNum: true}
+			case int64:
+				out[k] = value{n: float64(x), isNum: true}
+			}
+		}
+		return out
+	}
+	spanVals, resVals := conv(attrs), conv(resource)
+	return m.build(traceID, start.UTC(), spanVals, resVals, isError, content), true
+}
+
+func (m *Mapping) build(traceID string, start time.Time, spanVals, resVals map[string]value, isError, content bool) Span {
 	// Span attributes win over resource attributes.
 	op := m.str("operation", spanVals, resVals)
 	kind := KindOther
@@ -243,7 +284,7 @@ func (m *Mapping) normalise(raw rawSpan, resVals map[string]value) (Span, bool) 
 	}
 	s := Span{
 		TraceID:        traceID,
-		Start:          time.Unix(0, start).UTC(),
+		Start:          start,
 		Kind:           kind,
 		Operation:      op,
 		Provider:       orUnknown(m.str("provider", spanVals, resVals)),
@@ -251,7 +292,7 @@ func (m *Mapping) normalise(raw rawSpan, resVals map[string]value) (Span, bool) 
 		Region:         orUnknown(m.str("region", spanVals, resVals)),
 		InputTokens:    m.count("input_tokens", spanVals, resVals),
 		OutputTokens:   m.count("output_tokens", spanVals, resVals),
-		Error:          statusError(raw.Status.Code),
+		Error:          isError,
 		ContentPresent: content,
 		PII:            slices.Contains(piiValues(), m.str("pii_marker", spanVals, resVals)),
 		Redacted:       m.flag("redacted", spanVals, resVals),
@@ -270,7 +311,7 @@ func (m *Mapping) normalise(raw rawSpan, resVals map[string]value) (Span, bool) 
 			s.Slot = v.s
 		}
 	}
-	return s, true
+	return s
 }
 
 func orUnknown(s string) string {

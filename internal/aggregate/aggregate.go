@@ -41,6 +41,7 @@ type Window struct {
 
 type open struct {
 	spans []otlp.Span
+	evals []batch.Eval
 	late  int64
 }
 
@@ -86,6 +87,33 @@ func (a *Aggregator) Add(spans []otlp.Span, now time.Time) {
 		if late {
 			w.late++
 		}
+	}
+}
+
+// AddEvals files eval runs (from the Langfuse puller or an SDK) into the hour
+// of their ran_at time; a run for a closed hour goes into the hour containing
+// now. A run with an unreadable time is dropped.
+func (a *Aggregator) AddEvals(evals []batch.Eval, now time.Time) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, e := range evals {
+		t, err := time.Parse(time.RFC3339, e.RanAt)
+		if err != nil {
+			continue
+		}
+		h := hour(t)
+		if h.Before(a.closedBefore) {
+			h = hour(now)
+			if h.Before(a.closedBefore) {
+				h = a.closedBefore
+			}
+		}
+		w := a.windows[h]
+		if w == nil {
+			w = &open{}
+			a.windows[h] = w
+		}
+		w.evals = append(w.evals, e)
 	}
 }
 
@@ -136,8 +164,14 @@ func (a *Aggregator) build(h time.Time, w *open) Window {
 		return cmp.Or(x.Start.Compare(y.Start), cmp.Compare(x.TraceID, y.TraceID))
 	})
 	end := h.Add(time.Hour)
-	m := batch.Metrics{Tokens: []batch.TokenCount{}, Evals: []batch.Eval{}, Transitions: []batch.Transition{},
+	m := batch.Metrics{Tokens: []batch.TokenCount{}, Evals: slices.Clone(w.evals), Transitions: []batch.Transition{},
 		Anomalies: []batch.Anomaly{}, LateSpans: w.late}
+	if m.Evals == nil {
+		m.Evals = []batch.Eval{}
+	}
+	slices.SortFunc(m.Evals, func(x, y batch.Eval) int {
+		return cmp.Or(cmp.Compare(x.RanAt, y.RanAt), cmp.Compare(x.Suite, y.Suite), cmp.Compare(x.Model, y.Model), cmp.Compare(x.PromptVersion, y.PromptVersion))
+	})
 
 	type key struct{ provider, model, region string }
 	tokens := map[key]*batch.TokenCount{}

@@ -29,7 +29,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P3-2 | Hourly aggregator | done | 2026-10-15 | windows match the concierge's C-1 output exactly (Python run in the test); late spans, grace, transitions, anomalies |
 | P3-3 | Commitments | done | 2026-10-15 | disclosed traces verify against their window root; roots equal the concierge's; period root over window roots (D-027) |
 | P3-4 | Provider usage | done | 2026-10-15 | OpenAI, Anthropic (schemas checked today), Bedrock behind tag; coverage within 0.1 point of a hand calculation (D-028) |
-| P3-5 | Langfuse puller | not started | | |
+| P3-5 | Langfuse puller | done | 2026-10-15 | recorded v2/v3 pages aggregate identically to the OTLP path; evals from scores; backoff (D-029) |
 | P3-6 | Enrolment and batch signing | not started | | |
 | P3-7 | Disk queue | not started | | |
 | P3-8 | Dry-run and config | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · P3-5 · PR pending · Langfuse observations and scores feed the agent, aggregating exactly as OTLP spans do.
 - 2026-10-15 · P3-4 · PR pending · Hourly billed usage from OpenAI, Anthropic and Bedrock, reconciled against traced tokens per provider.
 - 2026-10-15 · P3-3 · PR pending · Salted per-window commitments and period proofs through the window root.
 - 2026-10-15 · P3-2 · PR pending · The agent aggregates spans into hourly batch metrics identical to the concierge's for the same input.
