@@ -6,7 +6,7 @@ GO_PKGS := ./...
 STATICCHECK := honnef.co/go/tools/cmd/staticcheck@2026.2.2
 GOVULNCHECK := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
-.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test run-server run-worker agent-dry concierge-verify
+.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test test-db run-server run-worker agent-dry concierge-verify
 
 check: fmt-check vet staticcheck vuln test vectors concierge-test sdk-test
 
@@ -40,6 +40,13 @@ db:
 	docker compose up -d db
 	@until docker compose exec -T db pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
 	go run ./cmd/server migrate
+
+# Run the Go tests that need Postgres against the compose database (they create
+# and drop their own databases). Without PLUMBLINE_TEST_DATABASE_URL they skip.
+test-db:
+	docker compose up -d db
+	@until docker compose exec -T db pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
+	PLUMBLINE_TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable PLUMBLINE_REQUIRE_DB=1 go test -race ./internal/store/... ./cmd/server/...
 
 db-test:
 	psql "$$DATABASE_URL_OWNER" -v ON_ERROR_STOP=0 -f migrations/tests/0001_rls_and_append_only.sql

@@ -29,6 +29,7 @@ make check          # gofmt check, go vet, staticcheck, govulncheck, all tests, 
 make test           # go test ./... -race
 make vectors        # cross-implementation vector suite (Go + node --test on web/verify/verify.js)
 make db             # start local Postgres 16 (docker compose) and apply migrations
+make test-db        # Go tests that need Postgres (CI sets PLUMBLINE_TEST_DATABASE_URL and runs them in make test)
 make run-server     # go run ./cmd/server serve   (env from .env.local)
 make run-worker     # go run ./cmd/server work
 make agent-dry      # go run ./cmd/agent --config agent.example.json --dry-run --replay concierge/testdata/otlp-sample.jsonl

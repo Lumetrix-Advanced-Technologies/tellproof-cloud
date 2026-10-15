@@ -37,7 +37,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | S-2 | Python auto-instrumentation | done | 2026-10-15 | openai, anthropic, Bedrock (botocore) sync/async/streaming; usage only, billed-input rules per provider; stream proxies record once; real libraries tested in CI (D-034) |
 | S-3 | TypeScript SDK core | done | 2026-10-15 | `@plumbline/sdk`: same API as Python with callback scopes over AsyncLocalStorage; one CJS core with ESM re-export; shared scenario aggregates identically (D-035) |
 | S-4 | TypeScript auto-instrumentation | done | 2026-10-15 | openai, @anthropic-ai/sdk, Bedrock client (CJS and ESM copies); returns the library's own APIPromise and streams; real libraries tested in CI (D-036) |
-| P4-1 | Migrate + store | not started | | |
+| P4-1 | Migrate + store | done | 2026-10-15 | `plumbline-server migrate` (embedded, checksummed, atomic per file, advisory lock); `store.WithTenant` with transaction-local tenant; RLS isolation and append-only proved against Postgres 16 (D-037) |
 | P4-2 | Enrol and ingest endpoints | not started | | |
 | P4-3 | Jobs | not started | | |
 | P4-4 | Evaluator | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · P4-1 · PR pending · The control plane can migrate a fresh database and every app query is confined to one tenant.
 - 2026-10-15 · S-4 · PR pending · Node apps now get every OpenAI, Anthropic and Bedrock call recorded with billed tokens from `plumbline.init()`, without content.
 - 2026-10-15 · S-3 · PR pending · `npm install @plumbline/sdk` + one line gives Node apps the same evidence helpers, with no dependencies.
 - 2026-10-15 · S-2 · PR pending · `plumbline.init()` now records every OpenAI, Anthropic and Bedrock call with its billed tokens, without reading content.
