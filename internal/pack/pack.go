@@ -110,6 +110,8 @@ func CheckDisclosure(c Commitments) bool {
 	return merkle.VerifyProof(merkle.LeafHash(salt, d.TraceID), proof, root)
 }
 
+const maxSafeInteger = 1<<53 - 1
+
 var (
 	hex64     = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	hex32     = regexp.MustCompile(`^[0-9a-f]{32}$`)
@@ -132,6 +134,11 @@ func DecodeStatement(payload []byte) (*Statement, error) {
 	canonical, err := jcs.Marshal(obj)
 	if err != nil {
 		return nil, fmt.Errorf("pack: statement: %w", err)
+	}
+	// The payload is defined as JCS(statement) (§2.3). Requiring it exactly is a
+	// rule a browser can enforce the same way, with JSON.parse and jcs (D-018).
+	if !bytes.Equal(canonical, payload) {
+		return nil, errors.New("pack: statement: payload is not in canonical form (RFC 8785)")
 	}
 	var canonicalPredicate []byte
 	if p, ok := obj["predicate"]; ok {
@@ -156,7 +163,7 @@ func DecodeStatement(payload []byte) (*Statement, error) {
 	if err == nil {
 		typed, err = jcs.Canonicalize(typed)
 	}
-	if err != nil || !bytes.Equal(typed, canonical) {
+	if err != nil || !bytes.Equal(typed, payload) {
 		return nil, errors.New("pack: statement: fields do not match the v0.1 types exactly (key case, or an empty optional field)")
 	}
 	st.canonicalPredicate = canonicalPredicate
@@ -187,6 +194,46 @@ func (st *Statement) validate() error {
 		return errors.New("commitments.trace_merkle_root must be 64 lowercase hex")
 	case p.ObjectiveSetHash != "" && !digestRef.MatchString(p.ObjectiveSetHash):
 		return errors.New(`objective_set_hash must be "sha256:" and 64 lowercase hex`)
+	}
+	// encoding/json decodes null into a nil slice and re-encodes it as null, so
+	// the exact-bytes check alone would let a required array be null.
+	for name, isNil := range map[string]bool{
+		"profiles": p.Profiles == nil, "sources": p.Sources == nil, "coverage.providers": p.Coverage.Providers == nil,
+		"lineage": p.Lineage == nil, "changes": p.Changes == nil, "incidents": p.Incidents == nil,
+		"objectives": p.Objectives == nil, "limitations": p.Limitations == nil,
+	} {
+		if isNil {
+			return fmt.Errorf("%s must be an array, not null", name)
+		}
+	}
+	// JavaScript numbers hold integers exactly only up to 2^53-1; beyond that the
+	// browser verifier would read a different value (D-018).
+	ints := map[string]int64{"seq_no": int64(p.SeqNo), "assurance_level.level": int64(p.AssuranceLevel.Level), "commitments.leaf_count": int64(p.Commitments.LeafCount)}
+	if d := p.Commitments.Disclosed; d != nil {
+		ints["commitments.disclosed.leaf_index"] = int64(d.LeafIndex)
+	}
+	for i, c := range p.Coverage.Providers {
+		ints[fmt.Sprintf("coverage.providers[%d].billed_tokens", i)] = c.BilledTokens
+		ints[fmt.Sprintf("coverage.providers[%d].traced_tokens", i)] = c.TracedTokens
+		if c.BilledRequests != nil {
+			ints[fmt.Sprintf("coverage.providers[%d].billed_requests", i)] = *c.BilledRequests
+		}
+		if c.TracedRequests != nil {
+			ints[fmt.Sprintf("coverage.providers[%d].traced_requests", i)] = *c.TracedRequests
+		}
+	}
+	for name, v := range ints {
+		if v > maxSafeInteger || v < -maxSafeInteger {
+			return fmt.Errorf("%s is outside the safe integer range", name)
+		}
+	}
+	for i, o := range p.Objectives {
+		if o.Maps == nil {
+			return fmt.Errorf("objectives[%d].maps must be an array, not null", i)
+		}
+	}
+	if d := p.Commitments.Disclosed; d != nil && d.Proof == nil {
+		return errors.New("commitments.disclosed.proof must be an array, not null")
 	}
 	for _, d := range p.BatchDigests {
 		if !digestRef.MatchString(d) {

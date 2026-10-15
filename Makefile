@@ -6,9 +6,9 @@ GO_PKGS := ./...
 STATICCHECK := honnef.co/go/tools/cmd/staticcheck@2026.2.2
 GOVULNCHECK := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
-.PHONY: check fmt-check vet staticcheck vuln test vectors db db-test run-server run-worker agent-dry concierge-verify
+.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test db db-test run-server run-worker agent-dry concierge-verify
 
-check: fmt-check vet staticcheck vuln test vectors
+check: fmt-check vet staticcheck vuln test vectors concierge-test
 
 fmt-check:
 	@out=$$(gofmt -l . | grep -v '^reference/' || true); if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
@@ -31,6 +31,7 @@ vectors:
 	node --test reference/verify-reference.test.mjs
 	@if [ -f web/verify/verify.test.js ]; then node --test web/verify/verify.test.js; fi
 	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/KST-CTA-0001.dsse.json spec/vectors/pass/KST-CTA-0002.dsse.json spec/vectors/pass/KST-CTA-0003.dsse.json
+	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/extra/pass-no-disclosure.dsse.json
 
 db:
 	docker compose up -d db
@@ -48,6 +49,9 @@ run-worker:
 
 agent-dry:
 	go run ./cmd/agent --config agent.example.json --dry-run
+
+concierge-test:
+	python3 -m unittest discover -s concierge/tests
 
 concierge-verify:
 	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/*.dsse.json
