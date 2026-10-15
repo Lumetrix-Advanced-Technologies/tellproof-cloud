@@ -102,7 +102,7 @@ Predicate fields (schema: `spec/pack.schema.json`): `pack_schema`, `pack_id`, `s
 | Method and path | Auth | Request → response |
 | --- | --- | --- |
 | `POST /v1/agents/enrol` | one-time enrolment token | `{public_key, hostname}` → `{agent_id}` |
-| `POST /v1/batches` | agent signature inside the envelope | DSSE batch → `201 {digest}`; `409` seq gap or wrong prev; `401` bad signature |
+| `POST /v1/batches` | agent signature inside the envelope | DSSE batch → `201 {digest}`; `200 {digest}` seq already stored (the stored digest); `409` seq gap or wrong prev; `401` unknown or revoked agent, bad signature; `400` invalid batch; `413` over 1 MB |
 | `GET /v1/systems/{id}/status` | session | latest evaluation results |
 | `POST /v1/systems/{id}/packs` | session | `{period_start, period_end}` → `202 {job_id}` |
 | `POST /v1/packs/{id}/shares` | session | `{verifier_org, expires_at}` → `{url}` (token shown once) |

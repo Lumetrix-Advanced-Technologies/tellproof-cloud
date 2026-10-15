@@ -3,8 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"regexp"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
 )
@@ -18,7 +22,7 @@ func env(kv ...string) func(string) string {
 }
 
 func TestUsage(t *testing.T) {
-	for _, args := range [][]string{nil, {"frobnicate"}, {"migrate", "extra"}, {"migrate"}} {
+	for _, args := range [][]string{nil, {"frobnicate"}, {"migrate", "extra"}, {"migrate"}, {"serve"}} {
 		var out, errb bytes.Buffer
 		if code := run(context.Background(), args, env(), &out, &errb); code != 2 {
 			t.Errorf("%v: exit %d", args, code)
@@ -45,4 +49,58 @@ func TestMigrateCommand(t *testing.T) {
 	if code := run(context.Background(), []string{"migrate"}, env("DATABASE_URL_OWNER", "postgres://u:hunter2@127.0.0.1:1/x"), &out, &errb); code != 1 || strings.Contains(errb.String(), "hunter2") {
 		t.Errorf("bad URL: exit %d, %s", code, errb.String())
 	}
+}
+
+func TestServeAnswersAndStops(t *testing.T) {
+	db := storetest.MigratedDB(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	var errb syncBuffer
+	done := make(chan int)
+	go func() {
+		done <- run(ctx, []string{"serve"}, env("DATABASE_URL", db, "DATABASE_ROLE", "plumbline_app", "LISTEN", "127.0.0.1:0"), &bytes.Buffer{}, &errb)
+	}()
+	var addr string
+	for i := 0; i < 100 && addr == ""; i++ {
+		time.Sleep(20 * time.Millisecond)
+		if m := listenRE.FindStringSubmatch(errb.String()); m != nil {
+			addr = m[1]
+		}
+	}
+	if addr == "" {
+		cancel()
+		t.Fatalf("server did not start: %s", errb.String())
+	}
+	resp, err := http.Get("http://" + addr + "/healthz")
+	if err != nil || resp.StatusCode != 200 {
+		t.Errorf("healthz: %v %v", resp, err)
+	}
+	if resp != nil {
+		resp.Body.Close()
+	}
+	cancel()
+	if code := <-done; code != 0 {
+		t.Errorf("serve exit %d: %s", code, errb.String())
+	}
+	if strings.Contains(errb.String(), "postgres://") {
+		t.Error("the database URL was logged")
+	}
+}
+
+var listenRE = regexp.MustCompile(`"listen":"([^"]+)"`)
+
+type syncBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
 }
