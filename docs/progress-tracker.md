@@ -27,7 +27,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P3-0 | Batch schema v0.2 | done | 2026-10-15 | `observed` (live models and model + prompt versions) beside metrics; v0.1 kept; concierge windows validate |
 | P3-1 | OTLP JSON receiver + normaliser | done | 2026-10-15 | collector-style and OpenLLMetry/JS fixtures parse; no-content fuzz (198k execs); gzip and limits; semconv v2 (D-026) |
 | P3-2 | Hourly aggregator | done | 2026-10-15 | windows match the concierge's C-1 output exactly (Python run in the test); late spans, grace, transitions, anomalies |
-| P3-3 | Commitments | not started | | |
+| P3-3 | Commitments | done | 2026-10-15 | disclosed traces verify against their window root; roots equal the concierge's; period root over window roots (D-027) |
 | P3-4 | Provider usage | not started | | |
 | P3-5 | Langfuse puller | not started | | |
 | P3-6 | Enrolment and batch signing | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · P3-3 · PR pending · Salted per-window commitments and period proofs through the window root.
 - 2026-10-15 · P3-2 · PR pending · The agent aggregates spans into hourly batch metrics identical to the concierge's for the same input.
 - 2026-10-15 · P3-1 · PR pending · The agent's OTLP JSON receiver normalises spans from any SDK to content-free facts.
 - 2026-10-15 · P3-0 · PR pending · Batch schema v0.2 carries the live model and prompt versions eval freshness needs.

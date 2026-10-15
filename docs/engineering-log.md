@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P3-3 · Commitments
+
+**Built.** `internal/commitment`: `LoadSecret` (env or owner-only file, at least 16 bytes, never echoed), `ForWindow`/`FromLeaves` (the batch `commit` plus the leaves kept for disclosure), `Window.Disclose`, and `ForPeriod`/`Period.Disclose` for a period root over window roots.
+
+**Problems.** The server never receives leaves, so a pack cannot use the concierge's flat tree over every leaf. A tree over window roots keeps disclosure working with the existing verifiers: a proof to the window root followed by the window root's proof to the period root is an ordinary node-hash chain (D-027).
+
+**Verified.** Every window of the sample: three traces (first, middle, last) disclose and verify against the window root; unknown traces and the wrong secret are refused. The window roots and leaf counts equal the Python concierge's for the same secret (the test runs it). A period proof through the window root verifies against the period root, and disclosing under the wrong window fails. Secret loading refuses missing, world-readable, short or doubly specified secrets without echoing them.
+
 ## 2026-10-15 · P3-2 · Hourly aggregator
 
 **Built.** `internal/batch` (the v0.2 payload types, shared by signing and server ingest later) and `internal/aggregate`: UTC hours that close a 5-minute grace after the hour, late spans moved into the current window and counted, traces committed once in the window of their first span (in first-seen order), transitions tracked per slot and prompt name across windows, anomalies by the D-020 rule, empty lists encoded as `[]`, safe for concurrent `Add`.
