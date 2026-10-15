@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · C-2 · Concierge evaluate
+
+**Built.** `concierge/evaluate.py` and `evidencepack.py evaluate`: a generic engine over the five rule kinds in `spec/objectives.json`, coverage per provider and region, lineage with roles, registers filtered to the period, limitations, input fingerprints and `objective_set_hash`. `concierge/canon.py`: full RFC 8785 in Python (the existing `verify.py` subset only handles simple decimals), needed for the hash now and for signing in C-3. C-1 output gains a per-window `observed` record of live model and prompt versions.
+
+**Problems.** The rules leave many semantics open (eval freshness above all, also transition and incident matching, bands, coverage scope); fixed in D-021 using the sample vectors' wording as the guide (pack 3 shows a new prompt version without an eval as `attention`). The batch schema cannot carry live versions, which the agent will need for EO-EVAL-01 (schema gap recorded in D-021). Python parses large integer literals exactly where JSON means doubles; `canon.loads` now converts beyond 2^53. My own tally of statuses in one test was wrong (3/3/4, not 4/3/3); the code was right.
+
+**Verified.** 10 evaluate tests, 27 concierge tests in all. A fixture month for a fictional partner (`testdata/partner-month/`) with a hand calculation written out in the test: all ten objectives' status and measured text match, with 3 pass, 3 attention and 4 fail, including the Sydney-midnight period boundary that excludes one usage row. Coverage table and lineage shares match. The eval-freshness rule turns to `fail` once an unevaluated version has been live past `max_age`. `objective_set_hash` equals the browser verifier's JCS hash computed in Node. Python JCS matches all 3,119 Node number cases, the JCS vectors and the pass payloads byte for byte.
+
 ## 2026-10-15 · C-1 · Concierge ingest
 
 **Built.** `concierge/evidencepack.py ingest` with `ingest.py` (OTLP JSON or JSONL; Langfuse JSON, JSONL or CSV) and `merkle.py` (§2.4 in Python). Hourly UTC windows in the batch `metrics` shape, a salted Merkle `commit` per window, and a leaves file for the period commitment in C-3. `testdata/make_samples.py` writes the same synthetic traffic in all three formats, with a content marker in every content field. `make concierge-test` added to `make check`.

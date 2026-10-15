@@ -321,7 +321,14 @@ def aggregate(spans, attrs, salt_secret: bytes):
         }
         leaves = [merkle.leaf_hash(merkle.salt(salt_secret, tid), tid) for tid in traces_by_hour[hour]]
         commit = {"root": merkle.root(leaves).hex() if leaves else "0" * 64, "leaves": len(leaves)}
-        windows.append({"window": {"start": _iso(hour), "end": _iso(end)}, "metrics": metrics, "commit": commit})
+        # Which model and prompt versions were live, for eval freshness (EO-EVAL-01). The batch
+        # metrics schema has no field for this yet, so it sits beside metrics (D-021).
+        observed = {
+            "models": sorted({(s.provider, s.model) for s in llm if s.model != "unknown"}),
+            "versions": sorted({(s.model, str(s.prompt_version)) for s in llm if s.model != "unknown" and s.prompt_version not in (None, "")}),
+        }
+        observed = {k: [list(x) for x in v] for k, v in observed.items()}
+        windows.append({"window": {"start": _iso(hour), "end": _iso(end)}, "metrics": metrics, "observed": observed, "commit": commit})
         all_leaves.extend(l.hex() for l in leaves)
     return windows, all_leaves
 

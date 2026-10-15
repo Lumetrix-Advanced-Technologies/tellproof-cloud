@@ -21,7 +21,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P1-5 | cmd/verify | done | 2026-10-15 | pass chain VERIFIED exit 0; every fail vector exit 1 naming its failed checks; --json matches manifest; JWKS file or https URL (D-017) |
 | P1-6 | web/verify | done | 2026-10-15 | 44 node tests (manifest + 14 shared extra vectors); renders from files with no network; print repeats digest and share URL on every page (D-018, D-019) |
 | C-1 | Concierge ingest | done | 2026-10-15 | OTLP, Langfuse JSON and CSV give identical aggregates; grep finds no prompt text or trace IDs in output; batch-schema metrics; salted commits (D-020) |
-| C-2 | Concierge evaluate | not started | | |
+| C-2 | Concierge evaluate | done | 2026-10-15 | ten objectives match a hand calculation for a fixture partner month (mixed pass/attention/fail); full Python JCS; objective_set_hash matches the browser JCS (D-021) |
 | C-3 | Concierge sign and chain | not started | | |
 | C-4 | Concierge share | not started | | |
 | P3-1 | OTLP JSON receiver + normaliser | blocked (M1) | | |
@@ -52,6 +52,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-15 · C-2 · PR pending · `evidencepack.py evaluate` computes the ten objectives, coverage and lineage, matching a hand calculation for one partner month.
 - 2026-10-15 · C-1 · PR pending · `evidencepack.py ingest` turns OTLP or Langfuse exports into hourly batch-shaped aggregates with no content and salted trace commitments.
 - 2026-10-15 · P1-6 · PR pending · Static verify page with a tested browser verifier that agrees with Go on all core and extra vectors; Phase 1 complete.
 - 2026-10-15 · P1-5 · PR pending · `plumbline-verify` verifies a chain of packs offline, with human and JSON output and exit codes 0/1/2.

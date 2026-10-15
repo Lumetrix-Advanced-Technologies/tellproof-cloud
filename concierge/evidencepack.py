@@ -44,6 +44,19 @@ def cmd_ingest(args) -> int:
     return 0
 
 
+def cmd_evaluate(args) -> int:
+    import evaluate
+
+    ev = evaluate.evaluate(args.system, args.aggregates, args.usage, args.changes, args.incidents, args.evals)
+    Path(args.out).write_text(json.dumps(ev, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    counts = {s: sum(o["status"] == s for o in ev["objectives"]) for s in ("pass", "attention", "fail")}
+    print(f"evidencepack: {counts['pass']} pass, {counts['attention']} attention, {counts['fail']} fail; "
+          f"coverage {ev['coverage']['total_pct']}% over {ev['windows']} windows -> {args.out}", file=sys.stderr)
+    for o in ev["objectives"]:
+        print(f"  {o['id']:<11} {o['status']:<9} {o['measured']}", file=sys.stderr)
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="evidencepack", description=__doc__.splitlines()[0])
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -55,6 +68,15 @@ def main(argv=None) -> int:
     g.add_argument("--salt-secret-file")
     g.add_argument("files", nargs="+")
     g.set_defaults(fn=cmd_ingest)
+    e = sub.add_parser("evaluate", help="aggregates + provider usage + registers -> the ten objectives")
+    e.add_argument("--system", required=True, help="the AI system's declarations (JSON)")
+    e.add_argument("--aggregates", action="append", required=True, help="output of ingest (repeatable)")
+    e.add_argument("--usage", action="append", required=True, help="provider usage CSV (repeatable)")
+    e.add_argument("--changes", help="change register CSV")
+    e.add_argument("--incidents", help="incident register CSV")
+    e.add_argument("--evals", help="eval runs CSV")
+    e.add_argument("--out", required=True)
+    e.set_defaults(fn=cmd_evaluate)
     args = p.parse_args(argv)
     return args.fn(args)
 

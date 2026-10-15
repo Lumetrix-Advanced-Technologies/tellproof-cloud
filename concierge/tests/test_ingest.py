@@ -221,3 +221,12 @@ class CLITest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ObservedTest(unittest.TestCase):
+    def test_observed_versions_per_window(self):
+        out, _ = ingest.ingest("otlp", OTLP, SECRET)
+        first, second = out["windows"]
+        self.assertEqual(first["observed"]["versions"], [["anthropic.claude-sonnet-4-5", "13"]])
+        self.assertEqual(second["observed"]["versions"], [["anthropic.claude-sonnet-4-5", "13"], ["anthropic.claude-sonnet-4-5", "14"], ["anthropic.claude-sonnet-4-6", "14"]])
+        self.assertIn(["openai", "gpt-4.1-mini"], first["observed"]["models"])
