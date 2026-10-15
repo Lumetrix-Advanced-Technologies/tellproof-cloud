@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-16 · P4-2 · Enrol and ingest endpoints
+
+**Built.** `internal/server` (`Server.Handler`: `POST /v1/agents/enrol`, `POST /v1/batches`, `GET /healthz`) and `plumbline-server serve`. The server side of the formats the agent already speaks (D-030, D-031), with the choices in D-038.
+
+**Problems.** None in the code; the tests passed on their first run, so I checked that they bite: removing the `prev` check makes the wrong-prev case return 201, and removing the agent row lock turns 11 of 20 concurrent resends into 500s (unique violations) instead of 200s.
+
+**Verified (Postgres 16).** Acceptance: two chained batches return 201 with their digests; a resend of seq 1 returns 200 with the stored digest, and a different batch under seq 1 also returns 200 with the stored digest (so the agent sees the mismatch); a seq gap and a wrong `prev` return 409; a batch signed by another key under the agent's ID, and a tampered payload, return 401. Also: unknown and revoked agents 401; a non-canonical, invalid payload 400; garbage 400; over 1 MB 413; the chain continues after refusals; the stored envelope decodes back to its digest; rows carry the agent's tenant. Enrolment stores the agent's key under the token's system; used, expired, unknown and missing tokens 401; a non-key, an unknown field and a P-256 key 400, and refused requests never spend the token. Twenty concurrent sends of one batch store one row (one 201, nineteen 200). End to end, the real agent enrols, replays the sample export and delivers: both batches are stored with their metrics. `serve` answers `/healthz`, stops cleanly on cancel and never logs the database URL.
+
 ## 2026-10-15 · P4-1 · Migrate and store
 
 **Built.** `migrations/embed.go`; `internal/store` (`LoadMigrations`, `Migrate`, `Open`, `WithTenant`, `Public`); `internal/store/storetest` (fresh database per test); `cmd/server` with `migrate` and `version`; `make test-db`; CI runs the database tests (`PLUMBLINE_TEST_DATABASE_URL`, `PLUMBLINE_REQUIRE_DB=1`). Added `github.com/jackc/pgx/v5` (allowed).
