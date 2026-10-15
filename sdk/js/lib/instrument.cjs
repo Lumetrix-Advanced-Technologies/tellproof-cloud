@@ -508,8 +508,11 @@ function requirers() {
 }
 
 // The ES module entry of an installed package, read from its package.json
-// (exports["."].import, then module): the app's `import` loads that file, a
-// different module instance from the one `require` loads.
+// exports["."] import condition: the app's `import` loads that file, a
+// different module instance from the one `require` loads. Node ignores the
+// "module" field (it is for bundlers), so a package without an import
+// condition (the AWS SDK) serves import from its CommonJS build: one copy,
+// already patched.
 function esmEntry(spec, req) {
   const dirs = (req.resolve.paths && req.resolve.paths(spec)) || [];
   for (const d of dirs) {
@@ -521,12 +524,10 @@ function esmEntry(spec, req) {
       continue;
     }
     let e = pkg.exports && (typeof pkg.exports === 'string' || Array.isArray(pkg.exports) ? null : pkg.exports['.'] || pkg.exports);
-    let rel = null;
-    for (let depth = 0; e && typeof e === 'object' && depth < 4; depth++) e = e.import || e.node || e.default;
-    if (typeof e === 'string') rel = e;
-    else if (typeof pkg.module === 'string') rel = pkg.module;
-    if (rel) return pathToFileURL(path.join(dir, rel)).href;
-    return null;
+    if (!e || typeof e !== 'object' || !('import' in e)) return null;
+    e = e.import;
+    for (let depth = 0; e && typeof e === 'object' && depth < 4; depth++) e = e.node || e.default;
+    return typeof e === 'string' ? pathToFileURL(path.join(dir, e)).href : null;
   }
   return null;
 }

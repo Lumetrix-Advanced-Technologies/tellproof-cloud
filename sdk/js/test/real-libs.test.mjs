@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { Capture } from './scenario.mjs';
 
 const require = createRequire(import.meta.url);
@@ -16,7 +17,8 @@ const MARK = 'REAL-LIB-MARKER';
 
 function load(spec) {
   try {
-    return { cjs: appRequire(spec), esmUrl: ins.esmEntry(spec, appRequire) };
+    // Without an import condition, Node serves import from the CommonJS file too.
+    return { cjs: appRequire(spec), esmUrl: ins.esmEntry(spec, appRequire) || pathToFileURL(appRequire.resolve(spec)).href };
   } catch {
     return null;
   }
@@ -26,10 +28,10 @@ const libs = { openai: load('openai'), anthropic: load('@anthropic-ai/sdk'), bed
 const sse = (events) => events.map(([name, data]) => (name ? `event: ${name}\n` : '') + `data: ${typeof data === 'string' ? data : JSON.stringify(data)}\n\n`).join('');
 const CHAT = { id: 'c', object: 'chat.completion', created: 1, model: 'gpt-4.1-mini-2025-04-14',
   choices: [{ index: 0, message: { role: 'assistant', content: MARK }, finish_reason: 'stop' }], usage: { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15 } };
-const chunk = (content, usage = null) => ({ id: 'c', object: 'chat.completion.chunk', created: 1, model: 'gpt-4.1-mini-2025-04-14',
-  choices: content === null ? [] : [{ index: 0, delta: { content }, finish_reason: null }], usage });
+const chunk = (content, usage = null, finish = null) => ({ id: 'c', object: 'chat.completion.chunk', created: 1, model: 'gpt-4.1-mini-2025-04-14',
+  choices: content === null ? [] : [{ index: 0, delta: { content }, finish_reason: finish }], usage });
 const MSG_USAGE = { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 2, cache_read_input_tokens: 3 };
-const MESSAGE = { id: 'm', type: 'message', role: 'assistant', model: 'claude-sonnet-4-5-20250929', content: [{ type: 'text', text: MARK }],
+const MESSAGE = { id: 'm', type: 'message', role: 'assistant', model: 'claude-test-model-20250929', content: [{ type: 'text', text: MARK }],
   stop_reason: 'end_turn', stop_sequence: null, usage: MSG_USAGE };
 const MSG_EVENTS = [
   ['message_start', { type: 'message_start', message: { ...MESSAGE, content: [], stop_reason: null, usage: { ...MSG_USAGE, output_tokens: 1 } } }],
@@ -56,7 +58,7 @@ before(async () => {
       };
       if (req.url.endsWith('/chat/completions')) {
         if (!body.stream) return send(JSON.stringify(CHAT));
-        const ev = [[null, chunk(MARK)], [null, chunk(MARK)]];
+        const ev = [[null, chunk(MARK)], [null, chunk(MARK)], [null, chunk('', null, 'stop')]];
         if (body.stream_options && body.stream_options.include_usage) ev.push([null, chunk(null, { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15 })]);
         return send(sse([...ev, [null, '[DONE]']]), 'text/event-stream');
       }
@@ -113,9 +115,9 @@ for (const copy of ['cjs', 'esm']) {
     const mod = copy === 'cjs' ? libs.anthropic.cjs : await import(libs.anthropic.esmUrl);
     const Anthropic = mod.Anthropic || mod.default;
     const c = new Anthropic({ apiKey: 'test', baseURL: url, maxRetries: 0 });
-    await c.messages.create({ model: 'claude-sonnet-4-5', max_tokens: 10, messages: [{ role: 'user', content: MARK }] });
-    for await (const _ of await c.messages.create({ model: 'claude-sonnet-4-5', max_tokens: 10, messages: [], stream: true }));
-    const text = await c.messages.stream({ model: 'claude-sonnet-4-5', max_tokens: 10, messages: [] }).finalText();
+    await c.messages.create({ model: 'claude-test-model', max_tokens: 10, messages: [{ role: 'user', content: MARK }] });
+    for await (const _ of await c.messages.create({ model: 'claude-test-model', max_tokens: 10, messages: [], stream: true }));
+    const text = await c.messages.stream({ model: 'claude-test-model', max_tokens: 10, messages: [] }).finalText();
     assert.equal(text, MARK);
     assert.deepEqual(tokens(), Array(3).fill(['anthropic', 15, 5]));
     noContent();
@@ -124,10 +126,13 @@ for (const copy of ['cjs', 'esm']) {
   test(`bedrock (${copy})`, { skip: !libs.bedrock && '@aws-sdk/client-bedrock-runtime not installed' }, async () => {
     capture();
     const B = copy === 'cjs' ? libs.bedrock.cjs : await import(libs.bedrock.esmUrl);
-    const c = new B.BedrockRuntimeClient({ region: 'ap-southeast-2', endpoint: url, credentials: { accessKeyId: 'test', secretAccessKey: 'test' } });
-    const r = await c.send(new B.ConverseCommand({ modelId: 'anthropic.claude-sonnet-4-5', messages: [{ role: 'user', content: [{ text: MARK }] }] }));
+    // The client defaults to HTTP/2; the local fake API speaks HTTP/1.1.
+    const { NodeHttpHandler } = appRequire('@smithy/node-http-handler');
+    const c = new B.BedrockRuntimeClient({ region: 'ap-southeast-2', endpoint: url, credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+      requestHandler: new NodeHttpHandler() });
+    const r = await c.send(new B.ConverseCommand({ modelId: 'anthropic.claude-test-model', messages: [{ role: 'user', content: [{ text: MARK }] }] }));
     assert.equal(r.output.message.content[0].text, MARK);
-    const inv = await c.send(new B.InvokeModelCommand({ modelId: 'anthropic.claude-sonnet-4-5', body: JSON.stringify({ messages: [] }), contentType: 'application/json' }));
+    const inv = await c.send(new B.InvokeModelCommand({ modelId: 'anthropic.claude-test-model', body: JSON.stringify({ messages: [] }), contentType: 'application/json' }));
     assert.ok(new TextDecoder().decode(inv.body).includes(MARK));
     assert.deepEqual(tokens(), [['aws.bedrock', 7, 2], ['aws.bedrock', 21, 4]]);
     assert.equal(cap.spans[0].attrs['cloud.region'], 'ap-southeast-2');
