@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P3-2 · Hourly aggregator
+
+**Built.** `internal/batch` (the v0.2 payload types, shared by signing and server ingest later) and `internal/aggregate`: UTC hours that close a 5-minute grace after the hour, late spans moved into the current window and counted, traces committed once in the window of their first span (in first-seen order), transitions tracked per slot and prompt name across windows, anomalies by the D-020 rule, empty lists encoded as `[]`, safe for concurrent `Add`.
+
+**Problems.** None in the code. Two judgment calls: a late span whose "current" hour is itself already closed (a clock running behind) goes into the first open hour; trace IDs are remembered for two hours after their window closes, so a long trace is not committed twice without the agent's memory growing without bound.
+
+**Verified.** The acceptance test runs the Python concierge ingest on the same sample in the test itself and compares window, metrics and observed field for field, plus trace counts per window: identical. Further tests: windows close exactly at the grace, never twice; late spans; first-window commitment; transitions across windows and slots; anomaly thresholds at and below the boundaries; empty arrays; 8 goroutines adding concurrently under `-race`. Injected bugs (grace off by one, late spans uncounted, transitions not per slot) are each caught.
+
 ## 2026-10-15 · P3-1 · OTLP JSON receiver and normaliser
 
 **Built.** `internal/otlp`: `Mapping` (a validated semconv map), `Parse` (one OTLP JSON export to content-free `Span` facts) and `Receiver` (`POST /v1/traces`). Package `spec` embeds the spec files. `semconv-map.json` v2 adopts the D-020 names, adds an operation alias, the LLM operation list and content prefixes; `internal/spec` validates the new parts; the concierge reads the same map (D-026).
