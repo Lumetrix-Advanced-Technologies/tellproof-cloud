@@ -152,3 +152,21 @@ class EvaluateTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReadmeWalkthroughTest(unittest.TestCase):
+    """The README's concierge walkthrough: the OTLP sample evaluated against testdata/demo."""
+
+    def test_demo_month(self):
+        sys.path.insert(0, str(ROOT / "concierge"))
+        import ingest
+
+        with tempfile.TemporaryDirectory() as d:
+            agg, _ = ingest.ingest("otlp", [str(ROOT / "concierge/testdata/otlp-sample.jsonl")], b"demo-salt-secret")
+            p = Path(d) / "aggregates.json"
+            p.write_text(json.dumps(agg))
+            D = ROOT / "concierge/testdata/demo"
+            ev = evaluate.evaluate(str(D / "system.json"), [str(p)], [str(D / "usage.csv")], str(D / "changes.csv"))
+        counts = [sum(o["status"] == s for o in ev["objectives"]) for s in ("pass", "attention", "fail")]
+        self.assertEqual(counts, [4, 1, 5])
+        self.assertEqual(ev["coverage"]["total_pct"], 99.3)
