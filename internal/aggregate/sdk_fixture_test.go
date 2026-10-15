@@ -94,20 +94,23 @@ func TestSDKScenarioExports(t *testing.T) {
 	if err != nil {
 		t.Skip("python3 not installed")
 	}
-	script := "import sys, json; sys.path.insert(0, 'concierge'); import ingest; " +
-		"out, _ = ingest.ingest('otlp', ['sdk/testdata/python-export.jsonl'], b'parity'); " +
-		"print(json.dumps([{'window': w['window'], 'metrics': w['metrics'], 'observed': w['observed'], 'traces': w['commit']['leaves']} for w in out['windows']]))"
-	cmd := exec.Command(py, "-c", script)
-	cmd.Dir = filepath.Join("..", "..")
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("concierge ingest: %v", err)
-	}
-	var concierge []sdkWindow
-	if err := json.Unmarshal(out, &concierge); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(toMap(t, concierge), toMap(t, want)) {
-		t.Errorf("concierge ingest of the Python export differs:\n%s", out)
+	for _, path := range exports {
+		rel := "sdk/testdata/" + filepath.Base(path)
+		script := "import sys, json; sys.path.insert(0, 'concierge'); import ingest; " +
+			"out, _ = ingest.ingest('otlp', ['" + rel + "'], b'parity'); " +
+			"print(json.dumps([{'window': w['window'], 'metrics': w['metrics'], 'observed': w['observed'], 'traces': w['commit']['leaves']} for w in out['windows']]))"
+		cmd := exec.Command(py, "-c", script)
+		cmd.Dir = filepath.Join("..", "..")
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("concierge ingest of %s: %v", rel, err)
+		}
+		var concierge []sdkWindow
+		if err := json.Unmarshal(out, &concierge); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(toMap(t, concierge), toMap(t, want)) {
+			t.Errorf("concierge ingest of %s differs:\n%s", rel, out)
+		}
 	}
 }
