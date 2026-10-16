@@ -47,6 +47,14 @@ type Job struct {
 // Errors are stored in last_error: they must never contain secrets.
 type Handler func(ctx context.Context, j Job) error
 
+// Permanent marks an error that retrying cannot fix (bad input, nothing to
+// do): the job is parked as dead at once instead of retried.
+func Permanent(err error) error { return permanentError{err} }
+
+type permanentError struct{ error }
+
+func (p permanentError) Unwrap() error { return p.error }
+
 // Execer is what Enqueue needs: a pool or a transaction, so a job can be
 // enqueued atomically with the writes that call for it.
 type Execer interface {
@@ -160,7 +168,7 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	case err == nil:
 		q, args = `UPDATE jobs SET done_at = now(), locked_at = NULL, locked_by = NULL, last_error = NULL WHERE id = $1`, []any{j.ID}
 		w.Log.Info("job done", "job_id", j.ID, "kind", j.Kind, "attempt", j.Attempt)
-	case j.Attempt >= w.MaxAttempts:
+	case j.Attempt >= w.MaxAttempts || errors.As(err, new(permanentError)):
 		q, args = `UPDATE jobs SET done_at = now(), locked_at = NULL, locked_by = NULL, last_error = $2 WHERE id = $1`, []any{j.ID, truncate(err.Error())}
 		w.Log.Error("job dead", "job_id", j.ID, "kind", j.Kind, "attempts", j.Attempt, "error", truncate(err.Error()))
 	default:

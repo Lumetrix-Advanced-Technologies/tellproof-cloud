@@ -3,7 +3,15 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -11,7 +19,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/plumbline/migrations"
 )
 
 func env(kv ...string) func(string) string {
@@ -37,7 +47,11 @@ func TestUsage(t *testing.T) {
 
 func TestMigrateCommand(t *testing.T) {
 	db := storetest.EmptyDB(t)
-	for i, want := range []string{`"applied":1`, `"applied":0`} {
+	ms, err := store.LoadMigrations(migrations.Files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, want := range []string{fmt.Sprintf(`"applied":%d`, len(ms)), `"applied":0`} {
 		var out, errb bytes.Buffer
 		if code := run(context.Background(), []string{"migrate"}, env("DATABASE_URL_OWNER", db), &out, &errb); code != 0 {
 			t.Fatalf("run %d: exit %d: %s", i, code, errb.String())
@@ -133,5 +147,22 @@ func TestWorkSchedulesPruningAndStops(t *testing.T) {
 	_ = conn.QueryRow(context.Background(), `SELECT count(*) FROM jobs WHERE kind = 'prune_jobs' AND done_at IS NULL AND run_at > now() + interval '23 hours'`).Scan(&next)
 	if next != 1 {
 		t.Errorf("%d prunes scheduled for tomorrow", next)
+	}
+}
+
+func TestPackSignerConfig(t *testing.T) {
+	if s, err := packSigner(context.Background(), env()); s != nil || err != nil {
+		t.Errorf("unset: %v %v", s, err)
+	}
+	if _, err := packSigner(context.Background(), env("KMS_KEY_ID", "local", "LOCAL_SIGNING_KEY", "/nonexistent.pem")); err == nil {
+		t.Error("a missing local key was accepted")
+	}
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	der, _ := x509.MarshalPKCS8PrivateKey(key)
+	p := filepath.Join(t.TempDir(), "k.pem")
+	_ = os.WriteFile(p, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), 0o600)
+	s, err := packSigner(context.Background(), env("KMS_KEY_ID", "local", "LOCAL_SIGNING_KEY", p))
+	if err != nil || s == nil || !strings.HasPrefix(s.KeyRef(), "local:") {
+		t.Errorf("local: %v %v", s, err)
 	}
 }

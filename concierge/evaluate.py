@@ -150,7 +150,10 @@ class Facts:
             m["leaves"] += w["commit"]["leaves"]
         self.m, self.traced, self.calls_by_model = m, traced, calls_by_model
         self.transitions, self.anomalies = transitions, anomalies
-        self.first_window = parse_time(windows[0]["window"]["start"]) if windows else start
+        # The first window that observed anything: versions live there were live before the period.
+        # A window with only usage or eval runs observed nothing (D-040).
+        observed = [w for w in windows if w.get("observed", {}).get("models") or w.get("observed", {}).get("versions")]
+        self.first_window = parse_time(observed[0]["window"]["start"]) if observed else start
         self.live_versions = first_seen
 
         billed = defaultdict(lambda: {"tokens": 0, "requests": 0, "requests_known": True})
