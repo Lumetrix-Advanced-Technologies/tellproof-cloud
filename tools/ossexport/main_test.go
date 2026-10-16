@@ -26,14 +26,14 @@ func TestExportIsTheOpenSourceTreeOnly(t *testing.T) {
 	}
 	for _, private := range []string{"internal/store", "internal/server", "internal/webapp", "internal/issue", "internal/evaluate",
 		"internal/vanta", "internal/kmssign", "cmd/server", "migrations", "docs", "concierge/evaluate.py", "concierge/evidencepack.py",
-		"internal/secretbox", "e2e", "tools", "reference", "cmd/agent/connect_test.go", "web/app", "web/embed.go"} {
+		"internal/secretbox", "e2e", "tools/ossexport", "reference", "cmd/agent/connect_test.go", "web/app", "web/embed.go"} {
 		if exists(filepath.Join(out, private)) {
 			t.Errorf("%s is in the open-source tree", private)
 		}
 	}
 	for _, want := range []string{"LICENSE", "NOTICE", "README.md", "SECURITY.md", "CHANGELOG.md", "Makefile", ".github/workflows/release.yml",
 		"web/verify/verify.js", "web/brand.css", "web/security/index.html", "web/docs/agent/index.html", "spec/vectors/manifest.json", "sdk/python/LICENSE", "sdk/js/LICENSE",
-		"concierge/verify.py", "concierge/testdata/otlp-sample.jsonl", "internal/jcs/testdata", "cmd/agent/Dockerfile", "go.mod"} {
+		"concierge/verify.py", "concierge/testdata/otlp-sample.jsonl", "tools/demolog/main.go", "packaging/build_wheels.py", "internal/dashboard/static/dashboard.js", "internal/jcs/testdata", "cmd/agent/Dockerfile", "go.mod"} {
 		if !exists(filepath.Join(out, want)) {
 			t.Errorf("%s is missing", want)
 		}

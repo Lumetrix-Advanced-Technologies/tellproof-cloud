@@ -142,3 +142,8 @@ Done when: a new partner goes from sign-up to first issued pack in under 30 minu
 **P6-3 Launch checklist.** Security page, docs site page for the agent, HN post draft, test vectors published.
 
 **P6-4 Local mode, early access and the public repository.** (Added 16 Oct 2026 at the founders' request.) `plumbline-agent local`: no server or token, signed batches kept in the data directory; `plumbline-agent report` verifies and summarises them. Early-access request options in the public repository. SDKs published as `plumbline-sdk`. This repository renamed `plumbline-cloud`; the public `plumbline` repository created from the export, with its first release.
+
+
+**P6-5 Local dashboard.** (Added 16 Oct 2026 at the founders' request.) `run --local` serves a dashboard of the verified local log on loopback, in the spirit of Sentry or Grafana: totals, calls per model over time, coverage, tokens, models, timeline and the evidence chain. No frameworks.
+
+**P6-6 The agent from pip and npm.** (Added 16 Oct 2026.) `pip install plumbline-agent` and `npx plumbline-agent`, carrying the release binaries; `run --local` as the documented local-mode command.

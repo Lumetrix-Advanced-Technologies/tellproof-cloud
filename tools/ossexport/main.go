@@ -49,6 +49,8 @@ var extra = []string{
 	"sdk",
 	"examples",
 	"agent.example.json",
+	// Synthetic local logs for working on the dashboard (public packages only).
+	"tools/demolog",
 	".dockerignore",
 	// The concierge's reference implementations the public tests compare
 	// against: ingest (window roots), schema (batch schema) and the Python
@@ -173,6 +175,11 @@ func export(src, out, newModule string) (*Result, error) {
 				if err := c.tree(rel); err != nil {
 					return nil, err
 				}
+			case e.IsDir() && !hasGo(filepath.Join(src, rel)):
+				// Files the package embeds (or reads) from a subdirectory, such as the dashboard's static/.
+				if err := c.tree(rel); err != nil {
+					return nil, err
+				}
 			case e.IsDir():
 				// Sub-packages are copied only if they are in the set themselves.
 			case strings.HasSuffix(name, "_test.go"):
@@ -212,6 +219,19 @@ func export(src, out, newModule string) (*Result, error) {
 		return nil, err
 	}
 	return res, nil
+}
+
+// hasGo reports whether a directory tree holds any Go file (so is, or holds, a package).
+func hasGo(dir string) bool {
+	found := false
+	_ = filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && strings.HasSuffix(p, ".go") {
+			found = true
+			return fs.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // privateImports lists the module packages a Go file imports that are not public.
