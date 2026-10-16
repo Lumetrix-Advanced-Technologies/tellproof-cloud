@@ -1,0 +1,41 @@
+{{define "content"}}
+<div class="head"><p class="label">AI system</p><h1>{{.System.Name}}</h1></div>
+{{template "systemtabs" .}}
+
+<section class="panel narrow">
+  <h2>Share with a reviewer</h2>
+  <p class="muted">The link opens the verify page, which checks the pack in the reviewer's browser. You see when it is opened.</p>
+  {{with .Data.NewLink}}
+  <div class="secret"><p><b>Share link</b> for {{.Org}} (shown once):</p><p class="mono">{{.URL}}</p>
+    <p class="small">It works until {{fmtTime .Expires}} or until you revoke it.</p></div>
+  {{end}}
+  <form class="stack" method="post" action="/systems/{{.System.ID}}/shares">
+    <div class="field"><label for="org">Organisation</label><input type="text" id="org" name="verifier_org" required maxlength="200" placeholder="Southern Cross Bank, vendor risk"></div>
+    <div class="field"><label for="what">Pack</label>
+      <select id="what" name="pack">
+        <option value="">Always the latest pack</option>
+        {{range .Data.Packs}}<option value="{{.ID}}">{{.PackID}} ({{.Period}})</option>{{end}}
+      </select></div>
+    <div class="field"><label for="days">Expires after (days)</label><input type="number" id="days" name="days" min="1" max="365" value="30" required></div>
+    <div><button class="primary" type="submit">Create share link</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Share links</h2>
+  {{if .Data.Links}}
+  <div class="table-scroll"><table>
+    <thead><tr><th>Organisation</th><th>Shows</th><th>Expires</th><th class="num">Views</th><th class="num">Viewers</th><th>Last viewed</th><th></th></tr></thead>
+    <tbody>{{range .Data.Links}}<tr>
+      <td>{{.VerifierOrg}}</td>
+      <td>{{if .PackID}}{{.PackLabel}}{{else}}latest pack{{end}}</td>
+      <td>{{fmtTime .ExpiresAt}}</td>
+      <td class="num">{{.Views}}</td><td class="num">{{.Viewers}}</td>
+      <td>{{if .LastViewed}}{{fmtTime .LastViewed}}{{else}}<span class="muted">not opened</span>{{end}}</td>
+      <td>{{if .RevokedAt}}<span class="pill neutral">Revoked</span>{{else if .Expired}}<span class="pill neutral">Expired</span>{{else}}<form class="inline" method="post" action="/systems/{{$.System.ID}}/shares/{{.ID}}/revoke"><button class="danger" type="submit">Revoke link</button></form>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  <p class="small muted">Viewers counts distinct network addresses per day; addresses are stored only as a daily keyed hash.</p>
+  {{else}}<p class="empty">No share links yet.</p>{{end}}
+</section>
+{{end}}

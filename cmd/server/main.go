@@ -36,6 +36,7 @@ import (
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/server"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/webapp"
 	"github.com/lumetrix-advanced-technologies/plumbline/migrations"
 )
 
@@ -149,6 +150,16 @@ func serve(ctx context.Context, getenv func(string) string, log *slog.Logger, st
 		}
 		api.Sessions = &auth.Sessions{Verifier: &auth.Verifier{JWKSURL: jwksURL, Issuer: sb + "/auth/v1"},
 			Supabase: &auth.Supabase{URL: sb, AnonKey: getenv("SUPABASE_ANON_KEY")}, Store: st, BaseURL: base}
+		verifyBase := strings.TrimRight(getenv("VERIFY_BASE_URL"), "/")
+		if verifyBase == "" {
+			verifyBase = base + "/verify"
+		}
+		app := &webapp.App{Store: st, Auth: api.Sessions.Require, Protect: api.Sessions.SameOrigin, APIBase: base, VerifyBase: verifyBase, Log: log}
+		if err := app.Load(); err != nil {
+			log.Error("serve: web app templates", "error", err.Error())
+			return 1
+		}
+		api.App = app
 	} else {
 		log.Warn("sign-in is off: SUPABASE_URL is not set")
 	}

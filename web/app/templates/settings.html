@@ -1,0 +1,18 @@
+{{define "content"}}
+<div class="head"><h1>Settings</h1></div>
+<section class="panel narrow">
+  <h2>Organisation</h2>
+  <p><b>{{.Data.Org}}</b></p>
+  <h3>Members</h3>
+  <table><thead><tr><th>Email</th><th>Role</th></tr></thead><tbody>
+  {{range .Data.Members}}<tr><td>{{.Email}}</td><td>{{.Role}}</td></tr>{{end}}</tbody></table>
+</section>
+<section class="panel narrow">
+  <h2>Issuer keys</h2>
+  <p>Packs are signed by Plumbline's key. Reviewers verify them against <a href="/.well-known/jwks.json">/.well-known/jwks.json</a>, and every pack issued each day is listed in the public daily checkpoint.</p>
+</section>
+<section class="panel narrow">
+  <h2>Vanta</h2>
+  <p class="muted">Not connected. Sending evidence objectives and packs to Vanta arrives in a later release.</p>
+</section>
+{{end}}

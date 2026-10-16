@@ -46,7 +46,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P4-7 | Daily checkpoint | done | 2026-10-16 | signed, chained daily checkpoints over every pack digest, published to GitHub (never overwritten), empty days and catch-up; `plumbline-verify checkpoint` proves inclusion (D-043) |
 | P5-1 | Share links + verify API | done | 2026-10-16 | `internal/share` (hashed tokens, tenant-checked targets, revoke, list with views) + `GET /v1/verify/{token}` (200/404/410) via `verify_lookup`; the browser verifier accepts its responses (D-044) |
 | P5-2 | Auth | done | 2026-10-16 | Supabase magic link (server-side PKCE), ES256 access tokens verified with `crypto/ecdsa` against the project JWKS, cookie sessions with refresh, Origin-checked forms, member mapping (D-045) |
-| P5-3 | Web app screens | not started | | |
+| P5-3 | Web app screens | done | 2026-10-16 | Onboarding, systems, setup and sources (tokens, agents, declarations), registers (forms and CSV), packs (issue, list, download), share links, settings; no JS; the partner journey runs end to end in a test (D-046) |
 | S-5 | One-command agent install and connect flow | not started | | |
 | S-6 | End to end in CI | not started | | |
 | P6-1 | Vanta integration | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-16 · P5-3 · PR pending · A vendor can go from sign-up to a shared, verified pack using only the app's pages.
 - 2026-10-16 · P5-2 · PR pending · Vendors sign in with a Supabase magic link and every request is tied to their organisation.
 - 2026-10-16 · P5-1 · PR pending · A vendor's share link lets a bank open and verify a pack in the browser, and the vendor sees who looked.
 - 2026-10-16 · P4-7 · PR pending · A public, append-only daily log proves which packs existed by when.

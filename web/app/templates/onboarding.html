@@ -1,0 +1,21 @@
+{{define "content"}}
+<section class="panel narrow">
+  <div class="head"><h1>Set up your organisation</h1>
+    <p class="muted">Name your organisation and the AI system you want evidence for. You can add more systems later.</p></div>
+  <form class="stack" method="post" action="/onboarding">
+    <div class="field"><label for="org">Organisation</label>
+      <input type="text" id="org" name="org" required maxlength="200" autocomplete="organization"></div>
+    <div class="field"><label for="system">AI system</label>
+      <input type="text" id="system" name="system" required maxlength="200" placeholder="Claims triage assistant">
+      <span class="hint">The product or feature a bank or insurer will review.</span></div>
+    <div class="row">
+      <div class="field"><label for="environment">Environment</label>
+        <input type="text" id="environment" name="environment" value="production" required maxlength="40"></div>
+      <div class="field"><label for="timezone">Timezone</label>
+        <select id="timezone" name="timezone">{{range .Data.Timezones}}<option value="{{.}}"{{if eq . "Australia/Sydney"}} selected{{end}}>{{.}}</option>{{end}}</select>
+        <span class="hint">Packs cover whole days in this timezone.</span></div>
+    </div>
+    <div><button class="primary" type="submit">Create organisation</button></div>
+  </form>
+</section>
+{{end}}

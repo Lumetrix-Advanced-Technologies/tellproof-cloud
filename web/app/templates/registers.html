@@ -1,0 +1,70 @@
+{{define "content"}}
+<div class="head"><p class="label">AI system</p><h1>{{.System.Name}}</h1></div>
+{{template "systemtabs" .}}
+<p class="muted">Registers record what telemetry cannot: changes you made, incidents you handled, evaluations you ran. Entries are kept as evidence and never edited; to correct one, add a new entry.</p>
+
+<div class="grid2">
+<section class="panel">
+  <h2>Changes</h2>
+  <form class="stack" method="post" action="/systems/{{.System.ID}}/registers/changes">
+    <div class="row">
+      <div class="field"><label for="c-date">Date</label><input type="date" id="c-date" name="date" required></div>
+      <div class="field"><label for="c-kind">Kind</label><select id="c-kind" name="kind">{{range .Data.ChangeKinds}}<option>{{.}}</option>{{end}}</select></div>
+    </div>
+    <div class="field"><label for="c-what">What changed</label><input type="text" id="c-what" name="what" required maxlength="500"></div>
+    <div><button class="primary" type="submit">Add change</button></div>
+  </form>
+  {{template "upload" dict "System" .System.ID "Kind" "changes" "Columns" "date,kind,what"}}
+  {{if .Data.Changes}}<div class="table-scroll"><table><thead><tr><th>Date</th><th>Kind</th><th>What</th></tr></thead><tbody>
+  {{range .Data.Changes}}<tr><td>{{.Date}}</td><td>{{.Kind}}</td><td>{{.What}}</td></tr>{{end}}</tbody></table></div>
+  {{else}}<p class="empty">No changes recorded.</p>{{end}}
+</section>
+
+<section class="panel">
+  <h2>Incidents</h2>
+  <form class="stack" method="post" action="/systems/{{.System.ID}}/registers/incidents">
+    <div class="row">
+      <div class="field"><label for="i-id">Reference</label><input type="text" id="i-id" name="id" required pattern="[A-Za-z0-9._-]{1,40}" placeholder="INC-0012"></div>
+      <div class="field"><label for="i-opened">Opened (UTC)</label><input type="datetime-local" id="i-opened" name="opened" required></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="i-ack">Acknowledged (UTC)</label><input type="datetime-local" id="i-ack" name="acknowledged"></div>
+      <div class="field"><label for="i-res">Resolved (UTC)</label><input type="datetime-local" id="i-res" name="resolved"></div>
+    </div>
+    <div class="field"><label for="i-summary">Summary</label><input type="text" id="i-summary" name="summary" required maxlength="500">
+      <span class="hint">To record a later acknowledgement or resolution, add the same reference again with the times filled in.</span></div>
+    <div><button class="primary" type="submit">Add incident</button></div>
+  </form>
+  {{template "upload" dict "System" .System.ID "Kind" "incidents" "Columns" "id,opened,acknowledged,resolved,summary"}}
+  {{if .Data.Incidents}}<div class="table-scroll"><table><thead><tr><th>Ref</th><th>Opened</th><th>Acknowledged</th><th>Summary</th></tr></thead><tbody>
+  {{range .Data.Incidents}}<tr><td class="mono">{{.ID}}</td><td>{{.Opened}}</td><td>{{if .Acknowledged}}{{.Acknowledged}}{{else}}<span class="muted">not yet</span>{{end}}</td><td>{{.Summary}}</td></tr>{{end}}</tbody></table></div>
+  {{else}}<p class="empty">No incidents recorded.</p>{{end}}
+</section>
+
+<section class="panel">
+  <h2>Evaluation runs</h2>
+  <form class="stack" method="post" action="/systems/{{.System.ID}}/registers/evals">
+    <div class="row">
+      <div class="field"><label for="e-suite">Suite</label><input type="text" id="e-suite" name="suite" required maxlength="128"></div>
+      <div class="field"><label for="e-model">Model</label><input type="text" id="e-model" name="model" required maxlength="128"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="e-pv">Prompt version</label><input type="text" id="e-pv" name="prompt_version" maxlength="128"></div>
+      <div class="field"><label for="e-ran">Ran at (UTC)</label><input type="datetime-local" id="e-ran" name="ran_at" required></div>
+      <div class="field"><label for="e-rate">Pass rate</label><input type="number" id="e-rate" name="pass_rate" min="0" max="1" step="0.001" required></div>
+    </div>
+    <div><button class="primary" type="submit">Add evaluation run</button></div>
+  </form>
+  {{template "upload" dict "System" .System.ID "Kind" "evals" "Columns" "suite,model,prompt_version,ran_at,pass_rate"}}
+  {{if .Data.Evals}}<div class="table-scroll"><table><thead><tr><th>Suite</th><th>Model</th><th>Prompt</th><th>Ran at</th><th class="num">Pass rate</th></tr></thead><tbody>
+  {{range .Data.Evals}}<tr><td>{{.Suite}}</td><td class="mono">{{.Model}}</td><td>{{.PromptVersion}}</td><td>{{.RanAt}}</td><td class="num">{{printf "%.3f" .PassRate}}</td></tr>{{end}}</tbody></table></div>
+  {{else}}<p class="empty">No evaluation runs recorded. Runs reported by Langfuse arrive with the agent's batches.</p>{{end}}
+</section>
+</div>
+{{end}}
+
+{{define "upload"}}<form class="row" method="post" action="/systems/{{.System}}/registers/{{.Kind}}/upload" enctype="multipart/form-data">
+  <div class="field"><label for="up-{{.Kind}}">Or upload a CSV</label><input type="file" id="up-{{.Kind}}" name="file" accept=".csv,text/csv" required>
+    <span class="hint">Columns: <code>{{.Columns}}</code></span></div>
+  <button type="submit">Upload</button>
+</form>{{end}}

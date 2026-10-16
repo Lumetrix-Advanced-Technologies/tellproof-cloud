@@ -25,6 +25,8 @@ type Server struct {
 	ClientIPHeader string
 	// Sessions signs people in with Supabase Auth; nil: no sign-in routes.
 	Sessions *auth.Sessions
+	// App is the vendor web app (internal/webapp); nil: API only.
+	App interface{ Routes(*http.ServeMux) }
 }
 
 // Handler routes the API.
@@ -39,6 +41,9 @@ func (s *Server) Handler() http.Handler {
 		mux.HandleFunc("GET /auth/callback", a.Callback)
 		mux.Handle("POST /auth/logout", a.SameOrigin(http.HandlerFunc(a.Logout)))
 		mux.Handle("GET /v1/me", a.Require(false, http.HandlerFunc(s.me)))
+	}
+	if s.App != nil {
+		s.App.Routes(mux)
 	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.Store.Pool.Ping(r.Context()); err != nil {
