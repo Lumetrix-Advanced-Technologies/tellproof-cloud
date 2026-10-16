@@ -6,7 +6,7 @@ GO_PKGS := ./...
 STATICCHECK := honnef.co/go/tools/cmd/staticcheck@2026.2.2
 GOVULNCHECK := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
-.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test test-db run-server run-worker agent-dry concierge-verify
+.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test test-db agent-binaries agent-image run-server run-worker agent-dry concierge-verify
 
 check: fmt-check vet staticcheck vuln test vectors concierge-test sdk-test
 
@@ -70,3 +70,15 @@ sdk-test:
 
 concierge-verify:
 	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/*.dsse.json
+
+# Static agent binaries for every platform, with checksums (S-5; releases in P6-2).
+AGENT_PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
+VERSION ?= dev
+agent-binaries:
+	@rm -rf dist && mkdir -p dist
+	@for p in $(AGENT_PLATFORMS); do os=$${p%/*}; arch=$${p#*/}; ext=; [ $$os = windows ] && ext=.exe; \
+	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/plumbline-agent-$$os-$$arch$$ext ./cmd/agent || exit 1; done
+	@cd dist && sha256sum plumbline-agent-* > SHA256SUMS && cat SHA256SUMS
+
+agent-image:
+	docker build -f cmd/agent/Dockerfile --build-arg VERSION=$(VERSION) -t plumbline-agent:$(VERSION) .

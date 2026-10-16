@@ -211,7 +211,7 @@ func TestNewPartnerToFirstPackAndShare(t *testing.T) {
 	// 3. Enrolment token, shown once; the real agent enrols with it and delivers the sample.
 	r = rg.post(userA, sys+"/enrolment-tokens", nil)
 	token := secret(t, r.body, "Enrolment token")
-	if !strings.Contains(r.body, "PLUMBLINE_ENROL_TOKEN="+token) || !strings.Contains(r.body, "plumbline.init()") {
+	if !strings.Contains(r.body, "connect "+token) || !strings.Contains(r.body, "-e PLUMBLINE_SERVER="+rg.srv.URL) || !strings.Contains(r.body, "plumbline.init()") {
 		t.Errorf("the install snippet is missing")
 	}
 	dir := filepath.Join(t.TempDir(), "agent")

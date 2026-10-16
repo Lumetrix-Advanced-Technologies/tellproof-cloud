@@ -124,6 +124,27 @@ func (a *Aggregator) Flush(now time.Time) []Window {
 	return a.close(func(h time.Time) bool { return !h.Add(time.Hour + a.cfg.Grace).After(now) })
 }
 
+// FlushOpen emits every window now without closing its hour: spans that
+// arrive later for the same hour start a new window for it, emitted when the
+// hour closes. Windows are additive (D-032), so this gives a new agent its
+// first batch within minutes instead of after the hour (S-5); a trace is still
+// committed only once, in the batch where it first appears.
+func (a *Aggregator) FlushOpen() []Window {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	var hours []time.Time
+	for h := range a.windows {
+		hours = append(hours, h)
+	}
+	slices.SortFunc(hours, func(x, y time.Time) int { return x.Compare(y) })
+	out := make([]Window, 0, len(hours))
+	for _, h := range hours {
+		out = append(out, a.build(h, a.windows[h]))
+		delete(a.windows, h)
+	}
+	return out
+}
+
 // FlushAll closes every window (shutdown, or offline replay of an export).
 func (a *Aggregator) FlushAll() []Window {
 	a.mu.Lock()

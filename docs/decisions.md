@@ -354,3 +354,13 @@ The issuer's JWKS (`/.well-known/jwks.json`, P4-6) now says when each key may vo
 - **Scope.** Every query runs in the member's tenant scope (row-level security), and ids from the URL are checked against the tenant's own systems (another tenant's system is a 404). Redirect messages are chosen by code, never echoed from the query string.
 - **Onboarding** creates the tenant, the person's admin membership and the first system in one SECURITY DEFINER call (`onboard`), because no tenant exists yet; it does nothing for someone already in an organisation.
 - **Wiring.** `serve` mounts the app when sign-in is configured (`SUPABASE_URL` and friends, D-045); `VERIFY_BASE_URL` is where share links point (default `PUBLIC_BASE_URL/verify`).
+
+## D-047 One-command agent install (16 Oct 2026)
+
+S-5 makes connecting a system one `docker run` line (or one binary command) and one line of app code:
+
+- **`plumbline-agent connect <token>`** enrols with the one-time token unless the data directory is already enrolled (so the same line restarts a container without a new token), keeps a random salt secret in the data directory (`salt.secret`, 0600) when none is configured, and runs. Configuration comes from the environment (`PLUMBLINE_SERVER`, `PLUMBLINE_DATA_DIR`, ...), with `--config` optional. The data directory holds the agent's key, queue, leaves and salt: keeping it is what lets a vendor disclose a trace later.
+- **Early first batch.** Windows normally close an hour after they start plus the grace, so a new agent would not be seen for up to 65 minutes. After the first spans of a run arrive, the agent sends what it has `first_batch_seconds` later (default 60) without closing the hour (`aggregate.FlushOpen`); the rest of the hour follows as a second batch for the same window, which windows being additive (D-032) allows. Each trace is still committed once, and nothing is counted late.
+- **Container.** `cmd/agent/Dockerfile`: a static binary on distroless (nonroot, `/data` volume). Inside the container the receiver listens on all interfaces (`PLUMBLINE_OTLP_ALLOW_REMOTE=1`, a new environment override); the documented line publishes it on the host's loopback only (`-p 127.0.0.1:4318:4318`). The image name in the app's snippet, `ghcr.io/lumetrix-advanced-technologies/plumbline-agent`, is published by the release work (P6-2).
+- **Binaries.** `make agent-binaries` builds static binaries for linux, darwin and windows on amd64 and arm64 with `SHA256SUMS`; signing and publishing them is P6-2.
+- **The Setup screen** shows the `docker run` line and the binary command with the token and server filled in, then the one-line `init()` for Python and Node.js.

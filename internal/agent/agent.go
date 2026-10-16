@@ -39,6 +39,8 @@ type Options struct {
 	Now    func() time.Time // default time.Now
 	HTTP   *http.Client     // for usage, Langfuse and delivery (tests)
 	Getenv func(string) string
+	// TickEvery is how often Run closes windows and delivers; default one minute.
+	TickEvery time.Duration
 }
 
 // Agent is one running evidence agent.
@@ -59,6 +61,8 @@ type Agent struct {
 	mu         sync.Mutex
 	dryState   batchsign.State // chain state of printed batches in dry-run
 	pulledThru time.Time       // Langfuse hours pulled up to here
+	firstSpans time.Time       // when the first spans of this run arrived
+	firstSent  bool            // the early first batch has been sent
 }
 
 // DryRunAgentID is the identity a dry run uses before enrolment.
@@ -163,7 +167,15 @@ func (a *Agent) AgentID() string { return a.id.AgentID }
 
 // Receiver is the OTLP/HTTP JSON endpoint; mount it at /v1/traces.
 func (a *Agent) Receiver() http.Handler {
-	return &otlp.Receiver{Mapping: a.mapping, Sink: func(r otlp.Result) { a.agg.Add(r.Spans, a.opt.Now()) }}
+	return &otlp.Receiver{Mapping: a.mapping, Sink: func(r otlp.Result) {
+		now := a.opt.Now()
+		a.agg.Add(r.Spans, now)
+		a.mu.Lock()
+		if a.firstSpans.IsZero() && len(r.Spans) > 0 {
+			a.firstSpans = now
+		}
+		a.mu.Unlock()
+	}}
 }
 
 // Replay feeds an OTLP JSON export (one request per line, or one document)
@@ -197,7 +209,22 @@ func (a *Agent) Tick(ctx context.Context) error {
 	if err := a.pullLangfuse(ctx, now); err != nil {
 		a.opt.Log.Warn("langfuse pull failed; will retry", "error", err.Error())
 	}
-	return a.emit(ctx, a.agg.Flush(now))
+	if err := a.emit(ctx, a.agg.Flush(now)); err != nil {
+		return err
+	}
+	// Once per start: send the open hour early so the server sees a new agent within minutes.
+	a.mu.Lock()
+	due := !a.firstSent && !a.firstSpans.IsZero() && a.cfg.Aggregation.FirstBatchSeconds > 0 &&
+		!now.Before(a.firstSpans.Add(time.Duration(a.cfg.Aggregation.FirstBatchSeconds)*time.Second))
+	if due {
+		a.firstSent = true
+	}
+	a.mu.Unlock()
+	if due {
+		a.opt.Log.Info("sending the first batch early; later batches follow each hour")
+		return a.emit(ctx, a.agg.FlushOpen())
+	}
+	return nil
 }
 
 // Shutdown closes every open window and emits it.
@@ -336,7 +363,11 @@ func (a *Agent) Run(ctx context.Context) error {
 	go func() { _ = srv.Serve(ln) }()
 	a.opt.Log.Info("agent started", "agent_id", a.id.AgentID, "otlp", a.cfg.OTLPListen, "server", a.cfg.Server, "dry_run", a.opt.DryRun)
 
-	tick := time.NewTicker(time.Minute)
+	every := a.opt.TickEvery
+	if every <= 0 {
+		every = time.Minute
+	}
+	tick := time.NewTicker(every)
 	defer tick.Stop()
 	deliver := make(chan struct{}, 1)
 	go func() {

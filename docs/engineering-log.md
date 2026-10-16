@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-16 · S-5 · One-command install and connect
+
+**Built.** `plumbline-agent connect`, `aggregate.FlushOpen` and the agent's early first batch (`aggregation.first_batch_seconds`), the `PLUMBLINE_OTLP_ALLOW_REMOTE` override, `agent.Options.TickEvery`, `cmd/agent/Dockerfile` and `.dockerignore`, `make agent-binaries` and `make agent-image`, a CI job that builds and smoke-tests the image, and the Setup screen's `docker run` snippet. Choices in D-047.
+
+**Problems.** The acceptance target (a batch within five minutes) was impossible as designed: the agent sent a window only after its hour closed, up to 65 minutes after the first call. Additive windows (D-032) made an early partial batch safe; the aggregator gained `FlushOpen`, which emits without closing the hour, so later spans for that hour are neither late nor double-committed. I did not build the container locally (it would pull the Go and distroless base images); the new CI job does.
+
+**Verified.** Acceptance, as on a clean machine: against the real server and database, `connect` with a token from the app enrols, creates a 0600 salt secret and listens; a sample Python app with the one-line `init()` makes one model call; the server holds the batch with that call about 1.2 seconds later (first batch after 1 second in the test; the default 60 seconds keeps it within the five minutes). Running the same command again with the used token starts without enrolling again (one agent). Without a server or a token, `connect` says what is missing. The early batch is sent once per start and the rest of the hour follows as a second batch for the same window, with no late spans and each trace committed once. All six platform binaries build with checksums. The Setup screen's snippet carries the token and server.
+
 ## 2026-10-16 · P5-3 · Web app screens
 
 **Built.** `internal/webapp` (onboarding, systems, setup and sources, registers with CSV import, packs, share links, settings), templates and stylesheet in `web/app/`, `web/embed.go`, migration `0006_onboarding.sql`, and `serve` mounting the app with the sessions of P5-2. Choices in D-046.
