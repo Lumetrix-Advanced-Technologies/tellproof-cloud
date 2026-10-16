@@ -33,6 +33,7 @@ import (
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/secretbox"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/server"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
@@ -48,6 +49,7 @@ type rig struct {
 	st     *store.Store
 	owner  *pgx.Conn
 	signer *kmssign.Local
+	app    *webapp.App
 	t      *testing.T
 }
 
@@ -93,6 +95,10 @@ func newRig(t *testing.T) *rig {
 	if err := app.Load(); err != nil {
 		t.Fatal(err)
 	}
+	key := make([]byte, 32)
+	_, _ = rand.Read(key)
+	app.Secrets, _ = secretbox.New(key)
+	rg.app = app
 	api := &server.Server{Store: st, Log: quiet(), ViewSecret: []byte("a-view-secret-for-tests-0123"), App: app}
 	mux.Handle("/", api.Handler())
 

@@ -18,6 +18,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/auth"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/secretbox"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
 	"github.com/lumetrix-advanced-technologies/plumbline/web"
 )
@@ -32,8 +33,10 @@ type App struct {
 	Protect    func(h http.Handler) http.Handler
 	APIBase    string // PUBLIC_BASE_URL: where agents and reviewers reach this server
 	VerifyBase string // VERIFY_BASE_URL: the static verify page
-	Log        *slog.Logger
-	Now        func() time.Time
+	// Secrets seals integration credentials (INTEGRATION_KEY); nil: Vanta cannot be connected.
+	Secrets *secretbox.Box
+	Log     *slog.Logger
+	Now     func() time.Time
 
 	pages map[string]*template.Template
 }
@@ -133,6 +136,9 @@ var flashes = map[string]Flash{
 	"recorded":     {"ok", "Register entry added."},
 	"issuing":      {"warn", "Issuing the pack. It appears below in a few seconds; reload to see it."},
 	"link-revoked": {"ok", "Share link revoked. It stops working at once."},
+	"vanta":        {"ok", "Vanta connected. The first sync runs now; reload in a minute to see its result."},
+	"vanta-sync":   {"warn", "Syncing with Vanta. Reload in a minute to see the result."},
+	"vanta-off":    {"ok", "Vanta disconnected. Its share links are revoked and the credentials deleted."},
 }
 
 func flashFromQuery(r *http.Request) *Flash {
@@ -211,6 +217,9 @@ func (a *App) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /systems/{sid}/shares", post(a.createShare))
 	mux.Handle("POST /systems/{sid}/shares/{lid}/revoke", post(a.revokeShare))
 	mux.Handle("GET /settings", member(a.settings))
+	mux.Handle("POST /settings/vanta", post(a.saveVanta))
+	mux.Handle("POST /settings/vanta/sync", post(a.syncVanta))
+	mux.Handle("POST /settings/vanta/disconnect", post(a.disconnectVanta))
 }
 
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
@@ -267,29 +276,4 @@ func (a *App) onboard(w http.ResponseWriter, r *http.Request) {
 	}
 	a.Log.Info("organisation created", "ai_system_id", *systemID)
 	seeOther(w, r, "/systems/"+*systemID, "welcome")
-}
-
-func (a *App) settings(w http.ResponseWriter, r *http.Request) {
-	type m struct{ Email, Role string }
-	var org string
-	var members []m
-	err := a.inTenant(r, func(tx pgx.Tx) error {
-		if err := tx.QueryRow(r.Context(), `SELECT name FROM tenants`).Scan(&org); err != nil {
-			return err
-		}
-		rows, err := tx.Query(r.Context(), `SELECT email, role FROM members ORDER BY created_at`)
-		if err != nil {
-			return err
-		}
-		members, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (m, error) {
-			var x m
-			return x, row.Scan(&x.Email, &x.Role)
-		})
-		return err
-	})
-	if err != nil {
-		a.fail(w, r, err)
-		return
-	}
-	a.render(w, r, http.StatusOK, "settings", page{Title: "Settings", Section: "settings", Data: map[string]any{"Org": org, "Members": members}})
 }

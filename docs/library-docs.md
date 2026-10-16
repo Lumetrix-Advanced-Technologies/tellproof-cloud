@@ -72,8 +72,10 @@ Working notes on every external interface, as of October 2026. Items marked **(v
 
 - The customer creates an application in Vanta and pastes the client ID and secret. Private integrations may define **custom resource types**; public integrations are limited to built-in types. (verify with integrationpartners@vanta.com before a public listing)
 - Sync is an idempotent, full-state `PUT` of all resources of one type, keyed by `uniqueId`; resources left out count as deleted. Up to 10,000 resources and 10 MB per call. Rate limit **20 requests per minute per token**. Tokens last 3,600 s and minting a new one revokes the old, so one job owns one token per customer.
-- Upload packs as documents with the `self:write-document` scope.
-- Docs: https://developer.vanta.com/reference/build-integrations/overview , https://developer.vanta.com/docs/concepts/resources
+- Token: `POST https://api.vanta.com/oauth/token`, JSON `{client_id, client_secret, scope, grant_type: "client_credentials"}` → `{access_token, expires_in}`. Scopes used: `connectors.self:write-resource` and, for uploads, `connectors.self:write-document`.
+- Resources: `PUT /v1/resources/custom_resource` with `{resourceId, resources: [{displayName, uniqueId, externalUrl (https), customProperties: {...}}]}` → `{success}`. Custom properties are flat (boolean, int32, string, timestamp as ISO 8601) and declared in the resource's schema in the developer console.
+- Documents: `POST /v1/documents/{documentId}/uploads`, multipart `file` (required), `effectiveAtDate`, `description` → 201. (confirm the scope with a real account: the guides name `connectors.self:write-document` but do not demonstrate it)
+- Docs: https://developer.vanta.com/reference/build-integrations/overview , https://developer.vanta.com/docs/concepts/resources , https://developer.vanta.com/docs/quickstart/build-private-integration
 
 ## Drata
 
