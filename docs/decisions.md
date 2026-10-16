@@ -28,7 +28,7 @@ KMS `Sign` accepts at most 4,096 bytes and packs are about 12 KB, so we compute 
 
 ## D-007 OPEN: Supabase session verification
 
-Confirm the project signs sessions with asymmetric keys (JWKS) so the server verifies with `crypto/ecdsa` and no JWT library. Owner: build lead, by 29 Nov 2026.
+Confirm the project signs sessions with asymmetric keys (JWKS) so the server verifies with `crypto/ecdsa` and no JWT library. Owner: build lead, by 29 Nov 2026. (Code side done in D-045: only ES256 tokens are accepted; what remains is confirming the project's key type in the Supabase dashboard.)
 
 ## D-008 OPEN: predicateType domain
 
@@ -333,3 +333,13 @@ The issuer's JWKS (`/.well-known/jwks.json`, P4-6) now says when each key may vo
 - **The API.** `200 {envelope, prev_envelope_digest, pack_meta{pack_id, seq_no, digest, verifier_org, expires_at}}`; `410` for a revoked or expired link; `404` for an unknown or malformed token, or a system link before its first pack. `prev_envelope_digest` is the digest the issuer *stored* for the previous seq, so the page's chain check compares the pack's claim with the issuer's record (0001's `verify_fetch` returned the pack's own claim, which would compare a value with itself, and could not tell 404 from 410; `verify_lookup` replaces it). Public, `no-store`, `noindex`, `no-referrer`, CORS `*` without credentials.
 - **The view log.** A view is logged only when a pack is returned: the pack digest, a browser family (`chrome`, `safari`, `curl`, `plumbline-verify`…, never the raw User-Agent) and `HMAC-SHA256(VIEW_HASH_SECRET, UTC day | client address)`, so repeat views in a day are countable while addresses are not recoverable and cannot be linked across days. The client address comes from `CLIENT_IP_HEADER` behind a proxy (Fly-Client-IP on Fly.io), else the socket. Tokens are never logged.
 - **Not yet here.** Creating and revoking links over HTTP needs sessions (P5-2) and arrives with the web app (P5-3).
+
+## D-045 Sign-in with Supabase Auth (16 Oct 2026)
+
+`internal/auth` (P5-2) implements the session design of docs/architecture.md §4.2 and answers the code side of D-007:
+
+- **Supabase owns login.** People sign in with a magic link from Supabase Auth, in Supabase's server-side PKCE flow: `POST /auth/login` asks Supabase (`/auth/v1/otp`, `create_user`, an S256 challenge, `redirect_to` the app's `/auth/callback`) to email the link, keeping the code verifier in a 15-minute cookie scoped to `/auth`; the callback exchanges `?code=` with the verifier (`/token?grant_type=pkce`). Nothing about passwords, links or email delivery is implemented here. The login answer is the same whether or not the address has an account.
+- **The server verifies Supabase's access tokens itself** against the project's JWKS with `crypto/ecdsa`: `alg` must be ES256 (never `none` or a symmetric algorithm), the `kid` must be in the JWKS (refetched every 10 minutes, or on an unknown kid at most every 30 seconds), and `iss`, `aud` (`authenticated`, a string or an array), `role` (`authenticated`, so anon and service-role tokens never act as a person), `exp` and `nbf` are checked with 30 seconds of leeway. This needs a project on asymmetric signing keys: a project still on the legacy HS256 secret must switch before launch (D-007's remaining step is to confirm that in the Supabase dashboard).
+- **Sessions are Supabase's tokens** in `HttpOnly`, `SameSite=Lax` cookies (`Secure` on https): the access token for its lifetime and the refresh token for 30 days. An expired access token is refreshed through Supabase; a refused refresh clears both and signs the person out. API clients may send `Authorization: Bearer` instead. Sign-out calls Supabase's `/logout`.
+- **CSRF.** State-changing cookie requests must carry an `Origin` (or `Referer`) equal to `PUBLIC_BASE_URL`, on top of `SameSite=Lax`; bearer calls carry no cookies and are exempt.
+- **Membership.** `member_lookup` maps the token's subject to a member of one organisation (the first by tenant id until the app offers a switcher). A signed-in person without one goes to onboarding (the API answers 403).

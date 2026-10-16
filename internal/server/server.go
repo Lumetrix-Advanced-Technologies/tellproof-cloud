@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/auth"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
 )
@@ -22,6 +23,8 @@ type Server struct {
 	ViewSecret []byte
 	// ClientIPHeader names the proxy header with the client address (Fly-Client-IP on Fly.io); empty: the socket address.
 	ClientIPHeader string
+	// Sessions signs people in with Supabase Auth; nil: no sign-in routes.
+	Sessions *auth.Sessions
 }
 
 // Handler routes the API.
@@ -31,6 +34,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/batches", s.ingest)
 	mux.HandleFunc("GET /.well-known/jwks.json", s.jwks)
 	mux.HandleFunc("GET /v1/verify/{token}", s.verify)
+	if a := s.Sessions; a != nil {
+		mux.Handle("POST /auth/login", a.SameOrigin(http.HandlerFunc(a.Login)))
+		mux.HandleFunc("GET /auth/callback", a.Callback)
+		mux.Handle("POST /auth/logout", a.SameOrigin(http.HandlerFunc(a.Logout)))
+		mux.Handle("GET /v1/me", a.Require(false, http.HandlerFunc(s.me)))
+	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.Store.Pool.Ping(r.Context()); err != nil {
 			writeError(w, http.StatusServiceUnavailable, "database unavailable")
@@ -73,4 +82,14 @@ func (s *Server) jwks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	w.Header().Set("Access-Control-Allow-Origin", "*") // the static verify page fetches it from another origin
 	_, _ = w.Write(body)
+}
+
+// me: GET /v1/me, who is signed in and in which organisation.
+func (s *Server) me(w http.ResponseWriter, r *http.Request) {
+	id := auth.From(r.Context())
+	out := map[string]any{"user_id": id.Claims.Subject, "email": id.Claims.Email, "member": nil}
+	if m := id.Member; m != nil {
+		out["member"] = map[string]string{"id": m.ID, "tenant_id": m.TenantID, "role": m.Role}
+	}
+	writeJSON(w, http.StatusOK, out)
 }

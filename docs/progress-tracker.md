@@ -45,7 +45,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P4-6 | JWKS and rotation | done | 2026-10-16 | nbf/exp/revoked in the JWKS with one rule in all three verifiers (14 new key vectors); `signing_keys` + `keys add/retire/revoke/list`; `/.well-known/jwks.json`; issuer signs only with an in-date registered key (D-042) |
 | P4-7 | Daily checkpoint | done | 2026-10-16 | signed, chained daily checkpoints over every pack digest, published to GitHub (never overwritten), empty days and catch-up; `plumbline-verify checkpoint` proves inclusion (D-043) |
 | P5-1 | Share links + verify API | done | 2026-10-16 | `internal/share` (hashed tokens, tenant-checked targets, revoke, list with views) + `GET /v1/verify/{token}` (200/404/410) via `verify_lookup`; the browser verifier accepts its responses (D-044) |
-| P5-2 | Auth | not started | | |
+| P5-2 | Auth | done | 2026-10-16 | Supabase magic link (server-side PKCE), ES256 access tokens verified with `crypto/ecdsa` against the project JWKS, cookie sessions with refresh, Origin-checked forms, member mapping (D-045) |
 | P5-3 | Web app screens | not started | | |
 | S-5 | One-command agent install and connect flow | not started | | |
 | S-6 | End to end in CI | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-16 · P5-2 · PR pending · Vendors sign in with a Supabase magic link and every request is tied to their organisation.
 - 2026-10-16 · P5-1 · PR pending · A vendor's share link lets a bank open and verify a pack in the browser, and the vendor sees who looked.
 - 2026-10-16 · P4-7 · PR pending · A public, append-only daily log proves which packs existed by when.
 - 2026-10-16 · P4-6 · PR pending · Signing keys can be rotated and revoked, and every verifier agrees which packs a key still vouches for.

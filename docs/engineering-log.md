@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-16 · P5-2 · Auth
+
+**Built.** `internal/auth`: `Verifier` (Supabase access tokens, ES256 against the project JWKS with `crypto/ecdsa`), `Supabase` (magic link with PKCE, code exchange, refresh, sign-out), `Sessions` (`Authenticate`, `Require`, `SameOrigin`, `MemberOf`, and the `/auth/login`, `/auth/callback`, `/auth/logout` handlers). `serve` mounts them and `GET /v1/me` when `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `PUBLIC_BASE_URL` are set. Choices in D-045.
+
+**Problems.** Supabase's README does not document the PKCE parameters; I read the field names from the supabase/auth source instead (`OtpParams`, `PKCEGrantParams`, `redirect_to`). A first test helper reset the app role on a pooled connection to seed a member; replaced with a plain owner connection.
+
+**Verified.** Against a fake Supabase that mints real ES256 tokens and checks PKCE: a valid token verifies (aud as a string or an array); HS256 and `none` headers, tampered claims, a wrong issuer or audience, anon and service-role tokens, a missing `exp`, a future `nbf`, a non-UUID subject and malformed tokens are refused; an expired token is "expired", within 30 seconds it still passes; after Supabase rotates its key the verifier refetches, but not within 30 seconds of the last fetch. Signed out, pages redirect to `/login?next=…` and the API answers 401; signed in without an organisation, pages go to `/onboarding` (API 403); with a member, the identity carries the tenant and role; bearer tokens work. An expired cookie is refreshed through Supabase into new HttpOnly, Secure, SameSite=Lax cookies; a refused refresh clears them; a forged cookie is not refreshed. Forms from another site, over plain http or with neither Origin nor Referer are refused. The magic-link flow sends an S256 challenge (not the verifier) and the callback URL, stores the verifier only in an `/auth` cookie, exchanges the code, and refuses a callback without that cookie or with someone else's verifier; logout calls Supabase and clears the cookies.
+
 ## 2026-10-16 · P5-1 · Share links and the public verify API
 
 **Built.** `internal/share` (`Create`, `Revoke`, `List`, `Fetch`, `UAFamily`), migration `0005_verify_lookup.sql`, `GET /v1/verify/{token}`, and `serve` reading `VIEW_HASH_SECRET` and `CLIENT_IP_HEADER`. Choices in D-044.
