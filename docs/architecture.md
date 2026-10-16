@@ -145,7 +145,7 @@ Share token: 16 random bytes, base64url; store `sha256(token)`. The verify page 
 
 ### 4.7 Vanta
 
-A private integration per customer (client credentials pasted in Settings). Hourly `vanta_sync` job: full-state `PUT` of `AIAssuranceControl` resources (one per objective: `uniqueId`, `displayName`, `status`, `lastEvaluated`, `packDigest`, `verifyUrl`), then upload new packs as documents. One token per customer; rate limit 20 req/min. Drata: manual upload until a Drata Advanced customer pays.
+A private integration per customer (D-049): an admin pastes the client ID and secret of their own Vanta application, the custom resource ID and optionally a document ID in Settings; the credentials are sealed with AES-256-GCM under `INTEGRATION_KEY` in `integration_secrets`. Hourly `vanta_sync` job: per connected tenant, mint a token (client credentials), one full-state `PUT /v1/resources/custom_resource` of one resource per objective of each system's latest pack (`uniqueId` `plumbline:<system>:<objective>`; custom properties `objectiveId`, `objective`, `system`, `status`, `passing`, `packId`, `packDigest`, `periodStart`, `periodEnd`, `lastEvaluated`, `verifyUrl`), then upload packs not yet sent as files of the document (at most 10 per hour; rate limit 20 req/min per token). `verifyUrl` is a share link for the system's latest pack that the sync keeps alive and the vendor can revoke. Errors are stored per tenant as a sentence. Drata: manual upload until a Drata Advanced customer pays.
 
 ## 5. Data
 
@@ -154,7 +154,7 @@ Postgres 16 on Supabase (Sydney). Schema in `migrations/0001_init.sql`. The serv
 ## 6. Deployment and config
 
 - Fly.io app `plumbline` in `syd`, one shared-cpu-1x 512 MB machine running both process groups (`fly.toml` `[processes] serve = "serve"`, `work = "work"`).
-- Env: `DATABASE_URL`, `KMS_KEY_ID`, `AWS_REGION=ap-southeast-2`, `SUPABASE_URL`, `SUPABASE_JWKS_URL`, `PUBLIC_BASE_URL`, `VERIFY_BASE_URL`, `CHECKPOINT_REPO`, `GITHUB_TOKEN`, `RESEND_API_KEY`. Secrets via `fly secrets`.
+- Env: `DATABASE_URL`, `KMS_KEY_ID`, `AWS_REGION=ap-southeast-2`, `SUPABASE_URL`, `SUPABASE_JWKS_URL`, `PUBLIC_BASE_URL`, `VERIFY_BASE_URL`, `CHECKPOINT_REPO`, `GITHUB_TOKEN`, `RESEND_API_KEY`, `INTEGRATION_KEY` (seals vendors' Vanta credentials; optional `VANTA_API_URL`). Secrets via `fly secrets`.
 - Environments: local (docker compose Postgres; `KMS_KEY_ID=local` uses a P-256 key from `.dev/local-signing.pem`), staging, production. Different KMS keys; the verify page shows the `kid`.
 
 ## 7. Deferred (and the trigger that brings each back)

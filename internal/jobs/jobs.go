@@ -231,7 +231,9 @@ func (w *Worker) Run(ctx context.Context) error {
 }
 
 // EnsureScheduled enqueues a job of kind at runAt unless one is already
-// pending; an advisory lock keeps two workers from both adding one.
+// pending; an advisory lock keeps two workers from both adding one. Scheduled
+// jobs have no tenant: a tenant's own job of the same kind (a vanta_sync the
+// vendor asked for) does not count.
 func EnsureScheduled(ctx context.Context, s *store.Store, kind string, runAt time.Time) error {
 	return ensure(ctx, s, kind, runAt, 0)
 }
@@ -250,7 +252,7 @@ func ensure(ctx context.Context, s *store.Store, kind string, runAt time.Time, e
 			return err
 		}
 		var pending bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM jobs WHERE kind = $1 AND done_at IS NULL AND id <> $2)`, kind, except).Scan(&pending); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM jobs WHERE kind = $1 AND tenant_id IS NULL AND done_at IS NULL AND id <> $2)`, kind, except).Scan(&pending); err != nil {
 			return err
 		}
 		if pending {

@@ -34,8 +34,10 @@ import (
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/secretbox"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/server"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/vanta"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/webapp"
 	"github.com/lumetrix-advanced-technologies/plumbline/migrations"
 )
@@ -155,6 +157,12 @@ func serve(ctx context.Context, getenv func(string) string, log *slog.Logger, st
 			verifyBase = base + "/verify"
 		}
 		app := &webapp.App{Store: st, Auth: api.Sessions.Require, Protect: api.Sessions.SameOrigin, APIBase: base, VerifyBase: verifyBase, Log: log}
+		box, err := integrationKey(getenv)
+		if err != nil {
+			fmt.Fprintln(stderr, "plumbline-server:", err)
+			return 2
+		}
+		app.Secrets = box
 		if err := app.Load(); err != nil {
 			log.Error("serve: web app templates", "error", err.Error())
 			return 1
@@ -230,6 +238,26 @@ func work(ctx context.Context, getenv func(string) string, log *slog.Logger, std
 			return 1
 		}
 	}
+	box, err := integrationKey(getenv)
+	switch {
+	case err != nil:
+		fmt.Fprintln(stderr, "plumbline-server:", err)
+		return 2
+	case box == nil:
+		log.Warn("vanta_sync is off: INTEGRATION_KEY is not set")
+	default:
+		base := strings.TrimRight(getenv("PUBLIC_BASE_URL"), "/")
+		verifyBase := strings.TrimRight(getenv("VERIFY_BASE_URL"), "/")
+		if verifyBase == "" && base != "" {
+			verifyBase = base + "/verify"
+		}
+		sy := &vanta.Syncer{Store: st, Box: box, Client: &vanta.Client{BaseURL: getenv("VANTA_API_URL")}, AppBase: base, VerifyBase: verifyBase, Log: log}
+		handlers[jobs.KindVantaSync] = sy.Handler()
+		if err := jobs.EnsureScheduled(ctx, st, jobs.KindVantaSync, sy.NextRun()); err != nil {
+			log.Error("work: scheduling vanta_sync", "error", err.Error())
+			return 1
+		}
+	}
 	w := &jobs.Worker{Store: st, Log: log, Handlers: handlers}
 	if err := w.Run(ctx); err != nil {
 		log.Error("work stopped", "error", err.Error())
@@ -237,6 +265,16 @@ func work(ctx context.Context, getenv func(string) string, log *slog.Logger, std
 	}
 	log.Info("worker stopped")
 	return 0
+}
+
+// integrationKey seals vendors' integration credentials: INTEGRATION_KEY is
+// 32 bytes in base64. Unset: integrations are off.
+func integrationKey(getenv func(string) string) (*secretbox.Box, error) {
+	k := getenv("INTEGRATION_KEY")
+	if k == "" {
+		return nil, nil
+	}
+	return secretbox.FromBase64(k)
 }
 
 // packSigner is the pack signing key: KMS_KEY_ID is a KMS key ARN (region
