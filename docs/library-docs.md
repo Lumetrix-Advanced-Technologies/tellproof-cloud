@@ -128,3 +128,10 @@ Checked against the libraries' sources on 15 Oct 2026 (openai-node 7.34, anthrop
 - `GetPublicKey(KeyId)` → `PublicKey` (DER SubjectPublicKeyInfo), `KeySpec` (must be `ECC_NIST_P256`), `KeyUsage` (`SIGN_VERIFY`).
 - `Sign(KeyId, Message, MessageType=DIGEST, SigningAlgorithm=ECDSA_SHA_256)`: `Message` is the 32-byte SHA-256 of the DSSE PAE (KMS takes at most 4,096 bytes of `RAW` message); the `Signature` is ASN.1 DER, which every verifier accepts. Through `github.com/aws/aws-sdk-go-v2/service/kms` only (no hand-rolled request signing).
 - Docs: https://docs.aws.amazon.com/kms/latest/APIReference/API_Sign.html
+
+## GitHub contents API (checkpoints, P4-7)
+
+- `PUT /repos/{owner}/{repo}/contents/{path}` with `{message, content: base64}` creates a file and returns `201 {content, commit: {sha}}`; without `sha` it fails (422) when the file exists, which the publisher treats as "already published" and checks byte for byte.
+- `GET /repos/{owner}/{repo}/contents/{path}` returns `{content (base64, wrapped at 60 characters), encoding: "base64", sha}`; `GET /repos/{owner}/{repo}/commits?path={path}&per_page=1` gives the file's latest commit.
+- Headers: `Authorization: Bearer <token>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`. A fine-grained token with contents write on the checkpoint repository only.
+- Docs: https://docs.github.com/en/rest/repos/contents

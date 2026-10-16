@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-16 · P4-7 · Daily checkpoint
+
+**Built.** `internal/checkpoint` (build, strict decode, verify, prove; no database code), `internal/dailycheckpoint` (the `checkpoint` job with catch-up and a GitHub contents publisher), migration `0004_checkpoint_digests.sql`, `jobs.Reschedule`, `plumbline-verify checkpoint`, and `work` running the job when a signer is configured. Choices in D-043.
+
+**Problems.** None in the design; one test-setup SQL error (a parameter inferred as `uuid` and passed to `substr`).
+
+**Verified (Postgres 16).** Acceptance: with packs from two tenants on day 1, none on day 2 and one on day 3, the job stores and publishes three chained checkpoints (day 1 lists both packs in issue order, day 2 is empty), each verifying against the previous; `plumbline-verify checkpoint` proves the second pack is pack 2 of 2 on day 1, reports that the day-3 pack is not in day 1, and checks day 3's link to day 2 (and refuses day 1 as its previous). A second run adds nothing. Every pack position proves for every list size from 1 to 33; a dropped, reordered, duplicated or malformed digest, a wrong count, another schema, another key's signature and a key expired at issue are all refused. The publisher returns the commit, accepts an identical file on retry, refuses to overwrite different bytes and never puts the token in an error. Before the first pack nothing is checkpointed; the job runs through the worker, publishes nothing without a repository, and schedules exactly one next run at 00:10 Sydney time.
+
 ## 2026-10-16 · P4-6 · JWKS and key rotation
 
 **Built.** Key validity in all three verifiers: `internal/pack` (`ParseJWKS` returns a `KeySet` with `nbf`, `exp` and revocations; `Verify` applies `Vouches`; `KeySetOf` for raw keys), `web/verify/verify.js` (`importJWKS`, `issuedAtSeconds`, `keyVouches`, `key_status` and page wording) and `concierge/verify.py` (JWKS input, same rule, exit 2 for a malformed key file). New vectors `spec/vectors/key-manifest.json` with `keys/` from `make_key_vectors.py`, run by Go, Node and Python (`make vectors`). Server: migration `0003_signing_keys.sql`, `internal/keys`, `GET /.well-known/jwks.json`, `plumbline-server keys`, and the issuer's `CheckSigner`. Choices in D-042.

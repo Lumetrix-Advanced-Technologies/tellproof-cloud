@@ -136,7 +136,7 @@ Each objective also has `attention_band` (how close to the threshold reads as `a
 
 ### 4.5 Checkpoints
 
-Daily at 00:10 Australia/Sydney: Merkle root (same construction as 2.4 without salts; leaves are pack digests in issue order) over packs issued the previous day, signed like a pack, written to `checkpoints/YYYY/MM/DD.json` in the public repo via the GitHub contents API, commit SHA stored.
+Daily at 00:10 Australia/Sydney: a signed checkpoint statement for the previous local day listing every pack digest issued that day (all tenants, issue order) with their Merkle root (leaf `sha256(0x00 ‖ "sha256:<hex>")`, node as 2.4, all-zero root for none) and the previous day's checkpoint digest; empty days included, missed days caught up in order. Written to `checkpoints/YYYY/MM/DD.json` in the public repo via the GitHub contents API (never overwritten), commit SHA stored. `plumbline-verify checkpoint` proves a pack is in a day's checkpoint (D-043).
 
 ### 4.6 Share and verify
 

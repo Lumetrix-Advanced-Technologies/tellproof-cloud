@@ -2,7 +2,8 @@
 // subcommands (docs/architecture.md §4.1).
 //
 //	plumbline-server serve     # the API (DATABASE_URL as plumbline_app; LISTEN, default :8080)
-//	plumbline-server work      # run queued jobs (same DATABASE_URL and DATABASE_ROLE; KMS_KEY_ID to issue packs)
+//	plumbline-server work      # run queued jobs (same DATABASE_URL and DATABASE_ROLE; KMS_KEY_ID to issue
+//	                           # packs and checkpoints; CHECKPOINT_REPO and GITHUB_TOKEN to publish them)
 //	plumbline-server migrate   # apply migrations/ as the schema owner (DATABASE_URL_OWNER)
 //	plumbline-server keys ...  # add, retire, revoke and list pack signing keys (owner)
 //	plumbline-server version
@@ -25,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/jackc/pgx/v5"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/dailycheckpoint"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/issue"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
@@ -180,6 +182,17 @@ func work(ctx context.Context, getenv func(string) string, log *slog.Logger, std
 	default:
 		handlers[jobs.KindIssuePack] = (&issue.Issuer{Store: st, Signer: signer, Log: log}).Handler()
 		log.Info("pack signer ready", "kid", signer.KeyID())
+		cp := &dailycheckpoint.Job{Store: st, Signer: signer, Log: log}
+		if repo, token := getenv("CHECKPOINT_REPO"), getenv("GITHUB_TOKEN"); repo != "" && token != "" {
+			cp.Publisher = &dailycheckpoint.GitHub{Repo: repo, Token: token}
+		} else {
+			log.Warn("checkpoints are signed and stored but not published: CHECKPOINT_REPO or GITHUB_TOKEN is not set")
+		}
+		handlers[jobs.KindCheckpoint] = cp.Handler()
+		if err := jobs.EnsureScheduled(ctx, st, jobs.KindCheckpoint, cp.NextRun()); err != nil {
+			log.Error("work: scheduling checkpoint", "error", err.Error())
+			return 1
+		}
 	}
 	w := &jobs.Worker{Store: st, Log: log, Handlers: handlers}
 	if err := w.Run(ctx); err != nil {
