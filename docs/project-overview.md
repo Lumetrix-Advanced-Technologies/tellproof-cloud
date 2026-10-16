@@ -2,7 +2,7 @@
 
 ## What we are building
 
-**Plumbline** is a product of **Lumetrix**. It gives AI-native software companies evidence about how their AI behaves in production that their enterprise buyers, insurers and auditors can check for themselves.
+**Witnessmark** is a product of **Lumetrix**. It gives AI-native software companies evidence about how their AI behaves in production that their enterprise buyers, insurers and auditors can check for themselves.
 
 The output is a **pack**: a signed JSON document (in-toto Statement in a DSSE envelope) that reports ten evidence objectives for one AI system over one period, such as trace coverage, PII redaction coverage, guardrail coverage and eval freshness. Each pack links to the previous one by digest, so a missing or edited month is visible. A verifier opens a share link and the browser checks the signature, the digest, the chain and a disclosed trace's Merkle proof, with no account and no trust in us.
 
@@ -54,5 +54,5 @@ Two founders, both part-time. Founder A leads go-to-market; Founder B leads the 
 ## Related material
 
 - Technical design doc (living): "Assurance Pack MVP technical design" in Claude Docs.
-- Brand system: "Plumbline" design system (tokens, logo marks, voice rules). Tokens are mirrored in `web/brand.css`.
+- Brand system: "Witnessmark" design system (tokens, logo marks, voice rules). Tokens are mirrored in `web/brand.css`.
 - Working sample of the format: `reference/sample-verify-page.html` and `spec/vectors/pass/`.

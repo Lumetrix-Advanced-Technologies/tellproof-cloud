@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/otlp"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/otlp"
 )
 
 var update = flag.Bool("update", false, "rewrite sdk/testdata/expected-windows.json")

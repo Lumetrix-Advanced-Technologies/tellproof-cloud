@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/issue"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/share"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/issue"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/share"
 )
 
 type packRow struct {
@@ -118,11 +118,11 @@ func friendlyIssueError(e string) string {
 	case strings.Contains(e, "no committed traces"):
 		return "the agent sent no traces for that period. Check the agent is running and the period covers its batches."
 	case strings.Contains(e, "may not sign"):
-		return "the issuer's signing key is not available. Plumbline has been told; try again later."
+		return "the issuer's signing key is not available. Witnessmark has been told; try again later."
 	case strings.Contains(e, "invalid period"):
 		return "the period is not valid."
 	}
-	return "the pack could not be issued. Try again, and contact Plumbline if it keeps failing."
+	return "the pack could not be issued. Try again, and contact Witnessmark if it keeps failing."
 }
 
 func (a *App) issuePack(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,6 @@
-// Command plumbline-verify checks Plumbline evidence packs offline.
+// Command witnessmark-verify checks Witnessmark evidence packs offline.
 //
-//	plumbline-verify --jwks <file|https-url> pack1.json [pack2.json ...]
+//	witnessmark-verify --jwks <file|https-url> pack1.json [pack2.json ...]
 //
 // Packs are given oldest first; each one after the first is checked against
 // the one before it. It exits 0 only when every pack verifies, 1 when any pack
@@ -19,9 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/checkpoint"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/checkpoint"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
 )
 
 // version is set at link time: go build -ldflags "-X main.version=v0.1.0".
@@ -42,10 +42,10 @@ func main() {
 	os.Exit(run(context.Background(), cfg, os.Args[1:], os.Stdout, os.Stderr))
 }
 
-const usage = `usage: plumbline-verify --jwks <file|https-url> [--json] pack1.json [pack2.json ...]
-       plumbline-verify checkpoint --jwks <file|https-url> [--prev yesterday.json] checkpoint.json [pack.json ...]
+const usage = `usage: witnessmark-verify --jwks <file|https-url> [--json] pack1.json [pack2.json ...]
+       witnessmark-verify checkpoint --jwks <file|https-url> [--prev yesterday.json] checkpoint.json [pack.json ...]
 
-Verifies Plumbline evidence packs: the issuer's signature, the subject digest,
+Verifies Witnessmark evidence packs: the issuer's signature, the subject digest,
 the link to the previous pack and the disclosed trace's Merkle proof.
 Give packs oldest first. The checkpoint form verifies a daily checkpoint (its
 signature, root and link to the previous day) and proves each pack is in it.
@@ -63,16 +63,16 @@ func run(ctx context.Context, cfg config, args []string, stdout, stderr io.Write
 	}
 	opts, err := parseArgs(args)
 	if err != nil {
-		fmt.Fprintf(stderr, "plumbline-verify: %v\n\n%s", err, usage)
+		fmt.Fprintf(stderr, "witnessmark-verify: %v\n\n%s", err, usage)
 		return 2
 	}
 	if opts.version {
-		fmt.Fprintf(stdout, "plumbline-verify %s\n", cfg.version)
+		fmt.Fprintf(stdout, "witnessmark-verify %s\n", cfg.version)
 		return 0
 	}
 	keys, err := loadJWKS(ctx, cfg.client, opts.jwks)
 	if err != nil {
-		fmt.Fprintf(stderr, "plumbline-verify: %v\n", err)
+		fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
 		return 2
 	}
 
@@ -81,7 +81,7 @@ func run(ctx context.Context, cfg config, args []string, stdout, stderr io.Write
 	for i, file := range opts.files {
 		data, err := readFile(file, maxPackBytes)
 		if err != nil {
-			fmt.Fprintf(stderr, "plumbline-verify: %v\n", err)
+			fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
 			return 2
 		}
 		rep := verifyOne(file, data, keys, prev)
@@ -119,7 +119,7 @@ type options struct {
 // parseArgs accepts flags before, between or after the pack files.
 func parseArgs(args []string) (options, error) {
 	var o options
-	fs := flag.NewFlagSet("plumbline-verify", flag.ContinueOnError)
+	fs := flag.NewFlagSet("witnessmark-verify", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&o.jwks, "jwks", "", "issuer JWKS file or https URL")
 	fs.BoolVar(&o.json, "json", false, "print a JSON report")
@@ -309,14 +309,14 @@ func writeHuman(w io.Writer, verified bool, reports []packReport) {
 // runCheckpoint verifies a daily checkpoint and proves that each given pack
 // was published in it (D-043).
 func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet("plumbline-verify checkpoint", flag.ContinueOnError)
+	fs := flag.NewFlagSet("witnessmark-verify checkpoint", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	jwksSrc := fs.String("jwks", "", "issuer JWKS file or https URL")
 	prevFile := fs.String("prev", "", "the previous day's checkpoint, to check the link")
 	var files []string
 	for {
 		if err := fs.Parse(args); err != nil {
-			fmt.Fprintf(stderr, "plumbline-verify: %v\n\n%s", err, usage)
+			fmt.Fprintf(stderr, "witnessmark-verify: %v\n\n%s", err, usage)
 			return 2
 		}
 		if fs.NArg() == 0 {
@@ -326,12 +326,12 @@ func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stder
 		args = fs.Args()[1:]
 	}
 	if *jwksSrc == "" || len(files) == 0 {
-		fmt.Fprintf(stderr, "plumbline-verify: checkpoint needs --jwks and a checkpoint file\n\n%s", usage)
+		fmt.Fprintf(stderr, "witnessmark-verify: checkpoint needs --jwks and a checkpoint file\n\n%s", usage)
 		return 2
 	}
 	keys, err := loadJWKS(ctx, cfg.client, *jwksSrc)
 	if err != nil {
-		fmt.Fprintf(stderr, "plumbline-verify: %v\n", err)
+		fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
 		return 2
 	}
 	load := func(f string) (*dsse.Envelope, error) {
@@ -344,13 +344,13 @@ func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stder
 	var prev *dsse.Envelope
 	if *prevFile != "" {
 		if prev, err = load(*prevFile); err != nil {
-			fmt.Fprintf(stderr, "plumbline-verify: %s: %v\n", *prevFile, err)
+			fmt.Fprintf(stderr, "witnessmark-verify: %s: %v\n", *prevFile, err)
 			return 2
 		}
 	}
 	cpEnv, err := load(files[0])
 	if err != nil {
-		fmt.Fprintf(stderr, "plumbline-verify: %s: %v\n", files[0], err)
+		fmt.Fprintf(stderr, "witnessmark-verify: %s: %v\n", files[0], err)
 		return 2
 	}
 	fmt.Fprintln(stdout, files[0])
@@ -368,7 +368,7 @@ func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stder
 	for _, f := range files[1:] {
 		env, err := load(f)
 		if err != nil {
-			fmt.Fprintf(stderr, "plumbline-verify: %s: %v\n", f, err)
+			fmt.Fprintf(stderr, "witnessmark-verify: %s: %v\n", f, err)
 			return 2
 		}
 		d := pack.Digest(env)

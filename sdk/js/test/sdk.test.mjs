@@ -10,7 +10,7 @@ import * as esm from '../lib/index.mjs';
 import { FIXTURE, Capture, exportLines } from './scenario.mjs';
 
 const require = createRequire(import.meta.url);
-const plumbline = require('../lib/index.cjs');
+const witnessmark = require('../lib/index.cjs');
 const core = require('../lib/core.cjs');
 const otlp = require('../lib/otlp.cjs');
 const { Exporter } = require('../lib/export.cjs');
@@ -35,16 +35,16 @@ test('the committed fixture is current', () => {
 });
 
 test('import and require share one SDK instance', () => {
-  assert.equal(esm.init, plumbline.init);
-  assert.equal(esm.default, plumbline);
+  assert.equal(esm.init, witnessmark.init);
+  assert.equal(esm.default, witnessmark);
 });
 
 test('scopes stamp spans and nest', async () => {
   const spans = await spansOf(() =>
-    plumbline.agentRun('helper', () =>
-      plumbline.prompt('reply', 7, () =>
-        plumbline.personalData({ redacted: true }, () =>
-          plumbline.llmCall({ provider: 'openai', model: 'gpt-4.1', region: 'eu-west-1' }, (c) => {
+    witnessmark.agentRun('helper', () =>
+      witnessmark.prompt('reply', 7, () =>
+        witnessmark.personalData({ redacted: true }, () =>
+          witnessmark.llmCall({ provider: 'openai', model: 'gpt-4.1', region: 'eu-west-1' }, (c) => {
             c.usage(10, 3);
             c.responseModel = 'gpt-4.1-2026-04-14';
           }),
@@ -53,10 +53,10 @@ test('scopes stamp spans and nest', async () => {
     ),
   );
   const [llm, run] = spans;
-  assert.equal(attrs(llm)['plumbline.prompt.version'], '7');
+  assert.equal(attrs(llm)['witnessmark.prompt.version'], '7');
   assert.equal(attrs(llm)['gen_ai.agent.name'], 'helper');
   assert.equal(attrs(llm)['gen_ai.response.model'], 'gpt-4.1-2026-04-14');
-  assert.equal(attrs(llm)['plumbline.redaction.applied'], true);
+  assert.equal(attrs(llm)['witnessmark.redaction.applied'], true);
   assert.equal(llm.parent, run.spanId);
   assert.equal(llm.traceId, run.traceId);
   assert.equal(attrs(run)['gen_ai.operation.name'], 'invoke_agent');
@@ -64,41 +64,41 @@ test('scopes stamp spans and nest', async () => {
 
 test('spans outside scopes get their own traces', async () => {
   const spans = await spansOf(() => {
-    for (let i = 0; i < 3; i++) plumbline.llmCall({ provider: 'openai', model: 'm' }, () => {});
+    for (let i = 0; i < 3; i++) witnessmark.llmCall({ provider: 'openai', model: 'm' }, () => {});
   });
   assert.equal(new Set(spans.map((s) => s.traceId)).size, 3);
 });
 
 test('a guardrail decided after the call', async () => {
   const spans = await spansOf(() =>
-    plumbline.guardrail((g) => {
-      plumbline.llmCall({ provider: 'openai', model: 'm' }, () => {});
+    witnessmark.guardrail((g) => {
+      witnessmark.llmCall({ provider: 'openai', model: 'm' }, () => {});
       assert.equal(core.currentClient().stats.spans, 0, 'the call waits for the decision');
       g.flag();
     }),
   );
-  assert.equal(attrs(spans[0])['plumbline.guardrail.decision'], 'flag');
+  assert.equal(attrs(spans[0])['witnessmark.guardrail.decision'], 'flag');
 });
 
 test('an inner guardrail decision wins and an outer one fills the rest', async () => {
   const spans = await spansOf(() =>
-    plumbline.guardrail('allow', () => {
-      plumbline.guardrail('block', () => plumbline.llmCall({ provider: 'openai', model: 'inner' }, () => {}));
-      plumbline.guardrail(() => plumbline.llmCall({ provider: 'openai', model: 'undecided' }, () => {}));
+    witnessmark.guardrail('allow', () => {
+      witnessmark.guardrail('block', () => witnessmark.llmCall({ provider: 'openai', model: 'inner' }, () => {}));
+      witnessmark.guardrail(() => witnessmark.llmCall({ provider: 'openai', model: 'undecided' }, () => {}));
     }),
   );
-  const got = Object.fromEntries(spans.map((s) => [attrs(s)['gen_ai.request.model'], attrs(s)['plumbline.guardrail.decision']]));
+  const got = Object.fromEntries(spans.map((s) => [attrs(s)['gen_ai.request.model'], attrs(s)['witnessmark.guardrail.decision']]));
   assert.deepEqual(got, { inner: 'block', undecided: 'allow' });
 });
 
 test('a block without a call is one blocked call', async () => {
   const spans = await spansOf(() => {
-    plumbline.guardrail({ decision: 'block', provider: 'anthropic', model: 'claude-haiku-4-5' }, () => {});
-    plumbline.guardrail('allow', () => {}); // allowed, nothing called: nothing to record
+    witnessmark.guardrail({ decision: 'block', provider: 'anthropic', model: 'claude-haiku-4-5' }, () => {});
+    witnessmark.guardrail('allow', () => {}); // allowed, nothing called: nothing to record
   });
   assert.equal(spans.length, 1);
   const a = attrs(spans[0]);
-  assert.deepEqual([a['gen_ai.provider.name'], a['gen_ai.request.model'], a['plumbline.guardrail.decision']], [
+  assert.deepEqual([a['gen_ai.provider.name'], a['gen_ai.request.model'], a['witnessmark.guardrail.decision']], [
     'anthropic',
     'claude-haiku-4-5',
     'block',
@@ -108,10 +108,10 @@ test('a block without a call is one blocked call', async () => {
 test('an invalid decision is ignored, not thrown', async () => {
   let errors;
   const spans = await spansOf(() => {
-    plumbline.guardrail('maybe', () => plumbline.llmCall({ provider: 'openai', model: 'm' }, () => {}));
+    witnessmark.guardrail('maybe', () => witnessmark.llmCall({ provider: 'openai', model: 'm' }, () => {}));
     errors = core.currentClient().stats.instrumentationErrors;
   });
-  assert.ok(!('plumbline.guardrail.decision' in attrs(spans[0])));
+  assert.ok(!('witnessmark.guardrail.decision' in attrs(spans[0])));
   assert.equal(errors, 1);
 });
 
@@ -120,7 +120,7 @@ test('tool errors and approval; the app error passes through', async () => {
   const spans = await spansOf(() => {
     assert.throws(
       () =>
-        plumbline.tool('refund', { highImpact: true }, (t) => {
+        witnessmark.tool('refund', { highImpact: true }, (t) => {
           t.approved = true;
           throw boom;
         }),
@@ -128,20 +128,20 @@ test('tool errors and approval; the app error passes through', async () => {
     );
   });
   assert.equal(spans[0].error, true);
-  assert.deepEqual([attrs(spans[0])['plumbline.tool.high_impact'], attrs(spans[0])['plumbline.tool.approved']], [true, true]);
+  assert.deepEqual([attrs(spans[0])['witnessmark.tool.high_impact'], attrs(spans[0])['witnessmark.tool.approved']], [true, true]);
 });
 
 test('async scopes end when their promise settles and keep the value', async () => {
   const spans = await spansOf(async () => {
-    const v = await plumbline.agentRun('async-agent', async () => {
+    const v = await witnessmark.agentRun('async-agent', async () => {
       await new Promise((r) => setTimeout(r, 5));
-      await plumbline.llmCall({ provider: 'openai', model: 'm' }, async () => {
+      await witnessmark.llmCall({ provider: 'openai', model: 'm' }, async () => {
         await new Promise((r) => setImmediate(r));
       });
       return 42;
     });
     assert.equal(v, 42);
-    await assert.rejects(plumbline.tool('t', async () => Promise.reject(new RangeError('r'))), RangeError);
+    await assert.rejects(witnessmark.tool('t', async () => Promise.reject(new RangeError('r'))), RangeError);
   });
   assert.deepEqual(spans.map((s) => s.name), ['chat', 'invoke_agent', 'execute_tool']);
   assert.equal(spans[0].traceId, spans[1].traceId);
@@ -152,28 +152,28 @@ test('concurrent requests keep their own context', async () => {
   const spans = await spansOf(() =>
     Promise.all(
       [0, 1, 2].map((n) =>
-        plumbline.prompt('p', n, async () => {
+        witnessmark.prompt('p', n, async () => {
           await new Promise((r) => setTimeout(r, 10 * (3 - n)));
-          plumbline.llmCall({ provider: 'openai', model: 'm' }, () => {});
+          witnessmark.llmCall({ provider: 'openai', model: 'm' }, () => {});
         }),
       ),
     ),
   );
-  assert.deepEqual(spans.map((s) => attrs(s)['plumbline.prompt.version']).sort(), ['0', '1', '2']);
+  assert.deepEqual(spans.map((s) => attrs(s)['witnessmark.prompt.version']).sort(), ['0', '1', '2']);
   assert.equal(new Set(spans.map((s) => s.traceId)).size, 3);
 });
 
 test('values are short names only', async () => {
   const spans = await spansOf(() =>
-    plumbline.prompt('x'.repeat(1000), { not: 'a version' }, () => plumbline.llmCall({ provider: 'openai', model: 'm' }, () => {})),
+    witnessmark.prompt('x'.repeat(1000), { not: 'a version' }, () => witnessmark.llmCall({ provider: 'openai', model: 'm' }, () => {})),
   );
-  assert.equal(attrs(spans[0])['plumbline.prompt.name'].length, core.MAX_VALUE);
-  assert.ok(!('plumbline.prompt.version' in attrs(spans[0])));
+  assert.equal(attrs(spans[0])['witnessmark.prompt.name'].length, core.MAX_VALUE);
+  assert.ok(!('witnessmark.prompt.version' in attrs(spans[0])));
 });
 
 test('usage ignores bad counts', async () => {
   const spans = await spansOf(() =>
-    plumbline.llmCall({ provider: 'openai', model: 'm' }, (c) => {
+    witnessmark.llmCall({ provider: 'openai', model: 'm' }, (c) => {
       c.usage(-1, '12');
       c.usage(1.5, true);
     }),
@@ -186,31 +186,31 @@ test('disabled is a no-op that still runs the app', () => {
   const old = core.currentClient();
   core.setClient(new core.Client());
   try {
-    const r = plumbline.agentRun('a', () =>
-      plumbline.guardrail('block', (g) =>
-        plumbline.tool('t', (t) => {
+    const r = witnessmark.agentRun('a', () =>
+      witnessmark.guardrail('block', (g) =>
+        witnessmark.tool('t', (t) => {
           t.approved = true;
           g.allow();
-          plumbline.escalation();
+          witnessmark.escalation();
           return 'ran';
         }),
       ),
     );
     assert.equal(r, 'ran');
-    assert.equal(plumbline.isEnabled(), false);
-    assert.equal(plumbline.trace('not a function'), undefined); // misuse never throws
+    assert.equal(witnessmark.isEnabled(), false);
+    assert.equal(witnessmark.trace('not a function'), undefined); // misuse never throws
   } finally {
     core.setClient(old);
   }
 });
 
-test('init respects PLUMBLINE_DISABLED', () => {
-  process.env.PLUMBLINE_DISABLED = '1';
+test('init respects WITNESSMARK_DISABLED', () => {
+  process.env.WITNESSMARK_DISABLED = '1';
   try {
-    assert.equal(plumbline.init({ transport: () => {} }), false);
-    assert.equal(plumbline.isEnabled(), false);
+    assert.equal(witnessmark.init({ transport: () => {} }), false);
+    assert.equal(witnessmark.isEnabled(), false);
   } finally {
-    delete process.env.PLUMBLINE_DISABLED;
+    delete process.env.WITNESSMARK_DISABLED;
   }
 });
 
@@ -230,19 +230,19 @@ test('random text never reaches an export', async () => {
       for (let j = 0; j < 24; j++) marker += chars[Math.floor(rnd() * chars.length)];
       markers.push(marker);
       const act = (message, note) =>
-        plumbline.tool('t', { highImpact: rnd() < 0.5 }, () => {
+        witnessmark.tool('t', { highImpact: rnd() < 0.5 }, () => {
           if (rnd() < 0.3) throw new Error(message);
           return message + note;
         });
       try {
-        await plumbline.agentRun('fuzz', () =>
-          plumbline.guardrail(async (g) => {
-            await plumbline.llmCall({ provider: 'openai', model: 'm' }, async (c) => {
+        await witnessmark.agentRun('fuzz', () =>
+          witnessmark.guardrail(async (g) => {
+            await witnessmark.llmCall({ provider: 'openai', model: 'm' }, async (c) => {
               c.usage(marker.length, 1);
               act(marker, marker);
             });
             g.decision = ['allow', 'block', 'flag', marker][Math.floor(rnd() * 4)];
-            plumbline.escalation();
+            witnessmark.escalation();
           }),
         );
       } catch {}
@@ -305,14 +305,14 @@ test('init sends OTLP JSON to the agent URL', async () => {
   });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
   try {
-    assert.equal(plumbline.init({ agentUrl: `http://127.0.0.1:${srv.address().port}/`, service: 'e2e', instrument: false }), true);
-    assert.equal(plumbline.init(), true); // idempotent
-    plumbline.llmCall({ provider: 'openai', model: 'gpt-4.1-mini' }, (c) => c.usage(5, 1));
-    assert.equal(await plumbline.flush(5000), true);
-    const st = plumbline.stats();
+    assert.equal(witnessmark.init({ agentUrl: `http://127.0.0.1:${srv.address().port}/`, service: 'e2e', instrument: false }), true);
+    assert.equal(witnessmark.init(), true); // idempotent
+    witnessmark.llmCall({ provider: 'openai', model: 'gpt-4.1-mini' }, (c) => c.usage(5, 1));
+    assert.equal(await witnessmark.flush(5000), true);
+    const st = witnessmark.stats();
     assert.deepEqual([st.exported, st.dropped], [1, 0]);
   } finally {
-    await plumbline.shutdown();
+    await witnessmark.shutdown();
     srv.close();
   }
   const [path, ctype, body] = received[0];
@@ -323,7 +323,7 @@ test('init sends OTLP JSON to the agent URL', async () => {
     { key: 'service.name', value: { stringValue: 'e2e' } },
   );
   assert.equal(rs.scopeSpans[0].spans.length, 1);
-  assert.equal(plumbline.isEnabled(), false);
+  assert.equal(witnessmark.isEnabled(), false);
 });
 
 test('a script that awaits flush() is not cut short by the unref\'d timers', () => {

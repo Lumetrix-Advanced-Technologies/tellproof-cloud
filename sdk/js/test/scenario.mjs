@@ -12,12 +12,12 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const core = require('../lib/core.cjs');
 const otlp = require('../lib/otlp.cjs');
-const plumbline = require('../lib/index.cjs');
+const witnessmark = require('../lib/index.cjs');
 
 export const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'testdata', 'js-export.jsonl');
 const RESOURCE = {
   'service.name': 'claims-api',
-  'telemetry.sdk.name': 'plumbline',
+  'telemetry.sdk.name': 'witnessmark',
   'telemetry.sdk.language': 'nodejs',
   'telemetry.sdk.version': 'scenario',
 };
@@ -52,11 +52,11 @@ export class Capture {
 // The app. Hour 10:00: four requests; hour 11:00: one.
 export function run(clock) {
   // 1. A triage call on personal data, redacted, allowed by the guardrail.
-  plumbline.trace(() =>
-    plumbline.prompt('triage', '14', () =>
-      plumbline.personalData({ redacted: true }, () =>
-        plumbline.guardrail('allow', () =>
-          plumbline.llmCall({ provider: 'openai', model: 'gpt-4.1-mini', region: 'us-east-1' }, (c) => c.usage(1200, 80)),
+  witnessmark.trace(() =>
+    witnessmark.prompt('triage', '14', () =>
+      witnessmark.personalData({ redacted: true }, () =>
+        witnessmark.guardrail('allow', () =>
+          witnessmark.llmCall({ provider: 'openai', model: 'gpt-4.1-mini', region: 'us-east-1' }, (c) => c.usage(1200, 80)),
         ),
       ),
     ),
@@ -65,42 +65,42 @@ export function run(clock) {
   // 2. An agent run: a model call the output guardrail then blocks, three tool
   //    calls (one high-impact approved, one high-impact unapproved that fails)
   //    and an escalation to a person.
-  plumbline.agentRun('claims-agent', () => {
-    plumbline.guardrail((g) => {
-      plumbline.llmCall({ provider: 'anthropic', model: 'claude-sonnet-4-5', region: 'ap-southeast-2' }, (c) => c.usage(3000, 400));
+  witnessmark.agentRun('claims-agent', () => {
+    witnessmark.guardrail((g) => {
+      witnessmark.llmCall({ provider: 'anthropic', model: 'claude-sonnet-4-5', region: 'ap-southeast-2' }, (c) => c.usage(3000, 400));
       g.block();
     });
-    plumbline.tool('lookup_policy', () => {});
-    plumbline.tool('issue_refund', { highImpact: true }, (t) => {
+    witnessmark.tool('lookup_policy', () => {});
+    witnessmark.tool('issue_refund', { highImpact: true }, (t) => {
       t.approved = true;
     });
     try {
-      plumbline.tool('close_account', { highImpact: true }, () => {
+      witnessmark.tool('close_account', { highImpact: true }, () => {
         throw new Error('not approved');
       });
     } catch {}
-    plumbline.escalation();
+    witnessmark.escalation();
   });
 
   // 3. The input guardrail blocks before any model call.
-  plumbline.trace(() =>
-    plumbline.personalData({ redacted: false }, () =>
-      plumbline.guardrail({ decision: 'block', provider: 'openai', model: 'gpt-4.1-mini' }, () => {}),
+  witnessmark.trace(() =>
+    witnessmark.personalData({ redacted: false }, () =>
+      witnessmark.guardrail({ decision: 'block', provider: 'openai', model: 'gpt-4.1-mini' }, () => {}),
     ),
   );
 
   // 4. A failed embeddings call outside any scope.
   try {
-    plumbline.llmCall({ provider: 'openai', model: 'text-embedding-3-small', operation: 'embeddings', region: 'us-east-1' }, () => {
+    witnessmark.llmCall({ provider: 'openai', model: 'text-embedding-3-small', operation: 'embeddings', region: 'us-east-1' }, () => {
       throw new Error('timeout');
     });
   } catch {}
 
   // 5. The next hour: the triage prompt moves to version 15 on another model.
   clock.at('2026-09-01T11:20:00');
-  plumbline.prompt('triage', '15', () =>
-    plumbline.guardrail('flag', () =>
-      plumbline.llmCall({ provider: 'anthropic', model: 'claude-sonnet-4-5', region: 'ap-southeast-2' }, (c) => c.usage(900, 60)),
+  witnessmark.prompt('triage', '15', () =>
+    witnessmark.guardrail('flag', () =>
+      witnessmark.llmCall({ provider: 'anthropic', model: 'claude-sonnet-4-5', region: 'ap-southeast-2' }, (c) => c.usage(900, 60)),
     ),
   );
 }

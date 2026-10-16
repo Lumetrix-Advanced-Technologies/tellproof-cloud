@@ -19,16 +19,16 @@ import (
 	"slices"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jcs"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/merkle"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jcs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/merkle"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
 )
 
 const (
 	// PredicateType uses the placeholder domain until D-008 is decided.
 	PredicateType = "https://lumetrix.example/plumbline/checkpoint/v0.1"
-	Schema        = "plumbline-checkpoint/v0.1"
+	Schema        = "witnessmark-checkpoint/v0.1"
 	LeafRule      = `sha256(0x00 || pack_digest), pack_digest as ASCII "sha256:<hex>"`
 	NodeRule      = "sha256(0x01 || left || right); odd node carried up; all-zero root when no packs"
 )

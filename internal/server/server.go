@@ -10,9 +10,9 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/auth"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/auth"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/keys"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
 )
 
 // Server holds what the handlers need.

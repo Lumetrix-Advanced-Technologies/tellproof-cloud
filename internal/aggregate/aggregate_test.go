@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batch"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/otlp"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/otlp"
 )
 
 var sampleFile = filepath.Join("..", "..", "concierge", "testdata", "otlp-sample.jsonl")

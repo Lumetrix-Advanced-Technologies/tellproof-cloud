@@ -213,7 +213,7 @@ func normJSON(t *testing.T, v any) string {
 
 func TestVersion(t *testing.T) {
 	code, out, _ := runCLI(t, "--version")
-	if code != 0 || out != "plumbline-verify v0.1.0-test\n" {
+	if code != 0 || out != "witnessmark-verify v0.1.0-test\n" {
 		t.Errorf("--version = exit %d, %q", code, out)
 	}
 }

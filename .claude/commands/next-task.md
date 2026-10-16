@@ -1,4 +1,4 @@
-Start the next Plumbline build task.
+Start the next Witnessmark build task.
 
 1. Read `docs/progress-tracker.md`. If the human named a task in $ARGUMENTS, use it; otherwise take the first task that is `not started` and not blocked. Follow the order in `docs/build-plan.md` (D-024); skip a task whose "Depends on" is not done.
 2. Read that task in `docs/build-plan.md`, the matching section of `docs/architecture.md`, `docs/code-standards.md`, and any API notes in `docs/library-docs.md` it needs.

@@ -1,7 +1,7 @@
 .env.local
 .env*.local
 .dev/
-.plumbline-agent/
+.witnessmark-agent/
 /bin/
 *.test
 coverage.out

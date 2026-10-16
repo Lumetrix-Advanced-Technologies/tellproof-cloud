@@ -60,13 +60,13 @@ func TestExportIsTheOpenSourceTreeOnly(t *testing.T) {
 
 func TestExportRewritesTheModulePath(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "oss")
-	if _, err := export(filepath.Join("..", ".."), out, "example.com/public/plumbline"); err != nil {
+	if _, err := export(filepath.Join("..", ".."), out, "example.com/public/witnessmark"); err != nil {
 		t.Fatal(err)
 	}
 	mod, _ := os.ReadFile(filepath.Join(out, "go.mod"))
 	src, _ := os.ReadFile(filepath.Join(out, "cmd", "verify", "main.go"))
-	if !strings.Contains(string(mod), "module example.com/public/plumbline\n") || !strings.Contains(string(src), `"example.com/public/plumbline/internal/pack"`) ||
-		strings.Contains(string(src), "lumetrix-advanced-technologies/plumbline/internal") {
+	if !strings.Contains(string(mod), "module example.com/public/witnessmark\n") || !strings.Contains(string(src), `"example.com/public/witnessmark/internal/pack"`) ||
+		strings.Contains(string(src), "lumetrix-advanced-technologies/witnessmark/internal") {
 		t.Error("the module path was not rewritten in go.mod and imports")
 	}
 }

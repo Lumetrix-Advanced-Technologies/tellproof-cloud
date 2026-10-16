@@ -34,7 +34,9 @@ Allowed: `github.com/jackc/pgx/v5`; `github.com/aws/aws-sdk-go-v2/config`; `gith
 - Forms in the app post to the server and work without JavaScript; JS adds copy buttons and confirmations only.
 - Accessibility: labels on every input, visible focus ring (2px `--chalk`, 2px offset), colour contrast per the brand tokens, status always as icon plus word.
 
-## UI copy (Plumbline brand)
+## UI copy (Witnessmark brand)
+
+- The mark is a bolt head seen from above with a brass torque stripe running from the bolt across the nut onto the base: the witness mark a mechanic paints so anyone can see whether a fastener moved. The stripe is always whole (a broken stripe means tampering, never decoration). One geometry, on a 32-unit grid: `internal/dashboard/static/favicon.svg`; the wordmark lock-ups are `oss/docs/logo-{light,dark}.svg`. The stripe is `#e2ad45` on `--chalk` light; do not recolour it per theme.
 
 - Sentence case for headings and buttons; buttons say what they do ("Issue pack", "Revoke link").
 - Results as plain facts: "Verified, unaltered since signing", "Failed: this pack was changed after signing".

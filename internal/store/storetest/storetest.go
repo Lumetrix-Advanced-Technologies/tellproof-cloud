@@ -1,8 +1,8 @@
 // Package storetest gives tests a freshly migrated Postgres database.
 //
-// Set PLUMBLINE_TEST_DATABASE_URL to an owner (superuser) URL of a server the
+// Set WITNESSMARK_TEST_DATABASE_URL to an owner (superuser) URL of a server the
 // tests may create databases on; CI's Postgres service is one. Without it the
-// tests skip, unless PLUMBLINE_REQUIRE_DB=1 (set in CI), when they fail.
+// tests skip, unless WITNESSMARK_REQUIRE_DB=1 (set in CI), when they fail.
 package storetest
 
 import (
@@ -10,24 +10,24 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/url"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
-	"github.com/lumetrix-advanced-technologies/plumbline/migrations"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/envcompat"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
+	"github.com/lumetrix-advanced-technologies/witnessmark/migrations"
 )
 
 // ServerURL is the owner URL from the environment, or skips the test.
 func ServerURL(t testing.TB) string {
 	t.Helper()
-	u := os.Getenv("PLUMBLINE_TEST_DATABASE_URL")
+	u := envcompat.Get("WITNESSMARK_TEST_DATABASE_URL")
 	if u == "" {
-		if os.Getenv("PLUMBLINE_REQUIRE_DB") == "1" {
-			t.Fatal("PLUMBLINE_TEST_DATABASE_URL is not set")
+		if envcompat.Get("WITNESSMARK_REQUIRE_DB") == "1" {
+			t.Fatal("WITNESSMARK_TEST_DATABASE_URL is not set")
 		}
-		t.Skip("PLUMBLINE_TEST_DATABASE_URL is not set")
+		t.Skip("WITNESSMARK_TEST_DATABASE_URL is not set")
 	}
 	return u
 }
@@ -45,7 +45,7 @@ func EmptyDB(t testing.TB) string {
 	defer conn.Close(ctx)
 	b := make([]byte, 6)
 	_, _ = rand.Read(b)
-	name := "plumbline_t_" + hex.EncodeToString(b)
+	name := "witnessmark_t_" + hex.EncodeToString(b)
 	if _, err := conn.Exec(ctx, "CREATE DATABASE "+name); err != nil {
 		t.Fatalf("storetest: create database: %v", err)
 	}
@@ -59,7 +59,7 @@ func EmptyDB(t testing.TB) string {
 	})
 	u, err := url.Parse(server)
 	if err != nil {
-		t.Fatal("storetest: PLUMBLINE_TEST_DATABASE_URL does not parse")
+		t.Fatal("storetest: WITNESSMARK_TEST_DATABASE_URL does not parse")
 	}
 	u.Path = "/" + name
 	return u.String()

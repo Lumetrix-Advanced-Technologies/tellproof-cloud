@@ -1,5 +1,5 @@
-name: Plumbline governance check
-description: Validate plumbline.policy.json, or check a Plumbline evidence log against the ten evidence objectives, and fail the job when an objective fails.
+name: Witnessmark governance check
+description: Validate witnessmark.policy.json, or check a Witnessmark evidence log against the ten evidence objectives, and fail the job when an objective fails.
 author: Lumetrix
 branding: { icon: shield, color: blue }
 inputs:
@@ -8,10 +8,10 @@ inputs:
     default: validate
   policy:
     description: The policy file.
-    default: plumbline.policy.json
+    default: witnessmark.policy.json
   data-dir:
     description: "check: the agent's data directory (a copy of a local-mode log)"
-    default: .plumbline-agent
+    default: .witnessmark-agent
   since:
     description: "check: first local day (YYYY-MM-DD); default the last 30 days with data"
     default: ""
@@ -23,17 +23,17 @@ inputs:
     default: "false"
   junit:
     description: "check: write JUnit XML here, for test reporters"
-    default: plumbline-check.xml
+    default: witnessmark-check.xml
   version:
-    description: The plumbline-agent version from PyPI (default the latest).
+    description: The witnessmark-agent version from PyPI (default the latest).
     default: ""
 runs:
   using: composite
   steps:
-    - name: Install plumbline-agent
+    - name: Install witnessmark-agent
       shell: bash
       env: { VERSION: "${{ inputs.version }}" }
-      run: python3 -m pip install --disable-pip-version-check --quiet "plumbline-agent${VERSION:+==$VERSION}"
+      run: python3 -m pip install --disable-pip-version-check --quiet "witnessmark-agent${VERSION:+==$VERSION}"
     - name: Run
       shell: bash
       env:
@@ -46,18 +46,18 @@ runs:
         JUNIT: ${{ inputs.junit }}
       run: |
         case "$COMMAND" in
-          validate) plumbline-agent policy validate --policy "$POLICY" ;;
+          validate) witnessmark-agent policy validate --policy "$POLICY" ;;
           check)
             args=(check --policy "$POLICY" --data-dir "$DATA_DIR" --junit "$JUNIT")
             [ -n "$SINCE" ] && args+=(--since "$SINCE")
             [ -n "$UNTIL" ] && args+=(--until "$UNTIL")
             [ "$STRICT" = "true" ] && args+=(--strict)
             set +e
-            plumbline-agent "${args[@]}" > plumbline-check.txt 2>&1
+            witnessmark-agent "${args[@]}" > witnessmark-check.txt 2>&1
             code=$?
             set -e
-            cat plumbline-check.txt
-            { echo '### Plumbline governance check'; echo '```'; cat plumbline-check.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            cat witnessmark-check.txt
+            { echo '### Witnessmark governance check'; echo '```'; cat witnessmark-check.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
             exit "$code" ;;
           *) echo "command must be validate or check, not $COMMAND" >&2; exit 2 ;;
         esac

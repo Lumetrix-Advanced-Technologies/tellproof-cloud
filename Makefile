@@ -1,4 +1,4 @@
-# Plumbline make targets. Requires Go 1.26+, Node 22+ (tests only, no packages), Docker, psql.
+# Witnessmark make targets. Requires Go 1.26+, Node 22+ (tests only, no packages), Docker, psql.
 SHELL := /bin/bash
 GO_PKGS := ./...
 # Lint tools run at a pinned version via `go run`, so a stale binary on PATH is never used
@@ -44,11 +44,11 @@ db:
 	go run ./cmd/server migrate
 
 # Run the Go tests that need Postgres against the compose database (they create
-# and drop their own databases). Without PLUMBLINE_TEST_DATABASE_URL they skip.
+# and drop their own databases). Without WITNESSMARK_TEST_DATABASE_URL they skip.
 test-db:
 	docker compose up -d db
 	@until docker compose exec -T db pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
-	PLUMBLINE_TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable PLUMBLINE_REQUIRE_DB=1 go test -race ./internal/store/... ./cmd/server/...
+	WITNESSMARK_TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable WITNESSMARK_REQUIRE_DB=1 go test -race ./internal/store/... ./cmd/server/...
 
 db-test:
 	psql "$$DATABASE_URL_OWNER" -v ON_ERROR_STOP=0 -f migrations/tests/0001_rls_and_append_only.sql
@@ -60,7 +60,7 @@ run-worker:
 	set -a; source .env.local; set +a; go run ./cmd/server work
 
 agent-dry:
-	PLUMBLINE_SALT_SECRET=$${PLUMBLINE_SALT_SECRET:-dry-run-salt-not-a-secret} go run ./cmd/agent --config agent.example.json --dry-run --replay concierge/testdata/otlp-sample.jsonl
+	WITNESSMARK_SALT_SECRET=$${WITNESSMARK_SALT_SECRET:-dry-run-salt-not-a-secret} go run ./cmd/agent --config agent.example.json --dry-run --replay concierge/testdata/otlp-sample.jsonl
 
 concierge-test:
 	python3 -m unittest discover -s concierge/tests
@@ -78,11 +78,11 @@ VERSION ?= dev
 agent-binaries:
 	@rm -rf dist && mkdir -p dist
 	@for p in $(AGENT_PLATFORMS); do os=$${p%/*}; arch=$${p#*/}; ext=; [ $$os = windows ] && ext=.exe; \
-	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/plumbline-agent-$$os-$$arch$$ext ./cmd/agent || exit 1; done
-	@cd dist && sha256sum plumbline-agent-* > SHA256SUMS && cat SHA256SUMS
+	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/witnessmark-agent-$$os-$$arch$$ext ./cmd/agent || exit 1; done
+	@cd dist && sha256sum witnessmark-agent-* > SHA256SUMS && cat SHA256SUMS
 
 agent-image:
-	docker build -f cmd/agent/Dockerfile --build-arg VERSION=$(VERSION) -t plumbline-agent:$(VERSION) .
+	docker build -f cmd/agent/Dockerfile --build-arg VERSION=$(VERSION) -t witnessmark-agent:$(VERSION) .
 
 # The open-source tree (P6-2, D-050): the agent, the verifier, what they import,
 # the verify page, SDKs, spec and vectors, with oss/ (licence, README, CI and
@@ -104,4 +104,4 @@ oss-check: oss-export
 e2e:
 	docker compose up -d db
 	@until docker compose exec -T db pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
-	PLUMBLINE_TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable go test -tags e2e -count=1 -v ./e2e/
+	WITNESSMARK_TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable go test -tags e2e -count=1 -v ./e2e/

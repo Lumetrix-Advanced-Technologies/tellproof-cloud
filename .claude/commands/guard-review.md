@@ -1,4 +1,4 @@
-Review the current diff against Plumbline's non-negotiable rules in `CLAUDE.md` before it goes to the human reviewer.
+Review the current diff against Witnessmark's non-negotiable rules in `CLAUDE.md` before it goes to the human reviewer.
 
 Check and report each as pass or fail with file and line:
 1. No path in the agent can send span content, prompt or completion text, or raw trace IDs. Message attributes are dropped at parse time.

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jcs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jcs"
 )
 
 // packPayload is pass vector 1's statement with another issued_at (the subject

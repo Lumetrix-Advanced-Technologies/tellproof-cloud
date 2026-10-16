@@ -19,10 +19,10 @@ import (
 	"time"
 	_ "time/tzdata" // periods are whole days in the system's timezone, wherever the server runs
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batch"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jcs"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/spec"
-	specdata "github.com/lumetrix-advanced-technologies/plumbline/spec"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jcs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/spec"
+	specdata "github.com/lumetrix-advanced-technologies/witnessmark/spec"
 )
 
 // incidentWindow: EO-INC-01 asks for acknowledgement within 60 minutes.

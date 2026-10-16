@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/auth"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/secretbox"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
-	"github.com/lumetrix-advanced-technologies/plumbline/web"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/auth"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/secretbox"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
+	"github.com/lumetrix-advanced-technologies/witnessmark/web"
 )
 
 // App serves the pages.

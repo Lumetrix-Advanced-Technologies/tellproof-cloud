@@ -4,13 +4,15 @@ Each release's section is its release notes: the release workflow publishes the 
 
 ## v0.3.0
 
-Governance as code.
+Plumbline is now **Witnessmark**, and governance as code.
 
-- `plumbline.policy.json` declares what an AI system may use (models, regions) and keeps its change, incident and evaluation registers, with a published JSON Schema. `plumbline-agent policy init` writes one from what the log has seen; `plumbline-agent policy validate` checks it.
-- `plumbline-agent check` evaluates the verified local log against the ten evidence objectives with the same evaluator that issues signed packs, shows each objective's measurement, target, framework references and any missing register entries, and exits non-zero when an objective fails (`--strict`: or needs attention). `--json` and `--junit` for automation.
+- The project, packages and commands are renamed: `pip install witnessmark` / `npm install witnessmark` (SDK), `witnessmark-agent`, `witnessmark-verify`, `ghcr.io/lumetrix-advanced-technologies/witnessmark-agent`. Nothing set up for v0.2 breaks: `PLUMBLINE_*` variables, `plumbline.*` span attributes, `plumbline.policy.json` and a `.plumbline-agent` data directory are still read, the agent keeps its identity and chain, and batches and packs are unchanged. See "Upgrading from Plumbline" in the README.
+
+- `witnessmark.policy.json` declares what an AI system may use (models, regions) and keeps its change, incident and evaluation registers, with a published JSON Schema. `witnessmark-agent policy init` writes one from what the log has seen; `witnessmark-agent policy validate` checks it.
+- `witnessmark-agent check` evaluates the verified local log against the ten evidence objectives with the same evaluator that issues signed packs, shows each objective's measurement, target, framework references and any missing register entries, and exits non-zero when an objective fails (`--strict`: or needs attention). `--json` and `--junit` for automation.
 - The dashboard's new **Evidence objectives** panel shows the same check for the selected range.
-- `plumbline-agent aibom` writes a CycloneDX 1.6 AI bill of materials of every model declared or seen, from the verified log.
-- A GitHub Action (`uses: Lumetrix-Advanced-Technologies/plumbline@v0.3.0`) runs `policy validate` or `check` in CI, with JUnit output and a job summary.
+- `witnessmark-agent aibom` writes a CycloneDX 1.6 AI bill of materials of every model declared or seen, from the verified log.
+- A GitHub Action (`uses: Lumetrix-Advanced-Technologies/witnessmark@v0.3.0`) runs `policy validate` or `check` in CI, with JUnit output and a job summary.
 - The evaluator (`internal/evaluate`) and its Python twin (`concierge/evaluate.py`) are now open source: anyone can recompute a pack's objective results.
 
 ## v0.2.0

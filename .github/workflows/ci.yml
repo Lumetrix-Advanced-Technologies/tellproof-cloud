@@ -6,14 +6,14 @@ jobs:
     services:
       db:
         image: postgres:16
-        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: plumbline }
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: witnessmark }
         ports: ["5432:5432"]
         options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
     env:
-      DATABASE_URL_OWNER: postgres://postgres:postgres@localhost:5432/plumbline?sslmode=disable
+      DATABASE_URL_OWNER: postgres://postgres:postgres@localhost:5432/witnessmark?sslmode=disable
       # Database tests create and drop their own databases on this server; in CI they must run, not skip.
-      PLUMBLINE_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
-      PLUMBLINE_REQUIRE_DB: "1"
+      WITNESSMARK_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+      WITNESSMARK_REQUIRE_DB: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -101,10 +101,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -f cmd/agent/Dockerfile --build-arg VERSION=ci -t plumbline-agent:ci .
-      - run: docker run --rm plumbline-agent:ci version | grep -q "plumbline-agent ci"
+      - run: docker build -f cmd/agent/Dockerfile --build-arg VERSION=ci -t witnessmark-agent:ci .
+      - run: docker run --rm witnessmark-agent:ci version | grep -q "witnessmark-agent ci"
       - run: |
-          out=$(docker run --rm -e PLUMBLINE_SERVER=https://example.invalid plumbline-agent:ci connect 2>&1 || true)
+          out=$(docker run --rm -e WITNESSMARK_SERVER=https://example.invalid witnessmark-agent:ci connect 2>&1 || true)
           echo "$out"
           echo "$out" | grep -q "enrolment token"
 
@@ -115,11 +115,11 @@ jobs:
     services:
       db:
         image: postgres:16
-        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: plumbline }
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: witnessmark }
         ports: ["5432:5432"]
         options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
     env:
-      PLUMBLINE_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+      WITNESSMARK_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

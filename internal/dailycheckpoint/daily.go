@@ -14,13 +14,13 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/checkpoint"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/checkpoint"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/keys"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/kmssign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
 )
 
 // Publisher puts a checkpoint file in the public repository and returns the commit.

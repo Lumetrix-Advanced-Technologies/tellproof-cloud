@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
 )
 
 const user = "20000000-0000-0000-0000-00000000000a"

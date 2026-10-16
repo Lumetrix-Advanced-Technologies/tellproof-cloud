@@ -27,14 +27,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batch"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/evaluate"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/evaluate"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/keys"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/kmssign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
 )
 
 const (
@@ -372,7 +372,7 @@ func TestAllThreeVerifiersAcceptIssuedPacks(t *testing.T) {
 		}
 	}
 	goArgs := append([]string{"run", "./cmd/verify", "--jwks", jwks}, files...)
-	run("plumbline-verify", exec.Command("go", goArgs...), "RESULT: VERIFIED")
+	run("witnessmark-verify", exec.Command("go", goArgs...), "RESULT: VERIFIED")
 	if py, err := exec.LookPath("python3"); err == nil {
 		run("verify.py", exec.Command(py, append([]string{"concierge/verify.py", pemPath}, files...)...), "RESULT: VERIFIED")
 	}

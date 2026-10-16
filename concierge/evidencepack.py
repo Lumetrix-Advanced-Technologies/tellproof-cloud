@@ -2,7 +2,7 @@
 
   python3 concierge/evidencepack.py ingest --source otlp|langfuse --out aggregates.json --leaves leaves.txt FILE...
 
-The salt secret comes from PLUMBLINE_SALT_SECRET or --salt-secret-file (mode 0600).
+The salt secret comes from WITNESSMARK_SALT_SECRET or --salt-secret-file (mode 0600).
 Frozen after Milestone 1: bug fixes only, each with a matching vector.
 """
 import argparse
@@ -28,9 +28,9 @@ def read_secret_file(path: str) -> bytes:
 def salt_secret(args) -> bytes:
     if args.salt_secret_file:
         return read_secret_file(args.salt_secret_file)
-    secret = os.environ.get("PLUMBLINE_SALT_SECRET", "").encode()
+    secret = os.environ.get("WITNESSMARK_SALT_SECRET", "").encode()
     if not secret:
-        raise SystemExit("evidencepack: set PLUMBLINE_SALT_SECRET or pass --salt-secret-file")
+        raise SystemExit("evidencepack: set WITNESSMARK_SALT_SECRET or pass --salt-secret-file")
     return secret
 
 

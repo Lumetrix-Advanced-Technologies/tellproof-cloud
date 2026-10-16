@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
 )
 
 // Cookie names. All are HttpOnly and SameSite=Lax, and Secure when the app is served over https.
@@ -51,7 +51,7 @@ type Sessions struct {
 	Verifier *Verifier
 	Supabase *Supabase
 	Store    *store.Store
-	BaseURL  string // PUBLIC_BASE_URL, e.g. https://app.plumbline.example
+	BaseURL  string // PUBLIC_BASE_URL, e.g. https://app.witnessmark.example
 	Now      func() time.Time
 }
 
@@ -180,7 +180,7 @@ func (s *Sessions) SameOrigin(next http.Handler) http.Handler {
 		}
 		u, err := url.Parse(src)
 		if src == "" || err != nil || base == nil || u.Scheme != base.Scheme || u.Host != base.Host {
-			http.Error(w, "this form must be sent from the Plumbline app", http.StatusForbidden)
+			http.Error(w, "this form must be sent from the Witnessmark app", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)
