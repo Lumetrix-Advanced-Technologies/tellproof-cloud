@@ -13,7 +13,7 @@ import (
 )
 
 // Signer signs a DSSE PAE. Implementations: ECDSAP256Signer (tests and local
-// dev), Ed25519Signer (agent), and the KMS signer (internal/kmssign, P4-5).
+// dev), Ed25519Signer (agent), and the control plane's KMS signer (P4-5).
 type Signer interface {
 	Sign(ctx context.Context, pae []byte) (sig []byte, keyID string, err error)
 }

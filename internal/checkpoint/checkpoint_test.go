@@ -7,6 +7,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
 )
 
@@ -105,8 +105,10 @@ func TestVerifyChecksSignatureRootChainAndKey(t *testing.T) {
 	if _, err := Verify(sign(t, other, d1), keys, nil); err == nil {
 		t.Error("another key's signature was accepted")
 	}
-	j := kmssign.JWK(&key.PublicKey, "k")
-	retired, _ := pack.ParseJWKS(fmt.Appendf(nil, `{"keys":[{"kty":"EC","crv":"P-256","kid":"k","x":"%s","y":"%s","exp":%d}]}`, j["x"], j["y"], issued.Unix()))
+	pub, _ := key.PublicKey.ECDH()
+	xy := pub.Bytes()[1:] // uncompressed point: 0x04 || x || y
+	b64 := base64.RawURLEncoding.EncodeToString
+	retired, _ := pack.ParseJWKS(fmt.Appendf(nil, `{"keys":[{"kty":"EC","crv":"P-256","kid":"k","x":"%s","y":"%s","exp":%d}]}`, b64(xy[:32]), b64(xy[32:]), issued.Unix()))
 	if _, err := Verify(e1, retired, nil); err == nil || !strings.Contains(err.Error(), "exp") {
 		t.Errorf("a checkpoint signed when its key had expired: %v", err)
 	}

@@ -143,7 +143,7 @@ class ShareTest(unittest.TestCase):
         token = url.split("?t=")[1]
         self.assertNotIn(token, r.stderr)
         self.assertTrue((site / "v1/verify" / token).exists())
-        u = subprocess.run([sys.executable, str(ROOT / "concierge/evidencepack.py"), "unshare", "--site-dir", str(site), "--token", token],
+        u = subprocess.run([sys.executable, str(ROOT / "concierge/evidencepack.py"), "unshare", "--site-dir", str(site), "--token=" + token],
                            capture_output=True, text=True, env=os.environ)
         self.assertEqual(u.returncode, 0, u.stderr)
         self.assertFalse((site / "v1/verify" / token).exists())

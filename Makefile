@@ -6,7 +6,7 @@ GO_PKGS := ./...
 STATICCHECK := honnef.co/go/tools/cmd/staticcheck@2026.2.2
 GOVULNCHECK := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
-.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test test-db agent-binaries agent-image e2e run-server run-worker agent-dry concierge-verify
+.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test test-db agent-binaries agent-image oss-export oss-check e2e run-server run-worker agent-dry concierge-verify
 
 check: fmt-check vet staticcheck vuln test vectors concierge-test sdk-test
 
@@ -83,6 +83,21 @@ agent-binaries:
 
 agent-image:
 	docker build -f cmd/agent/Dockerfile --build-arg VERSION=$(VERSION) -t plumbline-agent:$(VERSION) .
+
+# The open-source tree (P6-2, D-050): the agent, the verifier, what they import,
+# the verify page, SDKs, spec and vectors, with oss/ (licence, README, CI and
+# release workflows) on top. oss-check proves it stands alone: its dependencies
+# tidy without the control plane's, and its own `make check` passes.
+OSS_DIR ?= dist/oss
+oss-export:
+	go run ./tools/ossexport -out $(OSS_DIR)
+
+oss-check: oss-export
+	cd $(OSS_DIR) && go mod tidy
+	@if grep -n -e jackc/pgx -e service/kms $(OSS_DIR)/go.mod; then echo "oss-check: the open-source module needs a control-plane dependency"; exit 1; fi
+	$(MAKE) -C $(OSS_DIR) check
+	$(MAKE) -C $(OSS_DIR) release-binaries GOOS=linux GOARCH=amd64 VERSION=oss-check
+	cd $(OSS_DIR) && scripts/release-notes.sh v0.1.0 > /dev/null
 
 # The whole product end to end (S-6): sample apps -> SDKs -> agent -> server -> pack -> verify page in headless Chrome.
 # Needs Postgres (see test-db), python3, node and Chrome.

@@ -1,4 +1,6 @@
-# Plumbline
+# Plumbline (cloud)
+
+This is the private repository: the control plane, the web app and everything else. The agent, the SDKs, the verifiers and the spec are published from here to the public [`plumbline`](https://github.com/Lumetrix-Advanced-Technologies/plumbline) repository by `make oss-export` (D-050, D-052).
 
 Plumbline (by Lumetrix) turns an AI product's runtime telemetry into **signed, chained evidence packs** that a bank, insurer or auditor can verify themselves: offline, with no account, and without trusting the vendor or us. Prompts, completions and trace IDs never leave the vendor's environment.
 
@@ -16,15 +18,16 @@ A pack reports ten evidence objectives for one AI system over one period (trace 
 | TypeScript SDK (`sdk/js`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
 | Control plane (`plumbline-server`: migrate, ingest, jobs, evaluator, pack issue and KMS signing, JWKS with rotation, daily checkpoints, share links and verify API, Supabase sign-in, the vendor web app) | Built |
 | One-command agent install (`plumbline-agent connect`), end-to-end test in CI | Built |
-| Vanta integration, release and open-source split, launch | In progress (build plan Phase 6) (build plan Phases S, 4, 5, 6; D-024, D-025) |
+| Vanta integration (D-049); release tooling and the open-source split (D-050) | Built; the public repository and first release are not published yet |
+| Launch checklist | In progress (build plan Phase 6) |
 
 Progress per task: [`docs/progress-tracker.md`](docs/progress-tracker.md). What was built and how it was tested: [`docs/engineering-log.md`](docs/engineering-log.md).
 
 ## Quick start
 
 ```bash
-git clone git@github.com:Lumetrix-Advanced-Technologies/plumbline.git
-cd plumbline
+git clone git@github.com:Lumetrix-Advanced-Technologies/plumbline-cloud.git
+cd plumbline-cloud
 make check
 ```
 
@@ -208,7 +211,7 @@ The normative description is [`docs/architecture.md`](docs/architecture.md) §2.
 | `web/app/` | The vendor web app's templates and stylesheet |
 | `internal/agent/`, `otlp/`, `langfuse/`, `usage/`, `aggregate/`, `commitment/`, `enrol/`, `batchsign/`, `queue/` | The agent's pipeline |
 | `sdk/python/` | Python SDK (`plumbline.init()`), standard library only |
-| `sdk/js/` | Node.js/TypeScript SDK (`@plumbline/sdk`), no dependencies |
+| `sdk/js/` | Node.js/TypeScript SDK (`plumbline-sdk`), no dependencies |
 | `sdk/testdata/` | The shared SDK scenario every SDK and the agent must agree on |
 | `internal/jcs/` | RFC 8785 serializer and strict parser |
 | `internal/dsse/` | DSSE envelopes, PAE, P-256 and Ed25519 signers, verification |

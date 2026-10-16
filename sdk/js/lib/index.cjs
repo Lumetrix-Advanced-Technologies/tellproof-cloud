@@ -1,7 +1,7 @@
 'use strict';
 // Plumbline SDK: one line to send evidence telemetry to the local Plumbline agent.
 //
-//   const plumbline = require('@plumbline/sdk');   // or: import * as plumbline from '@plumbline/sdk'
+//   const plumbline = require('plumbline-sdk');   // or: import * as plumbline from 'plumbline-sdk'
 //   plumbline.init();
 //
 // Spans go as OTLP JSON to the agent (http://127.0.0.1:4318, or

@@ -1,5 +1,5 @@
 {
-  "name": "@plumbline/sdk",
+  "name": "plumbline-sdk",
   "version": "0.1.0",
   "description": "One-line evidence telemetry for AI products: sends model-call facts (never content) to the local Plumbline agent.",
   "main": "./lib/index.cjs",
@@ -13,7 +13,8 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["lib", "README.md"],
+  "files": ["lib", "README.md", "LICENSE"],
+  "license": "Apache-2.0",
   "engines": { "node": ">=18" },
   "sideEffects": false,
   "dependencies": {},

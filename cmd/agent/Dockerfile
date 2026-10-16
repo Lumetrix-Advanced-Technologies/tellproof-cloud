@@ -3,14 +3,18 @@
 # Run (the Plumbline app shows this line with the token filled in):
 #   docker run -d --name plumbline-agent --restart unless-stopped -p 127.0.0.1:4318:4318 \
 #     -v plumbline-agent:/data -e PLUMBLINE_SERVER=https://<server> plumbline-agent connect <token>
-FROM golang:1.27 AS build
+# The build stage runs on the builder's platform and cross-compiles, so a
+# multi-platform build (--platform linux/amd64,linux/arm64) needs no emulation.
+FROM --platform=$BUILDPLATFORM golang:1.27 AS build
 ARG VERSION=dev
 ARG TAGS=
+ARG TARGETOS=linux
+ARG TARGETARCH
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -tags "${TAGS}" -ldflags "-s -w -X main.version=${VERSION}" -o /out/plumbline-agent ./cmd/agent \
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -tags "${TAGS}" -ldflags "-s -w -X main.version=${VERSION}" -o /out/plumbline-agent ./cmd/agent \
  && mkdir -p /out/data
 
 FROM gcr.io/distroless/static-debian12:nonroot

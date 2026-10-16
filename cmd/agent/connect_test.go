@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -21,28 +20,6 @@ import (
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/server"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
 )
-
-type lockedBuffer struct {
-	mu sync.Mutex
-	b  bytes.Buffer
-}
-
-func (l *lockedBuffer) Write(p []byte) (int, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.b.Write(p)
-}
-func (l *lockedBuffer) String() string { l.mu.Lock(); defer l.mu.Unlock(); return l.b.String() }
-
-func freePort(t *testing.T) string {
-	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer l.Close()
-	return l.Addr().String()
-}
 
 // Acceptance (S-5): on a clean machine, `plumbline-agent connect <token>` plus
 // the one-line SDK init gets a sample app's calls into a batch the server

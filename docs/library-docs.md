@@ -138,3 +138,10 @@ Checked against the libraries' sources on 15 Oct 2026 (openai-node 7.34, anthrop
 - `GET /repos/{owner}/{repo}/contents/{path}` returns `{content (base64, wrapped at 60 characters), encoding: "base64", sha}`; `GET /repos/{owner}/{repo}/commits?path={path}&per_page=1` gives the file's latest commit.
 - Headers: `Authorization: Bearer <token>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`. A fine-grained token with contents write on the checkpoint repository only.
 - Docs: https://docs.github.com/en/rest/repos/contents
+
+## Release signing and publishing (P6-2)
+
+- GitHub artifact attestations: `actions/attest-build-provenance@v2` with `subject-path` (files) or `subject-name` + `subject-digest` (+ `push-to-registry: true` for images). The job needs `id-token: write` and `attestations: write`. Verify with `gh attestation verify <file> --repo <owner>/<repo>`, or `oci://<image>` for images. Docs: https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations
+- PyPI trusted publishing: `pypa/gh-action-pypi-publish@release/v1` with `id-token: write` and no token; the PyPI project must name the repository, workflow file (`sdk-release.yml`) and environment (`release`) as a trusted publisher first. Docs: https://docs.pypi.org/trusted-publishers/
+- npm: `npm publish --provenance --access public` from GitHub Actions with `id-token: write`; the token is `NODE_AUTH_TOKEN` (an automation token in the `NPM_TOKEN` secret). The `@plumbline` scope must exist and belong to us. Docs: https://docs.npmjs.com/generating-provenance-statements
+- `gh release create <tag> --draft --verify-tag --notes-file <file> <assets…>` creates an unpublished release.

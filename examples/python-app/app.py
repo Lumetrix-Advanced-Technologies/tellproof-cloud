@@ -1,7 +1,7 @@
 """A sample AI app with Plumbline evidence in one line (used by the end-to-end test).
 
 Run an agent first (`plumbline-agent connect <token>`), then:
-    pip install plumbline          # or PYTHONPATH=sdk/python/src from this repository
+    pip install plumbline-sdk          # or PYTHONPATH=sdk/python/src from this repository
     python examples/python-app/app.py
 
 With the openai, anthropic or boto3 libraries installed, plumbline.init() records

@@ -1,13 +1,17 @@
-# @plumbline/sdk (Node.js and TypeScript)
+# plumbline-sdk (Node.js and TypeScript)
 
 One line to send evidence telemetry from an AI product to the local Plumbline evidence agent.
 
+```bash
+npm install plumbline-sdk
+```
+
 ```js
-import * as plumbline from '@plumbline/sdk'; // or: const plumbline = require('@plumbline/sdk')
+import * as plumbline from 'plumbline-sdk'; // or: const plumbline = require('plumbline-sdk')
 plumbline.init();
 ```
 
-The SDK records one span per model call with provider, model, region, token counts, operation, timing and error status, and sends it as OTLP JSON to the agent on `http://127.0.0.1:4318` (or `PLUMBLINE_AGENT_URL`). The agent aggregates per hour, signs, and sends only aggregates to Plumbline. **The SDK never reads prompts, completions, function arguments, return values or error messages.**
+The SDK records one span per model call with provider, model, region, token counts, operation, timing and error status, and sends it as OTLP JSON to the agent on `http://127.0.0.1:4318` (or `PLUMBLINE_AGENT_URL`). The agent aggregates per hour and signs the aggregates: it keeps them in a local evidence log (`plumbline-agent local`) or sends them to Plumbline (`plumbline-agent connect`). **The SDK never reads prompts, completions, function arguments, return values or error messages.**
 
 - No dependencies: Node 18+ built-ins only (`fetch`, `AsyncLocalStorage`). Plain JavaScript with TypeScript types; no build step. `import` and `require` share one instance.
 - Never slows or breaks the app: spans go to a bounded buffer; when it is full they are dropped and counted (`plumbline.stats()`). SDK errors are swallowed and counted. Its timers never keep the process alive.
