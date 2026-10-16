@@ -4,7 +4,7 @@ What must be true before Plumbline is announced (P6-3). Code-side items were don
 
 ## Decisions
 
-- [ ] **Repository names** (D-050). Rename this repository (for example `plumbline-cloud`) and create the public `plumbline` repository, or choose another public name and export with `-module`.
+- [x] **Repository names** (D-050, D-052). This repository is `plumbline-cloud`; the public one is `plumbline`.
 - [ ] **Predicate type domain** (D-008). Packs still use the placeholder `https://lumetrix.example/plumbline/pack/v0.1`. Decide the real domain before the first real pack; changing it later means new vectors.
 - [ ] **Supabase signing keys** (D-007). Confirm the project signs access tokens with asymmetric ES256 keys, not the legacy HS256 secret.
 
@@ -18,10 +18,13 @@ What must be true before Plumbline is announced (P6-3). Code-side items were don
 
 ## The public repository and first release (P6-2)
 
-- [ ] `make oss-export`, review the tree, push it to the public repository.
-- [ ] In the public repository: private vulnerability reporting on; a `release` environment with required reviewers; ghcr package `plumbline-agent` public.
-- [ ] PyPI: trusted publisher for `plumbline` (workflow `sdk-release.yml`, environment `release`). npm: the `@plumbline` scope and an `NPM_TOKEN` secret.
-- [ ] Tag `v0.1.0`, check the draft release (binaries, `SHA256SUMS`, attestations with `gh attestation verify`), publish it. Then tag `sdk-v0.1.0`.
+- [x] `make oss-export`, review the tree, push it to the public repository (16 Oct 2026, exported from `p6-4-local`; re-export after the PRs merge).
+- [x] In the public repository: private vulnerability reporting on; a `release` environment with a required reviewer (tags `v*` and `sdk-v*` only); `early-access` label.
+- [ ] Make the ghcr package `plumbline-agent` public (GitHub web settings only; until then the README's `docker run` quick start fails for others).
+- [ ] PyPI: trusted publisher for `plumbline-sdk` (repository `Lumetrix-Advanced-Technologies/plumbline`, workflow `sdk-release.yml`, environment `release`). npm: an account that owns `plumbline-sdk` and an `NPM_TOKEN` secret in the public repository.
+- [x] Tag `v0.1.0`, check the draft release (checksums, attestations, versions, local mode smoke test), publish it.
+- [ ] Tag `sdk-v0.1.0` once PyPI and npm are set up.
+- [ ] Choose a private contact address for early access and security, or confirm GitHub-only is enough.
 - [ ] Check that the agent snippet in the app works with the published image.
 
 ## Pages and content (P6-3)
