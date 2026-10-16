@@ -1,4 +1,6 @@
-# Plumbline
+# Plumbline (cloud)
+
+This is the private repository: the control plane, the web app and everything else. The agent, the SDKs, the verifiers and the spec are published from here to the public [`plumbline`](https://github.com/Lumetrix-Advanced-Technologies/plumbline) repository by `make oss-export` (D-050, D-052).
 
 Plumbline (by Lumetrix) turns an AI product's runtime telemetry into **signed, chained evidence packs** that a bank, insurer or auditor can verify themselves: offline, with no account, and without trusting the vendor or us. Prompts, completions and trace IDs never leave the vendor's environment.
 
@@ -24,8 +26,8 @@ Progress per task: [`docs/progress-tracker.md`](docs/progress-tracker.md). What 
 ## Quick start
 
 ```bash
-git clone git@github.com:Lumetrix-Advanced-Technologies/plumbline.git
-cd plumbline
+git clone git@github.com:Lumetrix-Advanced-Technologies/plumbline-cloud.git
+cd plumbline-cloud
 make check
 ```
 
