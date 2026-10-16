@@ -277,3 +277,16 @@ The agent commits each hourly window to a salted root and sends only that root a
 - **Atomic enqueue.** `Enqueue` takes a pool or a transaction, so a job is created in the same transaction as the writes that call for it.
 - **Recurring jobs** keep one pending row each: `EnsureScheduled` adds one under an advisory lock if none is pending, and a recurring handler schedules its successor the same way (never twice, even when retried). `prune_jobs` runs daily and deletes finished jobs after 30 days and dead ones after 60.
 - **Polling**, not LISTEN/NOTIFY: back to back while there is work, then a jittered 1–3 s wait. Simple, and fast enough for jobs measured in seconds.
+
+## D-040 Go evaluator, and two evaluation rules for agent-collected data (16 Oct 2026)
+
+`internal/evaluate` (P4-4) is a line-by-line port of `concierge/evaluate.py` (D-021) and must give the same JSON on the same inputs; a parity test runs both on the partner month, a late-release variant, agent-shaped data, a bare month and the demo month ingested from the sample export. Number formatting copies Python's (`{:g}`, `round(x, 1)`, percentages rounded down). Timezone data is embedded (`time/tzdata`), so periods are the same wherever the server runs.
+
+Porting found two gaps the concierge's fixtures never exercised, now fixed in both implementations:
+
+- **Region-less usage (D-028).** OpenAI and Anthropic usage carries no region, while their spans say `unknown`. A provider whose usage has region `""` is now compared across all of its traced regions (one coverage row, region `""`). Without this, coverage for those providers was always "no usage supplied".
+- **`unknown` is not a value.** A call with model `unknown` (an input-guardrail block without a model) or region `unknown` (OpenAI, Anthropic) is left out of the declared-models and declared-regions checks, which compare only real names; the limitations say how many calls could not be checked.
+
+It also found a bug in the concierge: a window that listed models but no prompt versions overwrote the metric counters (a loop variable named `m`), and evaluating it crashed. Fixed, with a test that fails on the old code.
+
+The evaluation of a production period (P4-5) reads its windows from `evidence_batches` and its provider usage from the batches' `usage` arrays. Several batches can carry the same hour's usage (a restart splits a window, D-032; several agents may serve one system), and provider usage is per account, not per agent, so usage rows are deduplicated by (provider, model, region, hour), keeping the largest reported value.

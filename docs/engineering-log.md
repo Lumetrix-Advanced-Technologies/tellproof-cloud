@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-16 · P4-4 · Evaluator
+
+**Built.** `internal/evaluate` (`Evaluate`, `PeriodBounds`, `ObjectiveSetHash`): the ten objectives over a period of windows, provider usage, change and incident registers and eval runs, with the concierge's output shape. A parity test runs `concierge/evaluate.py` and the Go evaluator on the same files and compares the JSON. Fixed in `concierge/evaluate.py`: the counter bug, region-less usage, and `unknown` models and regions (D-040), with a concierge test.
+
+**Problems.** Reading the concierge to port it turned up a real bug: `for m in ...models` overwrote the metric counter `m`, so any window with models but no prompt versions crashed the evaluation (`KeyError: 'leaves'`). The fixtures always had versions. It also showed that data from the agent and SDKs would have failed two objectives for reasons unrelated to the vendor: region-less OpenAI and Anthropic usage never matched spans in region `unknown`, and `unknown` counted as an undeclared region. Both are now handled in both implementations. My first Go version key held the prompt version as a pointer, so map lookups compared addresses and the demo month's eval objective counted one version twice; the parity test caught it. A test of Python-style formatting first used `0.995 * 100` as a Go constant, which folds to exactly 99.5 at compile time, unlike Python's runtime product; the test now multiplies at run time.
+
+**Verified.** The Go evaluator produces exactly the concierge's evaluation (objectives, coverage, lineage, registers, limitations, counts, period, hash) for the partner month, the partner month with prompt v15 released on day 2 (eval freshness fails), agent-shaped data, a one-window month without registers, and the demo month ingested from the sample export. The partner month's statuses match the concierge test's hand calculation. Making Go ignore region-less usage makes the agent-shaped case diverge from the concierge. The concierge's new test fails on the old evaluator. Formatting helpers match Python on the values the objectives produce.
+
 ## 2026-10-16 · P4-3 · Jobs
 
 **Built.** `internal/jobs` (`Enqueue`, `Worker.RunOnce`/`Run`, `EnsureScheduled`, `Prune`) and `plumbline-server work`, which schedules and runs `prune_jobs`; the other kinds get handlers in their own tasks. Choices in D-039.

@@ -124,6 +124,38 @@ class EvaluateTest(unittest.TestCase):
             self.assertEqual(o["status"], "fail")
             self.assertIn("prompt v15 (live 28 days)", o["measured"])
 
+    def test_agent_shaped_data(self):
+        """Data as the agent and SDKs produce it (D-028, P4-4): OpenAI usage with no region, OpenAI
+        spans with region "unknown", a blocked call with model "unknown", and a window that lists
+        models but no prompt versions (which used to overwrite the metric counters)."""
+        with tempfile.TemporaryDirectory() as d:
+            agg = json.loads((M / "aggregates.json").read_text())
+            for w in agg["windows"]:
+                for t in w["metrics"]["tokens"]:
+                    if t["provider"] == "openai":
+                        t["region"] = "unknown"
+            agg["windows"][0]["metrics"]["tokens"].append(
+                {"provider": "openai", "model": "unknown", "region": "unknown", "input_tokens": 0, "output_tokens": 0, "calls": 3})
+            agg["windows"][1]["observed"]["versions"] = []
+            (Path(d) / "agg.json").write_text(json.dumps(agg))
+            usage = (M / "usage.csv").read_text().splitlines()
+            (Path(d) / "usage.csv").write_text("\n".join(
+                line.replace("openai,text-embedding-3-small,us-east-1,", "openai,text-embedding-3-small,,") for line in usage) + "\n")
+            ev = evaluate.evaluate(**{**ARGS, "aggregate_paths": [str(Path(d) / "agg.json")], "usage_paths": [str(Path(d) / "usage.csv")]})
+        by_id = {o["id"]: o for o in ev["objectives"]}
+        # Region-less OpenAI usage is matched across OpenAI's traced regions: coverage is unchanged.
+        self.assertEqual(by_id["EO-LOG-01"]["measured"], "97.1% of billed tokens traced")
+        openai = [r for r in ev["coverage"]["providers"] if r["provider"] == "OpenAI"]
+        self.assertEqual([(r["region"], r["billed_tokens"], r["traced_tokens"], r["traced_requests"]) for r in openai], [("", 81000, 80000, 803)])
+        # "unknown" is neither an undeclared model nor an undeclared region; the limitations say so.
+        self.assertEqual(by_id["EO-LIN-01"]["status"], "pass")
+        self.assertEqual(by_id["EO-RES-01"]["status"], "pass")
+        self.assertIn("3 call(s) named no model; the model inventory cannot be checked for them.", ev["limitations"])
+        self.assertIn("803 call(s) carried no region; region declarations cannot be checked for them.", ev["limitations"])
+        # The counters survive a window with models and no versions.
+        self.assertEqual(ev["leaf_count"], self.ev["leaf_count"])
+        self.assertEqual(by_id["EO-PII-01"]["values"], self.by_id["EO-PII-01"]["values"])
+
     def test_bad_inputs(self):
         with tempfile.TemporaryDirectory() as d:
             bad = Path(d) / "usage.csv"
