@@ -24,7 +24,8 @@
 
   <nav class="toc panel" aria-label="On this page">
     <ol>
-      <li><a href="#quick">Connect in two steps</a></li>
+      <li><a href="#local">Try it locally</a></li>
+      <li><a href="#quick">Connect to Plumbline</a></li>
       <li><a href="#install">Install</a></li>
       <li><a href="#app">Instrument your app</a></li>
       <li><a href="#dry">See what would be sent</a></li>
@@ -36,7 +37,17 @@
     </ol>
   </nav>
 
-  <h2 id="quick">Connect in two steps</h2>
+  <h2 id="local">Try it locally</h2>
+  <p>Local mode needs no account, no server and no token. The agent signs each hourly batch with a key of its own and keeps it in its data directory; nothing is sent anywhere.</p>
+<pre><code>docker run -d --name plumbline-agent --restart unless-stopped -p 127.0.0.1:4318:4318 \
+  -v plumbline-agent:/data ghcr.io/lumetrix-advanced-technologies/plumbline-agent:latest local</code></pre>
+  <p>Add the SDK to your app (<a href="#app">below</a>), make a model call, and about a minute later read the log:</p>
+<pre><code>docker exec plumbline-agent /plumbline-agent report
+docker exec plumbline-agent /plumbline-agent report --json --since 2026-10-01</code></pre>
+  <p><code>report</code> checks every batch's signature against <code>agent.pub</code> and the chain from the first batch, then sums the calls per model and region, guardrail decisions, personal-data redaction, agent activity, prompt and model changes and anomalies. It exits 1 if a batch was edited or is missing. Keep a copy of <code>agent.pub</code> elsewhere: the log proves it has not changed relative to that key.</p>
+  <p>For packs evaluated against Plumbline's evidence objectives and signed by an independent issuer, which a reviewer can verify, <a href="https://github.com/lumetrix-advanced-technologies/plumbline/issues/new?template=early-access.yml">request early access</a> to the hosted service. Connecting starts a new agent with its own data directory; the local log stays local.</p>
+
+  <h2 id="quick">Connect to Plumbline</h2>
   <ol>
     <li>In the Plumbline app, open your AI system's <b>Setup and sources</b> page and choose <b>Create enrolment token</b>. The page shows the command below with the token and server filled in. The token works once, for 24 hours.</li>
     <li>Run the agent with it, then add one line to your app.</li>
@@ -59,9 +70,9 @@ gh attestation verify plumbline-agent-linux-amd64 --repo lumetrix-advanced-techn
 <pre><code>go install github.com/lumetrix-advanced-technologies/plumbline/cmd/agent@latest</code></pre>
 
   <h2 id="app">Instrument your app</h2>
-  <p>Install the SDK (<code>pip install plumbline</code> or <code>npm install @plumbline/sdk</code>) and add one line at start-up:</p>
+  <p>Install the SDK (<code>pip install plumbline-sdk</code> or <code>npm install plumbline-sdk</code>) and add one line at start-up:</p>
 <pre><code>import plumbline; plumbline.init()                              # Python 3.10+
-import * as plumbline from '@plumbline/sdk'; plumbline.init();   // Node.js 18+</code></pre>
+import * as plumbline from 'plumbline-sdk'; plumbline.init();   // Node.js 18+</code></pre>
   <p>The SDK instruments the OpenAI, Anthropic and Bedrock client libraries that are installed. It records one span per model call (provider, model, region, token counts, operation, timing and error status) and never reads prompts, completions, arguments or return values. It has no dependencies, and it never blocks or breaks your app: if the agent is down, spans are dropped and counted.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>Environment variable</th><th>Default</th><th>Meaning</th></tr></thead>
@@ -72,6 +83,7 @@ import * as plumbline from '@plumbline/sdk'; plumbline.init();   // Node.js 18+<
       <tr><td><code>PLUMBLINE_DISABLED</code></td><td>unset</td><td><code>1</code> turns the SDK off.</td></tr>
     </tbody>
   </table></div>
+  <p><b>Serving your own models?</b> There is no client library to patch: wrap each inference request in your serving layer with <code>plumbline.llm_call("your-company", model, region=...)</code> (Node.js: <code>plumbline.llmCall({provider, model, region}, fn)</code>) and report the tokens with <code>c.usage(input, output)</code>.</p>
   <p>Without the SDK, point an OTLP/HTTP JSON exporter at <code>http://127.0.0.1:4318/v1/traces</code> and set the <code>plumbline.*</code> attributes yourself, as listed in <code>spec/semconv-map.json</code>. Do not use both for the same calls, or they are counted twice.</p>
 
   <h2 id="dry">See what would be sent</h2>

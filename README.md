@@ -209,7 +209,7 @@ The normative description is [`docs/architecture.md`](docs/architecture.md) §2.
 | `web/app/` | The vendor web app's templates and stylesheet |
 | `internal/agent/`, `otlp/`, `langfuse/`, `usage/`, `aggregate/`, `commitment/`, `enrol/`, `batchsign/`, `queue/` | The agent's pipeline |
 | `sdk/python/` | Python SDK (`plumbline.init()`), standard library only |
-| `sdk/js/` | Node.js/TypeScript SDK (`@plumbline/sdk`), no dependencies |
+| `sdk/js/` | Node.js/TypeScript SDK (`plumbline-sdk`), no dependencies |
 | `sdk/testdata/` | The shared SDK scenario every SDK and the agent must agree on |
 | `internal/jcs/` | RFC 8785 serializer and strict parser |
 | `internal/dsse/` | DSSE envelopes, PAE, P-256 and Ed25519 signers, verification |

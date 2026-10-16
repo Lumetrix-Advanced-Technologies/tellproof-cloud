@@ -140,3 +140,5 @@ Done when: a new partner goes from sign-up to first issued pack in under 30 minu
 **P6-2 Release `cmd/verify` and `cmd/agent`.** CI matrix builds for linux/darwin/windows × amd64/arm64, checksums, signed release notes. Split `internal/{jcs,dsse,merkle,pack}`, `cmd/agent`, `cmd/verify` and `web/verify` into the public repo under Apache-2.0.
 
 **P6-3 Launch checklist.** Security page, docs site page for the agent, HN post draft, test vectors published.
+
+**P6-4 Local mode, early access and the public repository.** (Added 16 Oct 2026 at the founders' request.) `plumbline-agent local`: no server or token, signed batches kept in the data directory; `plumbline-agent report` verifies and summarises them. Early-access request options in the public repository. SDKs published as `plumbline-sdk`. This repository renamed `plumbline-cloud`; the public `plumbline` repository created from the export, with its first release.

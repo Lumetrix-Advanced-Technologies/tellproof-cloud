@@ -3,7 +3,7 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "plumbline"
+name = "plumbline-sdk"
 version = "0.1.0"
 description = "One-line evidence telemetry for AI products: sends model-call facts (never content) to the local Plumbline agent."
 readme = "README.md"

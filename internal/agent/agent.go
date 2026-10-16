@@ -25,6 +25,7 @@ import (
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/enrol"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/langfuse"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/localreport"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/merkle"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/otlp"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/queue"
@@ -33,7 +34,10 @@ import (
 
 // Options are the run-time choices that are not configuration.
 type Options struct {
-	DryRun bool             // print batches to Out; send, queue and store nothing
+	DryRun bool // print batches to Out; send, queue and store nothing
+	// Local keeps signed batches in the data directory's local/ log instead
+	// of sending them (D-052): no server, no enrolment, a key of its own.
+	Local  bool
 	Out    io.Writer        // dry-run output (default os.Stdout)
 	Log    *slog.Logger     // default: JSON to stderr
 	Now    func() time.Time // default time.Now
@@ -64,6 +68,9 @@ type Agent struct {
 	firstSpans time.Time       // when the first spans of this run arrived
 	firstSent  bool            // the early first batch has been sent
 }
+
+// LocalDir is the local evidence log in the data directory (localreport reads it).
+const LocalDir = localreport.Dir
 
 // DryRunAgentID is the identity a dry run uses before enrolment.
 const DryRunAgentID = "agt_dryrun0000000000"
@@ -96,12 +103,22 @@ func New(cfg Config, opt Options) (*Agent, error) {
 			_, priv, _ := ed25519.GenerateKey(rand.Reader)
 			a.id = &enrol.Identity{AgentID: DryRunAgentID, Key: priv}
 		}
+	} else if opt.Local {
+		if a.id, err = enrol.LocalIdentity(cfg.DataDir); err != nil {
+			return nil, err
+		}
+		if a.queue, err = queue.Open(filepath.Join(cfg.DataDir, LocalDir)); err != nil {
+			return nil, err
+		}
 	} else {
 		if cfg.Server == "" {
 			return nil, errors.New("agent: server is required (or use --dry-run)")
 		}
 		if a.id, err = enrol.Load(cfg.DataDir); err != nil {
 			return nil, err
+		}
+		if a.id.IsLocal() {
+			return nil, errors.New("agent: this data directory holds a local-mode agent; connect to a server with a new data directory")
 		}
 		if a.queue, err = queue.Open(filepath.Join(cfg.DataDir, "queue")); err != nil {
 			return nil, err
@@ -290,7 +307,11 @@ func (a *Agent) emit(ctx context.Context, windows []aggregate.Window) error {
 		if err != nil {
 			return err
 		}
-		a.opt.Log.Info("batch queued", "agent_id", a.id.AgentID, "seq", next.Seq, "window", w.Window.Start,
+		msg := "batch queued"
+		if a.opt.Local {
+			msg = "batch stored in the local evidence log"
+		}
+		a.opt.Log.Info(msg, "agent_id", a.id.AgentID, "seq", next.Seq, "window", w.Window.Start,
 			"digest", *next.Prev, "traces", c.Commit.Leaves)
 	}
 	return nil
@@ -361,7 +382,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 60 * time.Second}
 	go func() { _ = srv.Serve(ln) }()
-	a.opt.Log.Info("agent started", "agent_id", a.id.AgentID, "otlp", a.cfg.OTLPListen, "server", a.cfg.Server, "dry_run", a.opt.DryRun)
+	a.opt.Log.Info("agent started", "agent_id", a.id.AgentID, "otlp", a.cfg.OTLPListen, "server", a.cfg.Server, "dry_run", a.opt.DryRun, "local", a.opt.Local)
 
 	every := a.opt.TickEvery
 	if every <= 0 {

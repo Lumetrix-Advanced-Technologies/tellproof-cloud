@@ -2,6 +2,8 @@
 // AI product, turns its telemetry into signed hourly aggregates and sends only
 // those (docs/architecture.md §3).
 //
+//	plumbline-agent local                         # no server: keep signed batches in the data directory
+//	plumbline-agent report [--json]               # verify and summarise the local evidence log
 //	plumbline-agent connect <token>               # enrol once, then run (the one-command install)
 //	plumbline-agent enrol --config agent.json      # token in PLUMBLINE_ENROL_TOKEN
 //	plumbline-agent [run] --config agent.json [--dry-run] [--replay export.jsonl]
@@ -30,17 +32,22 @@ import (
 
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/agent"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/localreport"
 )
 
 // version is set at link time: go build -ldflags "-X main.version=v0.1.0".
 var version = "dev"
 
 const usage = `usage:
+  plumbline-agent local [--config <agent.json>]
+  plumbline-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
   plumbline-agent connect [--config <agent.json>] <token>
   plumbline-agent enrol --config <agent.json> [--token <token>]
   plumbline-agent [run] --config <agent.json> [--dry-run] [--replay <export.jsonl>]
   plumbline-agent version
 
+local runs with no server and no token: batches are signed with the agent's
+own key and kept in <data-dir>/local, and report verifies and summarises them.
 The enrolment token is read from PLUMBLINE_ENROL_TOKEN when --token is not
 given. Secrets are read from the environment variables the config names.
 Exit status: 0 ok, 1 runtime error, 2 usage or config error.
@@ -54,7 +61,7 @@ func main() {
 
 func run(ctx context.Context, args []string, getenv func(string) string, stdout, stderr io.Writer) int {
 	cmd := "run"
-	if len(args) > 0 && (args[0] == "run" || args[0] == "enrol" || args[0] == "connect" || args[0] == "version") {
+	if len(args) > 0 && (args[0] == "run" || args[0] == "enrol" || args[0] == "connect" || args[0] == "version" || args[0] == "local" || args[0] == "report") {
 		cmd, args = args[0], args[1:]
 	}
 	fs := flag.NewFlagSet("plumbline-agent "+cmd, flag.ContinueOnError)
@@ -63,6 +70,10 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 	dryRun := fs.Bool("dry-run", false, "print what would be sent; send, queue and store nothing")
 	replay := fs.String("replay", "", "feed an OTLP JSON export through the pipeline and exit")
 	token := fs.String("token", "", "one-time enrolment token (default $PLUMBLINE_ENROL_TOKEN)")
+	dataDir := fs.String("data-dir", "", "report: the data directory to read (default from the config)")
+	since := fs.String("since", "", "report: first day to sum, YYYY-MM-DD (UTC)")
+	until := fs.String("until", "", "report: last day to sum, YYYY-MM-DD (UTC)")
+	asJSON := fs.Bool("json", false, "report: print JSON")
 	maxArgs := 0
 	if cmd == "connect" {
 		maxArgs = 1 // the token
@@ -82,6 +93,18 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 			return 2
 		}
 		return connect(ctx, *configPath, fs.Arg(0), getenv, stdout, stderr, log)
+	case "local":
+		if *dryRun || *replay != "" || *token != "" || *dataDir != "" || *since != "" || *until != "" || *asJSON {
+			fmt.Fprint(stderr, usage)
+			return 2
+		}
+		return local(ctx, *configPath, getenv, stdout, stderr, log)
+	case "report":
+		if *dryRun || *replay != "" || *token != "" {
+			fmt.Fprint(stderr, usage)
+			return 2
+		}
+		return report(*configPath, *dataDir, *since, *until, *asJSON, getenv, stdout, stderr)
 	case "enrol":
 		if *dryRun || *replay != "" {
 			fmt.Fprint(stderr, usage)
@@ -89,7 +112,7 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 		}
 		return doEnrol(ctx, *configPath, *token, getenv, stdout, stderr)
 	}
-	if *token != "" {
+	if *token != "" || *dataDir != "" || *since != "" || *until != "" || *asJSON {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
@@ -203,6 +226,87 @@ func connect(ctx context.Context, configPath, token string, getenv func(string) 
 	}
 	if err := a.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		log.Error("agent stopped", "error", err.Error())
+		return 1
+	}
+	return 0
+}
+
+// local runs the agent with no server (D-052): batches are signed with the
+// agent's own key and kept in the data directory, for `report` to read.
+func local(ctx context.Context, configPath string, getenv func(string) string, stdout, stderr io.Writer, log *slog.Logger) int {
+	cfg, err := agent.LoadConfig(configPath, getenv)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	if cfg.Server != "" {
+		log.Warn("local mode ignores the server; nothing is sent", "server", cfg.Server)
+		cfg.Server = ""
+	}
+	if getenv(cfg.SaltSecretEnv) == "" && cfg.SaltSecretFile == "" {
+		path, err := ensureSaltSecret(cfg.DataDir)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		cfg.SaltSecretFile = path
+	}
+	a, err := agent.New(cfg, agent.Options{Local: true, Out: stdout, Log: log, Getenv: getenv, TickEvery: tickEvery})
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	fmt.Fprintf(stdout, "plumbline-agent %s in local mode as %s: listening for spans on %s; signed batches are kept in %s and never sent.\nSee them with: plumbline-agent report\n",
+		version, a.AgentID(), cfg.OTLPListen, filepath.Join(cfg.DataDir, agent.LocalDir))
+	if err := a.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		log.Error("agent stopped", "error", err.Error())
+		return 1
+	}
+	return 0
+}
+
+// report verifies the local evidence log and prints its summary. Exit 0 when
+// it verifies, 1 when a batch fails, 2 for usage errors or no log.
+func report(configPath, dataDir, since, until string, asJSON bool, getenv func(string) string, stdout, stderr io.Writer) int {
+	if dataDir == "" {
+		cfg, err := agent.LoadConfig(configPath, getenv)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		dataDir = cfg.DataDir
+	}
+	var r localreport.Range
+	for _, d := range []struct {
+		in  string
+		out *time.Time
+		add int
+	}{{since, &r.From, 0}, {until, &r.To, 1}} {
+		if d.in == "" {
+			continue
+		}
+		t, err := time.Parse("2006-01-02", d.in)
+		if err != nil {
+			fmt.Fprintf(stderr, "plumbline-agent: %q is not a date (YYYY-MM-DD)\n", d.in)
+			return 2
+		}
+		*d.out = t.AddDate(0, 0, d.add)
+	}
+	s, err := localreport.Read(dataDir, r)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	if asJSON {
+		err = localreport.WriteJSON(stdout, s)
+	} else {
+		err = localreport.WriteText(stdout, s)
+	}
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if !s.Verified {
 		return 1
 	}
 	return 0

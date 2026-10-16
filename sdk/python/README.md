@@ -1,13 +1,17 @@
-# plumbline (Python SDK)
+# plumbline-sdk (Python SDK)
 
 One line to send evidence telemetry from an AI product to the local Plumbline evidence agent.
+
+```bash
+pip install plumbline-sdk
+```
 
 ```python
 import plumbline
 plumbline.init()
 ```
 
-The SDK records one span per model call with provider, model, region, token counts, operation, timing and error status, and sends it as OTLP JSON to the agent on `http://127.0.0.1:4318` (or `PLUMBLINE_AGENT_URL`). The agent aggregates per hour, signs and sends only aggregates to Plumbline. **The SDK never reads prompts, completions, function arguments, return values or exception messages**, so there is no content to filter.
+The SDK records one span per model call with provider, model, region, token counts, operation, timing and error status, and sends it as OTLP JSON to the agent on `http://127.0.0.1:4318` (or `PLUMBLINE_AGENT_URL`). The agent aggregates per hour and signs the aggregates: it keeps them in a local evidence log (`plumbline-agent local`) or sends them to Plumbline (`plumbline-agent connect`). **The SDK never reads prompts, completions, function arguments, return values or exception messages**, so there is no content to filter.
 
 - No dependencies: standard library only, Python 3.10+.
 - Never slows or breaks the app: spans go to a bounded background buffer; when it is full, spans are dropped and counted (`plumbline.stats()`). SDK errors are swallowed and counted.

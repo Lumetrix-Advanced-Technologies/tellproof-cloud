@@ -52,6 +52,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P6-1 | Vanta integration | done | 2026-10-16 | Settings connects the vendor's own Vanta private integration (credentials sealed with AES-256-GCM); hourly full-state sync of one resource per objective with a live verify link, packs uploaded once as documents, errors shown in plain words (D-049) |
 | P6-2 | Release + open-source split | done | 2026-10-16 | `tools/ossexport` generates the Apache-2.0 public tree from `go list -deps` of the agent and verifier, with a leak check; CI proves it builds and passes its own `make check`; tag-triggered release workflow: 6-platform matrix, checksums, attested binaries and notes, draft release; image and SDK publishing behind approval. Nothing published yet (D-050) |
 | P6-3 | Launch checklist | done | 2026-10-16 | Security page and agent docs page on the static site (no JS, tested links and CSP), a verifier-writer's guide to the published vectors, the Show HN draft and the launch checklist of human steps; nothing posted or published (D-051) |
+| P6-4 | Local mode, early access, public repository | in progress | 2026-10-16 | |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 

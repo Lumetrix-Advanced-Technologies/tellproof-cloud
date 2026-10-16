@@ -1,4 +1,4 @@
-// Types for @plumbline/sdk. The package is plain JavaScript; there is no build step.
+// Types for plumbline-sdk. The package is plain JavaScript; there is no build step.
 
 export declare const VERSION: string;
 

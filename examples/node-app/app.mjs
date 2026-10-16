@@ -1,7 +1,7 @@
 // A sample AI app with Plumbline evidence in one line (used by the end-to-end test).
 //
 // Run an agent first (`plumbline-agent connect <token>`), then:
-//   npm install @plumbline/sdk     # here it is imported from this repository
+//   npm install plumbline-sdk     # here it is imported from this repository
 //   node examples/node-app/app.mjs
 //
 // With openai, @anthropic-ai/sdk or @aws-sdk/client-bedrock-runtime installed,

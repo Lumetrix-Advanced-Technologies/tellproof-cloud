@@ -36,7 +36,7 @@
   </nav>
 
   <h2 id="leaves">What leaves your environment</h2>
-  <p>Your application's SDK sends spans to the Plumbline evidence agent, which runs on your own infrastructure. The agent sends Plumbline one signed batch of aggregates per hour. A batch holds only counts and short names:</p>
+  <p>Your application's SDK sends spans to the Plumbline evidence agent, which runs on your own infrastructure. In local mode the agent keeps its signed batches on your machine and sends nothing. When it is connected to Plumbline, it sends one signed batch of aggregates per hour. A batch holds only counts and short names:</p>
   <ul class="sent">
     <li>Token and call counts per provider, model and region.</li>
     <li>How many spans carried personal data and how many of those were redacted, as counts.</li>
