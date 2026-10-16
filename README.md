@@ -15,7 +15,8 @@ A pack reports ten evidence objectives for one AI system over one period (trace 
 | Python SDK (`sdk/python`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
 | TypeScript SDK (`sdk/js`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
 | Control plane (`plumbline-server`: migrate, ingest, jobs, evaluator, pack issue and KMS signing, JWKS with rotation, daily checkpoints, share links and verify API, Supabase sign-in, the vendor web app) | Built |
-| One-command install, end-to-end CI, Vanta integration, release | In progress (build plan S-5, S-6, Phase 6) (build plan Phases S, 4, 5, 6; D-024, D-025) |
+| One-command agent install (`plumbline-agent connect`), end-to-end test in CI | Built |
+| Vanta integration, release and open-source split, launch | In progress (build plan Phase 6) (build plan Phases S, 4, 5, 6; D-024, D-025) |
 
 Progress per task: [`docs/progress-tracker.md`](docs/progress-tracker.md). What was built and how it was tested: [`docs/engineering-log.md`](docs/engineering-log.md).
 
@@ -40,6 +41,14 @@ It prints each check and ends with `RESULT: VERIFIED`. Try a tampered pack to se
 ```bash
 go run ./cmd/verify --jwks spec/vectors/test-jwks.json spec/vectors/pass/KST-CTA-0002.dsse.json spec/vectors/fail/tampered-payload.dsse.json
 ```
+
+## See it end to end
+
+```bash
+make e2e
+```
+
+Runs two sample apps (`examples/python-app`, `examples/node-app`) through the SDKs, an agent and the server to a signed pack, then opens its share link in headless Chrome, where the verify page checks it. Needs Docker (for Postgres), Python 3, Node and Chrome.
 
 ## Setup
 

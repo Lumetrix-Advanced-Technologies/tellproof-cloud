@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-16 · S-6 · End to end in CI
+
+**Built.** `e2e/e2e_test.go` (build tag `e2e`), the sample apps `examples/python-app/app.py` and `examples/node-app/app.mjs`, `make e2e`, `go vet -tags e2e` in `make vet`, and the CI job `e2e`. Choices in D-048.
+
+**Problems.** The first run's pack failed two objectives, and both verdicts were right about my samples: the Python agent's model call had no guardrail (4 of 44 calls unguarded), and the two apps reported the same service name while using different models, which reads as an unlogged model change. I fixed the samples, not the rules, and the test now asserts those objectives pass.
+
+**Verified.** Locally against Postgres 16 with Chrome: 36 spans from the Python app and 20 from the Node app reach the agent; the server holds the batches with exactly the 44 LLM calls; the issued pack passes model inventory, residency, personal data, content, guardrails, change and incident registers and agent safety, with coverage and eval freshness at "attention" (no provider usage or eval runs in the samples); headless Chrome opens the share link and the verify page shows "Verified, unaltered since signing" with the system's name and pack ID; one verifier view is logged.
+
 ## 2026-10-16 · S-5 · One-command install and connect
 
 **Built.** `plumbline-agent connect`, `aggregate.FlushOpen` and the agent's early first batch (`aggregation.first_batch_seconds`), the `PLUMBLINE_OTLP_ALLOW_REMOTE` override, `agent.Options.TickEvery`, `cmd/agent/Dockerfile` and `.dockerignore`, `make agent-binaries` and `make agent-image`, a CI job that builds and smoke-tests the image, and the Setup screen's `docker run` snippet. Choices in D-047.
