@@ -11,6 +11,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"flag"
 	"fmt"
@@ -127,7 +128,14 @@ func serve(ctx context.Context, getenv func(string) string, log *slog.Logger, st
 		log.Error("serve: cannot listen", "listen", listen, "error", err.Error())
 		return 1
 	}
-	srv := &http.Server{Handler: (&server.Server{Store: st, Log: log}).Handler(),
+	viewSecret := []byte(getenv("VIEW_HASH_SECRET"))
+	if len(viewSecret) < 16 {
+		viewSecret = make([]byte, 32)
+		_, _ = rand.Read(viewSecret)
+		log.Warn("VIEW_HASH_SECRET is unset or short: viewer counts reset when this process restarts")
+	}
+	api := &server.Server{Store: st, Log: log, ViewSecret: viewSecret, ClientIPHeader: getenv("CLIENT_IP_HEADER")}
+	srv := &http.Server{Handler: api.Handler(),
 		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second}
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()

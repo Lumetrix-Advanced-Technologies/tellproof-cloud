@@ -18,6 +18,10 @@ import (
 type Server struct {
 	Store *store.Store
 	Log   *slog.Logger
+	// ViewSecret keys the daily hash of verifier addresses (VIEW_HASH_SECRET).
+	ViewSecret []byte
+	// ClientIPHeader names the proxy header with the client address (Fly-Client-IP on Fly.io); empty: the socket address.
+	ClientIPHeader string
 }
 
 // Handler routes the API.
@@ -26,6 +30,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/agents/enrol", s.enrol)
 	mux.HandleFunc("POST /v1/batches", s.ingest)
 	mux.HandleFunc("GET /.well-known/jwks.json", s.jwks)
+	mux.HandleFunc("GET /v1/verify/{token}", s.verify)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.Store.Pool.Ping(r.Context()); err != nil {
 			writeError(w, http.StatusServiceUnavailable, "database unavailable")

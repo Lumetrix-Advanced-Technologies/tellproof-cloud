@@ -34,6 +34,7 @@ import (
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/otlp"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
 )
 
@@ -46,6 +47,7 @@ const (
 type fixture struct {
 	srv   *httptest.Server
 	owner *pgx.Conn
+	store *store.Store
 }
 
 func quiet() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
@@ -80,10 +82,10 @@ func newFixture(t *testing.T) *fixture {
 			t.Fatal(err)
 		}
 	}
-	s := &Server{Store: storetest.App(t, db), Log: quiet()}
+	s := &Server{Store: storetest.App(t, db), Log: quiet(), ViewSecret: []byte("a-test-view-secret-0123456789")}
 	srv := httptest.NewServer(s.Handler())
 	t.Cleanup(srv.Close)
-	return &fixture{srv: srv, owner: owner}
+	return &fixture{srv: srv, owner: owner, store: s.Store}
 }
 
 func (f *fixture) enrol(t *testing.T, token string) *enrol.Identity {
