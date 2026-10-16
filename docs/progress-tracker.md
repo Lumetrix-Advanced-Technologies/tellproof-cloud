@@ -40,7 +40,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P4-1 | Migrate + store | done | 2026-10-15 | `plumbline-server migrate` (embedded, checksummed, atomic per file, advisory lock); `store.WithTenant` with transaction-local tenant; RLS isolation and append-only proved against Postgres 16 (D-037) |
 | P4-2 | Enrol and ingest endpoints | done | 2026-10-16 | `serve` with enrol (atomic token claim) and ingest (verify, row-locked seq/prev, idempotent 200 with stored digest); the real agent delivers to it end to end (D-038) |
 | P4-3 | Jobs | done | 2026-10-16 | `plumbline-server work`: SKIP LOCKED claims, retries with backoff, dead jobs, stale-lock recovery, atomic enqueue, daily `prune_jobs` (D-039) |
-| P4-4 | Evaluator | not started | | |
+| P4-4 | Evaluator | done | 2026-10-16 | `internal/evaluate`: Go twin of the concierge evaluator, identical JSON on five fixture sets; region-less usage and `unknown` values handled in both; concierge counter bug fixed (D-040). DB loading arrives with P4-5. |
 | P4-5 | Pack builder + KMS + chain | not started | | |
 | P4-6 | JWKS and rotation | not started | | |
 | P4-7 | Daily checkpoint | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-16 · P4-4 · PR pending · The control plane evaluates the ten objectives exactly as the concierge does, including on agent-collected data.
 - 2026-10-16 · P4-3 · PR pending · A shared job queue: any number of workers, no job run twice, failures retried then parked.
 - 2026-10-16 · P4-2 · PR pending · Agents can enrol with the control plane and their signed batches are verified and stored exactly once.
 - 2026-10-15 · P4-1 · PR pending · The control plane can migrate a fresh database and every app query is confined to one tenant.

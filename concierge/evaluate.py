@@ -145,8 +145,8 @@ class Facts:
             for v in w.get("observed", {}).get("versions", []):
                 first_seen.setdefault((v["model"], v["prompt_version"]), ws)
             if not w.get("observed", {}).get("versions"):
-                for m in w.get("observed", {}).get("models", []):
-                    first_seen.setdefault((m["model"], None), ws)
+                for om in w.get("observed", {}).get("models", []):
+                    first_seen.setdefault((om["model"], None), ws)
             m["leaves"] += w["commit"]["leaves"]
         self.m, self.traced, self.calls_by_model = m, traced, calls_by_model
         self.transitions, self.anomalies = transitions, anomalies
@@ -163,14 +163,24 @@ class Facts:
                 b["requests"] += int(u["requests"])
         self.billed = billed
         self.changes, self.incidents, self.evals = changes, incidents, evals
-        self.models_observed = sorted({(p, model) for (p, model, _r) in calls_by_model})
-        self.regions_observed = sorted({r for (_p, r) in traced})
+        # "unknown" is not a model or a region: it cannot be checked against a declaration (limitations say so)
+        self.models_observed = sorted({(p, model) for (p, model, _r) in calls_by_model if model != "unknown"})
+        self.regions_observed = sorted({r for (_p, r) in traced if r != "unknown"})
+        self.calls_without_model = sum(c for (_p, model, _r), c in calls_by_model.items() if model == "unknown")
+        self.calls_without_region = sum(t["calls"] for (_p, r), t in traced.items() if r == "unknown")
 
-    # coverage over providers that have usage data; others are listed, not counted
+    # coverage over providers that have usage data; others are listed, not counted.
+    # A provider whose usage carries no region (OpenAI, Anthropic: D-028) is compared across all its regions.
     def coverage(self):
+        regionless = {p for (p, r) in self.billed if r == ""}
+        traced = defaultdict(lambda: {"tokens": 0, "calls": 0})
+        for (p, r), t in self.traced.items():
+            k = (p, "") if p in regionless else (p, r)
+            traced[k]["tokens"] += t["tokens"]
+            traced[k]["calls"] += t["calls"]
         rows, num, den = [], 0, 0
-        for key in sorted(set(self.billed) | set(self.traced)):
-            b, t = self.billed.get(key), self.traced.get(key, {"tokens": 0, "calls": 0})
+        for key in sorted(set(self.billed) | set(traced)):
+            b, t = self.billed.get(key), traced.get(key, {"tokens": 0, "calls": 0})
             if b is not None:
                 num += t["tokens"]
                 den += b["tokens"]
@@ -366,7 +376,9 @@ def evaluate(system_path, aggregate_paths, usage_paths, changes_path=None, incid
         "Proves what the exported telemetry shows. It does not prove the model behaves well on inputs that never occurred.",
         "Coverage below 100% means some provider-billed usage has no matching trace; untraced usage is not assessed.",
     ] + [f"No provider usage was supplied for {r['provider']} in {r['region']}; its traced usage is listed but not counted in coverage."
-         for r in cov_rows if not r["has_usage"]]
+         for r in cov_rows if not r["has_usage"]] + (
+        [f"{f.calls_without_model} call(s) named no model; the model inventory cannot be checked for them."] if f.calls_without_model else []) + (
+        [f"{f.calls_without_region} call(s) carried no region; region declarations cannot be checked for them."] if f.calls_without_region else [])
     file_digest = lambda p: {"name": Path(p).name, "sha256": hashlib.sha256(Path(p).read_bytes()).hexdigest()}  # noqa: E731
     return {
         "schema": SCHEMA,
