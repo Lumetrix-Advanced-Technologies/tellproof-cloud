@@ -11,7 +11,12 @@ A pack reports ten evidence objectives for one AI system over one period (trace 
 | Trust core (`internal/jcs`, `dsse`, `merkle`, `pack`) | Built and tested |
 | Verifiers: `plumbline-verify` CLI, browser verify page, `concierge/verify.py` | Built; all three agree on every test vector |
 | Concierge CLI (`concierge/evidencepack.py`: ingest, evaluate, sign, share) | Built; used to hand-build packs for design partners |
-| One-line SDKs (Python, TypeScript), evidence agent, control plane, web app, Vanta integration | In progress (build plan Phases 3, S, 4, 5, 6; D-024, D-025) |
+| Evidence agent (`plumbline-agent`: OTLP receiver, Langfuse puller, usage pollers, signed batches, durable queue, `--dry-run`) | Built; waits for the control plane's ingest API |
+| Python SDK (`sdk/python`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
+| TypeScript SDK (`sdk/js`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
+| Control plane (`plumbline-server`: migrate, ingest, jobs, evaluator, pack issue and KMS signing, JWKS with rotation, daily checkpoints, share links and verify API, Supabase sign-in, the vendor web app) | Built |
+| One-command agent install (`plumbline-agent connect`), end-to-end test in CI | Built |
+| Vanta integration, release and open-source split, launch | In progress (build plan Phase 6) (build plan Phases S, 4, 5, 6; D-024, D-025) |
 
 Progress per task: [`docs/progress-tracker.md`](docs/progress-tracker.md). What was built and how it was tested: [`docs/engineering-log.md`](docs/engineering-log.md).
 
@@ -36,6 +41,14 @@ It prints each check and ends with `RESULT: VERIFIED`. Try a tampered pack to se
 ```bash
 go run ./cmd/verify --jwks spec/vectors/test-jwks.json spec/vectors/pass/KST-CTA-0002.dsse.json spec/vectors/fail/tampered-payload.dsse.json
 ```
+
+## See it end to end
+
+```bash
+make e2e
+```
+
+Runs two sample apps (`examples/python-app`, `examples/node-app`) through the SDKs, an agent and the server to a signed pack, then opens its share link in headless Chrome, where the verify page checks it. Needs Docker (for Postgres), Python 3, Node and Chrome.
 
 ## Setup
 
@@ -147,7 +160,7 @@ Input formats, attribute names and evaluation rules are described in [`concierge
 ```mermaid
 flowchart LR
   subgraph vendor["Vendor environment"]
-    app["AI application<br/>OpenTelemetry or Langfuse"] --> agent["Evidence agent<br/>drops content at parse<br/>signs hourly aggregates"]
+    app["AI application<br/>plumbline.init(), OpenTelemetry or Langfuse"] --> agent["Evidence agent<br/>drops content at parse<br/>signs hourly aggregates"]
     usage["Provider usage APIs<br/>OpenAI, Anthropic, Bedrock"] --> agent
   end
   subgraph cp["Plumbline control plane (Sydney)"]
@@ -165,7 +178,7 @@ flowchart LR
   work -- "daily signed root" --> repo
 ```
 
-One Go module builds three binaries: `cmd/agent` (evidence agent), `cmd/server` (`serve`, `work`, `migrate`) and `cmd/verify`. The agent and the control plane are planned; the formats, verifiers and concierge pipeline they rely on exist today.
+One Go module builds three binaries: `cmd/agent` (evidence agent), `cmd/server` (`serve`, `work`, `migrate`) and `cmd/verify`. The SDKs in `sdk/` send spans to the agent. The control plane is planned; the formats, verifiers, agent and concierge pipeline it relies on exist today.
 
 ### Formats
 
@@ -189,7 +202,14 @@ The normative description is [`docs/architecture.md`](docs/architecture.md) §2.
 | Path | What |
 | --- | --- |
 | `cmd/verify/` | `plumbline-verify` CLI |
-| `cmd/agent/`, `cmd/server/` | Evidence agent and control plane (planned) |
+| `cmd/agent/` | `plumbline-agent`: enrol, run, `--dry-run`, `--replay` |
+| `cmd/server/` | `plumbline-server`: `serve`, `work`, `migrate`, `keys` |
+| `internal/store`, `server`, `jobs`, `evaluate`, `issue`, `kmssign`, `keys`, `checkpoint`, `dailycheckpoint`, `share`, `auth`, `webapp` | The control plane |
+| `web/app/` | The vendor web app's templates and stylesheet |
+| `internal/agent/`, `otlp/`, `langfuse/`, `usage/`, `aggregate/`, `commitment/`, `enrol/`, `batchsign/`, `queue/` | The agent's pipeline |
+| `sdk/python/` | Python SDK (`plumbline.init()`), standard library only |
+| `sdk/js/` | Node.js/TypeScript SDK (`@plumbline/sdk`), no dependencies |
+| `sdk/testdata/` | The shared SDK scenario every SDK and the agent must agree on |
 | `internal/jcs/` | RFC 8785 serializer and strict parser |
 | `internal/dsse/` | DSSE envelopes, PAE, P-256 and Ed25519 signers, verification |
 | `internal/merkle/` | Salted trace commitment, proofs |

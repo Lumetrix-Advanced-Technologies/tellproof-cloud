@@ -190,6 +190,26 @@ func TestTransitionsCarryAcrossWindows(t *testing.T) {
 	}
 }
 
+// A chat model and an embeddings model used side by side in one service are
+// not model changes; a new chat model is (D-033).
+func TestModelsSideBySideByOperation(t *testing.T) {
+	var spans []otlp.Span
+	for i, model := range []string{"chat-1", "embed-1", "chat-1", "embed-1", "chat-2"} {
+		x := llm(string(rune('a'+i)), at(10, i))
+		x.Model, x.Slot, x.Operation = model, "claims-api", "chat"
+		if model == "embed-1" {
+			x.Operation = "embeddings"
+		}
+		spans = append(spans, x)
+	}
+	a := New(DefaultConfig())
+	a.Add(spans, at(10, 30))
+	got := a.FlushAll()[0].Metrics.Transitions
+	if len(got) != 1 || got[0].From != "chat-1" || got[0].To != "chat-2" {
+		t.Errorf("transitions = %+v; want only chat-1 -> chat-2", got)
+	}
+}
+
 func TestAnomalyThresholds(t *testing.T) {
 	cfg := DefaultConfig()
 	mk := func(n, errs, blocked int) []otlp.Span {
@@ -277,5 +297,25 @@ func TestEvalsGoIntoTheirHour(t *testing.T) {
 	w := a.FlushAll()
 	if len(w) != 1 || len(w[0].Metrics.Evals) != 1 || w[0].Metrics.Evals[0].Suite != "late" || w[0].Window.Start != "2026-10-01T11:00:00Z" {
 		t.Fatalf("late eval windows = %+v", w)
+	}
+}
+
+// FlushOpen emits a window early without closing its hour: later spans for
+// that hour are not late, and each trace is committed once (S-5).
+func TestFlushOpenKeepsTheHourOpen(t *testing.T) {
+	a := New(DefaultConfig())
+	a.Add([]otlp.Span{llm("t1", at(10, 5)), llm("t2", at(10, 6))}, at(10, 7))
+	early := a.FlushOpen()
+	if len(early) != 1 || early[0].Metrics.Guardrails.LLMCalls != 2 || len(early[0].TraceIDs) != 2 {
+		t.Fatalf("early window %+v", early)
+	}
+	a.Add([]otlp.Span{llm("t2", at(10, 20)), llm("t3", at(10, 30))}, at(10, 31)) // t2 continues; t3 is new
+	if w := a.Flush(at(11, 4)); len(w) != 0 {
+		t.Fatal("the hour closed before its grace")
+	}
+	rest := a.Flush(at(11, 6))
+	if len(rest) != 1 || rest[0].Window.Start != early[0].Window.Start || rest[0].Metrics.LateSpans != 0 ||
+		rest[0].Metrics.Guardrails.LLMCalls != 2 || len(rest[0].TraceIDs) != 1 || rest[0].TraceIDs[0] != "t3" {
+		t.Errorf("the rest of the hour: %+v", rest)
 	}
 }

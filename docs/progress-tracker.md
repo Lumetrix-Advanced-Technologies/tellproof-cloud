@@ -33,23 +33,23 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P3-6 | Enrolment and batch signing | done | 2026-10-15 | Ed25519 identity (0600), enrol over https; canonical v0.2 batches signed and chained by seq/prev; server-side Verify (D-030) |
 | P3-7 | Disk queue | done | 2026-10-15 | SIGKILLed three times mid-send: no batch lost, none stored twice; crash recovery; backoff; refusals keep the batch (D-031) |
 | P3-8 | Dry-run and config | done | 2026-10-15 | `plumbline-agent` enrol/run/version; strict config with env overrides; dry-run prints envelope + payload and touches nothing; replay; end-to-end receive → sign → deliver test (D-032) |
-| S-1 | Python SDK core | not started | | |
-| S-2 | Python auto-instrumentation | not started | | |
-| S-3 | TypeScript SDK core | not started | | |
-| S-4 | TypeScript auto-instrumentation | not started | | |
-| P4-1 | Migrate + store | not started | | |
-| P4-2 | Enrol and ingest endpoints | not started | | |
-| P4-3 | Jobs | not started | | |
-| P4-4 | Evaluator | not started | | |
-| P4-5 | Pack builder + KMS + chain | not started | | |
-| P4-6 | JWKS and rotation | not started | | |
-| P4-7 | Daily checkpoint | not started | | |
-| P5-1 | Share links + verify API | not started | | |
-| P5-2 | Auth | not started | | |
-| P5-3 | Web app screens | not started | | |
-| S-5 | One-command agent install and connect flow | not started | | |
-| S-6 | End to end in CI | not started | | |
-| P6-1 | Vanta integration | not started | | |
+| S-1 | Python SDK core | done | 2026-10-15 | `plumbline.init()`, helpers as context managers/decorators, bounded exporter; shared scenario aggregates identically in agent and concierge; model history per slot and operation (D-033) |
+| S-2 | Python auto-instrumentation | done | 2026-10-15 | openai, anthropic, Bedrock (botocore) sync/async/streaming; usage only, billed-input rules per provider; stream proxies record once; real libraries tested in CI (D-034) |
+| S-3 | TypeScript SDK core | done | 2026-10-15 | `@plumbline/sdk`: same API as Python with callback scopes over AsyncLocalStorage; one CJS core with ESM re-export; shared scenario aggregates identically (D-035) |
+| S-4 | TypeScript auto-instrumentation | done | 2026-10-15 | openai, @anthropic-ai/sdk, Bedrock client (CJS and ESM copies); returns the library's own APIPromise and streams; real libraries tested in CI (D-036) |
+| P4-1 | Migrate + store | done | 2026-10-15 | `plumbline-server migrate` (embedded, checksummed, atomic per file, advisory lock); `store.WithTenant` with transaction-local tenant; RLS isolation and append-only proved against Postgres 16 (D-037) |
+| P4-2 | Enrol and ingest endpoints | done | 2026-10-16 | `serve` with enrol (atomic token claim) and ingest (verify, row-locked seq/prev, idempotent 200 with stored digest); the real agent delivers to it end to end (D-038) |
+| P4-3 | Jobs | done | 2026-10-16 | `plumbline-server work`: SKIP LOCKED claims, retries with backoff, dead jobs, stale-lock recovery, atomic enqueue, daily `prune_jobs` (D-039) |
+| P4-4 | Evaluator | done | 2026-10-16 | `internal/evaluate`: Go twin of the concierge evaluator, identical JSON on five fixture sets; region-less usage and `unknown` values handled in both; concierge counter bug fixed (D-040). DB loading arrives with P4-5. |
+| P4-5 | Pack builder + KMS + chain | done | 2026-10-16 | `internal/issue` + `internal/kmssign` + migration 0002 (registers, system profile) + `issue_pack` job; 50 concurrent issues form one chain; all three verifiers accept issued packs (D-041) |
+| P4-6 | JWKS and rotation | done | 2026-10-16 | nbf/exp/revoked in the JWKS with one rule in all three verifiers (14 new key vectors); `signing_keys` + `keys add/retire/revoke/list`; `/.well-known/jwks.json`; issuer signs only with an in-date registered key (D-042) |
+| P4-7 | Daily checkpoint | done | 2026-10-16 | signed, chained daily checkpoints over every pack digest, published to GitHub (never overwritten), empty days and catch-up; `plumbline-verify checkpoint` proves inclusion (D-043) |
+| P5-1 | Share links + verify API | done | 2026-10-16 | `internal/share` (hashed tokens, tenant-checked targets, revoke, list with views) + `GET /v1/verify/{token}` (200/404/410) via `verify_lookup`; the browser verifier accepts its responses (D-044) |
+| P5-2 | Auth | done | 2026-10-16 | Supabase magic link (server-side PKCE), ES256 access tokens verified with `crypto/ecdsa` against the project JWKS, cookie sessions with refresh, Origin-checked forms, member mapping (D-045) |
+| P5-3 | Web app screens | done | 2026-10-16 | Onboarding, systems, setup and sources (tokens, agents, declarations), registers (forms and CSV), packs (issue, list, download), share links, settings; no JS; the partner journey runs end to end in a test (D-046) |
+| S-5 | One-command agent install and connect flow | done | 2026-10-16 | `plumbline-agent connect <token>`, early first batch (default 60 s), container image, six static binaries, Setup snippet; a sample app's call reaches the server as a batch in about a second in the test (D-047) |
+| S-6 | End to end in CI | done | 2026-10-16 | `e2e/`: Python and Node sample apps → SDKs → agent → server → evaluation → signed pack → share link verified by the verify page in headless Chrome; CI job from a clean database (D-048) |
+| P6-1 | Vanta integration | done | 2026-10-16 | Settings connects the vendor's own Vanta private integration (credentials sealed with AES-256-GCM); hourly full-state sync of one resource per objective with a live verify link, packs uploaded once as documents, errors shown in plain words (D-049) |
 | P6-2 | Release + open-source split | not started | | |
 | P6-3 | Launch checklist | not started | | |
 
@@ -59,6 +59,23 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-16 · P6-1 · PR pending · A vendor's Vanta shows every objective's latest status with a link that verifies the pack, updated hourly.
+- 2026-10-16 · S-6 · PR pending · The whole product runs end to end in CI, down to a reviewer's browser saying "Verified".
+- 2026-10-16 · S-5 · PR pending · One docker run line and one line of app code connect a system; the first batch arrives in about a minute.
+- 2026-10-16 · P5-3 · PR pending · A vendor can go from sign-up to a shared, verified pack using only the app's pages.
+- 2026-10-16 · P5-2 · PR pending · Vendors sign in with a Supabase magic link and every request is tied to their organisation.
+- 2026-10-16 · P5-1 · PR pending · A vendor's share link lets a bank open and verify a pack in the browser, and the vendor sees who looked.
+- 2026-10-16 · P4-7 · PR pending · A public, append-only daily log proves which packs existed by when.
+- 2026-10-16 · P4-6 · PR pending · Signing keys can be rotated and revoked, and every verifier agrees which packs a key still vouches for.
+- 2026-10-16 · P4-5 · PR pending · The control plane issues signed, chained packs from stored evidence that every verifier accepts.
+- 2026-10-16 · P4-4 · PR pending · The control plane evaluates the ten objectives exactly as the concierge does, including on agent-collected data.
+- 2026-10-16 · P4-3 · PR pending · A shared job queue: any number of workers, no job run twice, failures retried then parked.
+- 2026-10-16 · P4-2 · PR pending · Agents can enrol with the control plane and their signed batches are verified and stored exactly once.
+- 2026-10-15 · P4-1 · PR pending · The control plane can migrate a fresh database and every app query is confined to one tenant.
+- 2026-10-15 · S-4 · PR pending · Node apps now get every OpenAI, Anthropic and Bedrock call recorded with billed tokens from `plumbline.init()`, without content.
+- 2026-10-15 · S-3 · PR pending · `npm install @plumbline/sdk` + one line gives Node apps the same evidence helpers, with no dependencies.
+- 2026-10-15 · S-2 · PR pending · `plumbline.init()` now records every OpenAI, Anthropic and Bedrock call with its billed tokens, without reading content.
+- 2026-10-15 · S-1 · PR pending · `pip install plumbline` + one line sends evidence spans to the agent, with no dependencies and no content.
 - 2026-10-15 · P3-8 · PR pending · The agent runs end to end: `make agent-dry` shows exactly what would leave, and a live run delivers verified batches.
 - 2026-10-15 · P3-7 · PR pending · A durable outbox that survives kill -9 mid-send without losing or duplicating a batch.
 - 2026-10-15 · P3-6 · PR pending · The agent enrols with a one-time token and signs chained, canonical batches the server can verify.

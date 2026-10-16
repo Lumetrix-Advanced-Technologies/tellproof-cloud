@@ -1,0 +1,40 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="same-origin">
+<title>{{.Title}} · Plumbline</title>
+<link rel="stylesheet" href="/static/brand.css">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <a class="wordmark" href="/">Plumbline</a>
+    {{if .Member}}
+    <nav class="nav" aria-label="Main">
+      <a href="/systems"{{if eq .Section "systems"}} aria-current="page"{{end}}>AI systems</a>
+      <a href="/settings"{{if eq .Section "settings"}} aria-current="page"{{end}}>Settings</a>
+    </nav>
+    <div class="who"><span>{{.Email}}</span>
+      <form class="inline" method="post" action="/auth/logout"><button type="submit">Sign out</button></form>
+    </div>
+    {{end}}
+  </div>
+</header>
+<main class="wrap">
+  {{with .Flash}}<p class="notice {{.Kind}}" role="status">{{.Text}}</p>{{end}}
+  {{template "content" .}}
+</main>
+</body>
+</html>{{end}}
+
+{{define "status"}}{{if eq . "pass"}}<span class="pill pass"><span class="sym" aria-hidden="true">✓</span> Pass</span>{{else if eq . "attention"}}<span class="pill attention"><span class="sym" aria-hidden="true">!</span> Attention</span>{{else if eq . "fail"}}<span class="pill fail"><span class="sym" aria-hidden="true">✕</span> Fail</span>{{else}}<span class="pill neutral">{{.}}</span>{{end}}{{end}}
+
+{{define "systemtabs"}}<nav class="tabs" aria-label="System">
+  <a href="/systems/{{.System.ID}}"{{if eq .Tab "setup"}} aria-current="page"{{end}}>Setup and sources</a>
+  <a href="/systems/{{.System.ID}}/registers"{{if eq .Tab "registers"}} aria-current="page"{{end}}>Registers</a>
+  <a href="/systems/{{.System.ID}}/packs"{{if eq .Tab "packs"}} aria-current="page"{{end}}>Packs</a>
+  <a href="/systems/{{.System.ID}}/shares"{{if eq .Tab "shares"}} aria-current="page"{{end}}>Share links</a>
+</nav>{{end}}

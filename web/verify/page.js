@@ -57,6 +57,8 @@ function verdictTitle(r) {
   if (r.error) return "Failed: this is not a valid pack";
   if (r.verified) return "Verified, unaltered since signing";
   if (!r.subject_digest) return "Failed: this pack was changed after signing";
+  if (r.key_status === "revoked") return "Failed: signed with a key the issuer has revoked";
+  if (r.key_status) return "Failed: signed outside its key's validity period";
   if (!r.signature) return "Failed: the issuer's signature does not match this pack";
   if (r.chain === false) return "Failed: this pack does not follow the previous one";
   return "Failed: the disclosed trace is not in the commitment";
@@ -219,7 +221,7 @@ function renderPack() {
   clear(checks);
   if (r.error) checks.append(checkItem("fail", "Not a valid pack", r.error));
   if (r.envelopeOK) {
-    checks.append(r.signature ? checkItem("pass", "Signature is valid", `key ${r.key_id} · ES256`) : checkItem("fail", "Signature does not verify", r.signature_error));
+    checks.append(r.signature ? checkItem("pass", "Signature is valid", `key ${r.key_id} · ES256`) : checkItem("fail", r.key_status ? "Signing key cannot vouch for this pack" : "Signature does not verify", r.signature_error));
     if (!r.error) {
       const subject = r.statement?.subject?.[0]?.digest?.sha256;
       checks.append(r.subject_digest ? checkItem("pass", "Contents match the signed digest", `sha256:${subject}`) : checkItem("fail", "Contents differ from the signed digest", `sha256:${subject}`));

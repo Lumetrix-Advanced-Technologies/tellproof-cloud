@@ -11,6 +11,9 @@ jobs:
         options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
     env:
       DATABASE_URL_OWNER: postgres://postgres:postgres@localhost:5432/plumbline?sslmode=disable
+      # Database tests create and drop their own databases on this server; in CI they must run, not skip.
+      PLUMBLINE_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+      PLUMBLINE_REQUIRE_DB: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -23,7 +26,92 @@ jobs:
       - run: make check
       - name: Migration and RLS tests
         run: |
-          psql "$DATABASE_URL_OWNER" -v ON_ERROR_STOP=1 -f migrations/0001_init.sql
+          for f in migrations/[0-9][0-9][0-9][0-9]_*.sql; do psql "$DATABASE_URL_OWNER" -v ON_ERROR_STOP=1 -f "$f"; done
           psql "$DATABASE_URL_OWNER" -f migrations/tests/0001_rls_and_append_only.sql 2>&1 | tee rls.out
           grep -q "evidence is append-only" rls.out
           grep -q "violates row-level security policy" rls.out
+
+  sdk-python:
+    # The SDK supports Python 3.10+ with no dependencies; test the oldest and newest.
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { python: ["3.10", "3.13"] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python }}" }
+      - run: python -m unittest discover -s sdk/python/tests -v
+
+  sdk-python-libs:
+    # The real client libraries against a local fake API. Test-only installs:
+    # the SDK itself never depends on them (D-025).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install openai anthropic boto3
+      - run: pip list | grep -Ei '^(openai|anthropic|boto3|botocore) '
+      - run: python -m unittest discover -s sdk/python/tests -v
+
+  sdk-js:
+    # The SDK supports Node 18+ with no dependencies; test the oldest and newest.
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { node: ["18", "24"] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ matrix.node }}" }
+      - run: node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs
+
+  sdk-js-libs:
+    # The real client libraries against a local fake API, installed into a
+    # throwaway app directory (test-only; the SDK never depends on them).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: |
+          mkdir -p "$RUNNER_TEMP/app" && cd "$RUNNER_TEMP/app"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund openai @anthropic-ai/sdk @aws-sdk/client-bedrock-runtime
+          npm ls --depth=0
+      - run: node --test "$GITHUB_WORKSPACE/sdk/js/test/real-libs.test.mjs"
+        working-directory: ${{ runner.temp }}/app
+
+  agent-image:
+    # The one-command install's container builds and runs (S-5).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f cmd/agent/Dockerfile --build-arg VERSION=ci -t plumbline-agent:ci .
+      - run: docker run --rm plumbline-agent:ci version | grep -q "plumbline-agent ci"
+      - run: |
+          out=$(docker run --rm -e PLUMBLINE_SERVER=https://example.invalid plumbline-agent:ci connect 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -q "enrolment token"
+
+  e2e:
+    # Sample Python and Node.js apps -> SDKs -> agent -> server -> evaluation -> signed pack
+    # -> share link verified by the verify page in headless Chrome (S-6), from a clean database.
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: plumbline }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+    env:
+      PLUMBLINE_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.27" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: google-chrome --version
+      - run: go test -tags e2e -count=1 -v ./e2e/

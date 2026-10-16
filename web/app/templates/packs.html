@@ -1,0 +1,38 @@
+{{define "content"}}
+<div class="head"><p class="label">AI system</p><h1>{{.System.Name}}</h1></div>
+{{template "systemtabs" .}}
+
+<section class="panel narrow">
+  <h2>Issue a pack</h2>
+  <p class="muted">A pack evaluates the ten evidence objectives over whole days ({{.System.Timezone}}) and is signed and chained to the previous pack.</p>
+  <form class="stack" method="post" action="/systems/{{.System.ID}}/packs">
+    <div class="row">
+      <div class="field"><label for="start">First day</label><input type="date" id="start" name="period_start" value="{{.Data.DefaultStart}}" required></div>
+      <div class="field"><label for="end">Last day</label><input type="date" id="end" name="period_end" value="{{.Data.DefaultEnd}}" required></div>
+    </div>
+    <div><button class="primary" type="submit">Issue pack</button></div>
+  </form>
+  {{range .Data.Jobs}}
+  {{if .Error}}<p class="notice bad">Pack for {{.Period}} not issued: {{.Error}}</p>
+  {{else}}<p class="notice warn" role="status">Issuing the pack for {{.Period}}… Reload this page in a few seconds.</p>{{end}}
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Packs</h2>
+  {{if .Data.Packs}}
+  <div class="table-scroll"><table>
+    <thead><tr><th>Pack</th><th>Period</th><th>Issued</th><th>Objectives</th><th>Digest</th><th></th></tr></thead>
+    <tbody>{{range .Data.Packs}}<tr>
+      <td><b>{{.PackID}}</b><br><span class="small muted">#{{.SeqNo}}</span></td>
+      <td>{{.Period}}</td>
+      <td>{{fmtTime .Issued}}</td>
+      <td>{{if .Pass}}{{template "status" "pass"}} {{.Pass}} {{end}}{{if .Attention}}{{template "status" "attention"}} {{.Attention}} {{end}}{{if .Fail}}{{template "status" "fail"}} {{.Fail}}{{end}}</td>
+      <td class="mono small">{{.Digest}}</td>
+      <td><a class="button" href="/systems/{{$.System.ID}}/packs/{{.ID}}/download">Download</a></td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  <p class="small muted">Anyone can check a downloaded pack with the issuer keys at <a href="/.well-known/jwks.json">/.well-known/jwks.json</a> and <code>plumbline-verify</code>, or share it from the Share links tab.</p>
+  {{else}}<p class="empty">No packs yet. Issue one above once the agent has sent batches for the period.</p>{{end}}
+</section>
+{{end}}

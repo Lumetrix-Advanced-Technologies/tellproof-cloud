@@ -47,9 +47,15 @@ Allowed: `github.com/jackc/pgx/v5`; `github.com/aws/aws-sdk-go-v2/config`; `gith
 - snake_case names; `uuid` primary keys from `gen_random_uuid()`; `timestamptz` everywhere; `NOT NULL` by default.
 - Every customer-owned table has `tenant_id uuid NOT NULL` and an RLS policy. Evidence tables carry the `forbid_mutation` trigger.
 
-## Python (concierge only)
+## SDKs
 
-Python 3.12, `cryptography` and `boto3` only. Frozen after M1: bug fixes only, and every fix gets a matching vector so the Go code inherits it.
+`sdk/js`: Node 18+, built-ins only, plain JavaScript (`lib/*.cjs` with an ESM re-export) and a hand-written `index.d.ts`; tests with `node --test`. No dependencies, no build step (D-035).
+
+## Python
+
+SDK (`sdk/python`): Python 3.10+, standard library only, no runtime dependencies (D-025). It must never raise into or block the app; every internal path is wrapped and counted (D-033).
+
+Concierge: Python 3.12, `cryptography` and `boto3` only. Frozen after M1: bug fixes only, and every fix gets a matching vector so the Go code inherits it.
 
 ## Git
 

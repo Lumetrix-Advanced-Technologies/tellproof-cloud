@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -284,5 +285,61 @@ func TestEndToEndReceiveTickDeliver(t *testing.T) {
 	}
 	if info, err := os.Stat(filepath.Join(dir, "leaves")); err != nil || info.Mode().Perm() != 0o700 {
 		t.Errorf("leaves dir: %v %v", info, err)
+	}
+}
+
+// A new agent's first spans reach the server within first_batch_seconds, not
+// after the hour; the rest of the hour follows as a second batch for the same
+// window (windows are additive, D-032).
+func TestEarlyFirstBatch(t *testing.T) {
+	ing := &ingest{}
+	srv := httptest.NewServer(ing)
+	defer srv.Close()
+	dir := filepath.Join(t.TempDir(), "agent")
+	if _, err := enrol.Enrol(context.Background(), enrol.Options{Server: srv.URL, Token: "t", DataDir: dir, HTTP: srv.Client()}); err != nil {
+		t.Fatal(err)
+	}
+	c, _ := LoadConfig("", env())
+	c.Server, c.DataDir = srv.URL, dir
+	clock := time.Date(2026, 9, 1, 10, 5, 0, 0, time.UTC)
+	a, err := New(c, Options{Log: quiet(), Now: func() time.Time { return clock }, HTTP: srv.Client(), Getenv: env("PLUMBLINE_SALT_SECRET", "a-salt-secret-0123456")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	post := func(traceID string, at time.Time) {
+		body := fmt.Sprintf(`{"resourceSpans":[{"resource":{"attributes":[]},"scopeSpans":[{"spans":[{"traceId":"%s","spanId":"0000000000000001","startTimeUnixNano":"%d",
+			"attributes":[{"key":"gen_ai.operation.name","value":{"stringValue":"chat"}},{"key":"gen_ai.provider.name","value":{"stringValue":"openai"}},
+			{"key":"gen_ai.request.model","value":{"stringValue":"gpt-4.1-mini"}}]}]}]}]}`, traceID, at.UnixNano())
+		req := httptest.NewRequest(http.MethodPost, "/v1/traces", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		a.Receiver().ServeHTTP(rec, req)
+		if rec.Code != 200 {
+			t.Fatalf("receiver: %d %s", rec.Code, rec.Body)
+		}
+	}
+	post(strings.Repeat("a", 32), clock)
+	tick := func(at time.Time) {
+		clock = at
+		if err := a.Tick(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.Deliver(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tick(clock.Add(30 * time.Second))
+	if len(ing.stored) != 0 {
+		t.Fatalf("sent before first_batch_seconds: %d", len(ing.stored))
+	}
+	tick(time.Date(2026, 9, 1, 10, 6, 0, 0, time.UTC))
+	if len(ing.stored) != 1 || ing.stored[0].Window.Start != "2026-09-01T10:00:00Z" || ing.stored[0].Metrics.Guardrails.LLMCalls != 1 {
+		t.Fatalf("early batch: %d stored", len(ing.stored))
+	}
+	post(strings.Repeat("b", 32), time.Date(2026, 9, 1, 10, 20, 0, 0, time.UTC))
+	tick(time.Date(2026, 9, 1, 10, 30, 0, 0, time.UTC)) // only once per start
+	tick(time.Date(2026, 9, 1, 11, 6, 0, 0, time.UTC))
+	if len(ing.stored) != 2 || ing.stored[1].Window.Start != "2026-09-01T10:00:00Z" || ing.stored[1].Metrics.LateSpans != 0 || ing.stored[1].Commit.Leaves != 1 {
+		t.Errorf("rest of the hour: %d stored", len(ing.stored))
 	}
 }

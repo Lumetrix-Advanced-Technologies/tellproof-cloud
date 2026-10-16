@@ -1,0 +1,30 @@
+{{define "content"}}
+<div class="head"><h1>AI systems</h1>
+  <p class="muted">Each system has its own agents, registers and chain of evidence packs.</p></div>
+<section class="panel">
+  {{if .Data.Systems}}
+  <div class="table-scroll"><table>
+    <thead><tr><th>System</th><th>Environment</th><th>Agents</th><th>Last batch</th><th>Latest pack</th></tr></thead>
+    <tbody>{{range .Data.Systems}}<tr>
+      <td><a href="/systems/{{.ID}}">{{.Name}}</a></td>
+      <td>{{.Environment}}</td>
+      <td class="num">{{.Agents}}</td>
+      <td>{{if .LastBatch}}{{fmtTime .LastBatch}}{{else}}<span class="muted">none yet</span>{{end}}</td>
+      <td>{{if .LatestPack}}<span class="mono">{{.LatestPack}}</span>{{else}}<span class="muted">none yet</span>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}<p class="empty">No AI systems yet.</p>{{end}}
+</section>
+<section class="panel narrow">
+  <h2>Add an AI system</h2>
+  <form class="stack" method="post" action="/systems">
+    <div class="field"><label for="name">Name</label><input type="text" id="name" name="name" required maxlength="200"></div>
+    <div class="row">
+      <div class="field"><label for="environment">Environment</label><input type="text" id="environment" name="environment" value="production" required maxlength="40"></div>
+      <div class="field"><label for="timezone">Timezone</label>
+        <select id="timezone" name="timezone">{{range .Data.Timezones}}<option value="{{.}}"{{if eq . "Australia/Sydney"}} selected{{end}}>{{.}}</option>{{end}}</select></div>
+    </div>
+    <div><button class="primary" type="submit">Add system</button></div>
+  </form>
+</section>
+{{end}}

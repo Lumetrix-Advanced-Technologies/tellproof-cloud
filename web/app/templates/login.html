@@ -1,0 +1,15 @@
+{{define "content"}}
+<section class="panel narrow">
+  <div class="head"><h1>Sign in to Plumbline</h1>
+    <p class="muted">We email you a sign-in link. New here? The same link creates your account.</p></div>
+  {{if .Data.Sent}}
+  <p class="notice ok" role="status">Check your email for a sign-in link. It works once and expires soon.</p>
+  {{end}}
+  {{with .Data.Error}}<p class="notice bad" role="alert">{{.}}</p>{{end}}
+  <form class="stack" method="post" action="/auth/login">
+    <div class="field"><label for="email">Work email</label>
+      <input type="email" id="email" name="email" required autocomplete="email" autofocus></div>
+    <div><button class="primary" type="submit">Email me a sign-in link</button></div>
+  </form>
+</section>
+{{end}}

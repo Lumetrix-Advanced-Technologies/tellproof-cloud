@@ -9,7 +9,6 @@ package main
 
 import (
 	"context"
-	"crypto"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -20,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/checkpoint"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
 )
@@ -43,11 +43,13 @@ func main() {
 }
 
 const usage = `usage: plumbline-verify --jwks <file|https-url> [--json] pack1.json [pack2.json ...]
+       plumbline-verify checkpoint --jwks <file|https-url> [--prev yesterday.json] checkpoint.json [pack.json ...]
 
 Verifies Plumbline evidence packs: the issuer's signature, the subject digest,
 the link to the previous pack and the disclosed trace's Merkle proof.
-Give packs oldest first. Exit status: 0 all verified, 1 a pack failed, 2 usage
-or input error.
+Give packs oldest first. The checkpoint form verifies a daily checkpoint (its
+signature, root and link to the previous day) and proves each pack is in it.
+Exit status: 0 all verified, 1 a check failed, 2 usage or input error.
 `
 
 // usageError is a problem with the command line or its inputs (exit 2).
@@ -56,6 +58,9 @@ type usageError struct{ msg string }
 func (e usageError) Error() string { return e.msg }
 
 func run(ctx context.Context, cfg config, args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "checkpoint" {
+		return runCheckpoint(ctx, cfg, args[1:], stdout, stderr)
+	}
 	opts, err := parseArgs(args)
 	if err != nil {
 		fmt.Fprintf(stderr, "plumbline-verify: %v\n\n%s", err, usage)
@@ -144,7 +149,7 @@ func parseArgs(args []string) (options, error) {
 	return o, nil
 }
 
-func loadJWKS(ctx context.Context, client *http.Client, src string) (map[string]crypto.PublicKey, error) {
+func loadJWKS(ctx context.Context, client *http.Client, src string) (*pack.KeySet, error) {
 	var data []byte
 	var err error
 	switch {
@@ -214,7 +219,7 @@ type packReport struct {
 	env *dsse.Envelope
 }
 
-func verifyOne(file string, data []byte, keys map[string]crypto.PublicKey, prev *dsse.Envelope) packReport {
+func verifyOne(file string, data []byte, keys *pack.KeySet, prev *dsse.Envelope) packReport {
 	rep := packReport{File: file}
 	env, err := dsse.Decode(data)
 	if err != nil {
@@ -261,7 +266,7 @@ func writeHuman(w io.Writer, verified bool, reports []packReport) {
 		if r.Signature {
 			line("signature", "valid (key "+r.KeyID+")")
 		} else {
-			line("signature", "FAILED: "+strings.TrimPrefix(r.SignatureError, "dsse: "))
+			line("signature", "FAILED: "+strings.TrimPrefix(strings.TrimPrefix(r.SignatureError, "dsse: "), "pack: "))
 			failed = append(failed, "signature")
 		}
 		if r.SubjectDigest {
@@ -299,4 +304,93 @@ func writeHuman(w io.Writer, verified bool, reports []packReport) {
 	} else {
 		fmt.Fprintln(w, "RESULT: FAILED")
 	}
+}
+
+// runCheckpoint verifies a daily checkpoint and proves that each given pack
+// was published in it (D-043).
+func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("plumbline-verify checkpoint", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	jwksSrc := fs.String("jwks", "", "issuer JWKS file or https URL")
+	prevFile := fs.String("prev", "", "the previous day's checkpoint, to check the link")
+	var files []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			fmt.Fprintf(stderr, "plumbline-verify: %v\n\n%s", err, usage)
+			return 2
+		}
+		if fs.NArg() == 0 {
+			break
+		}
+		files = append(files, fs.Arg(0))
+		args = fs.Args()[1:]
+	}
+	if *jwksSrc == "" || len(files) == 0 {
+		fmt.Fprintf(stderr, "plumbline-verify: checkpoint needs --jwks and a checkpoint file\n\n%s", usage)
+		return 2
+	}
+	keys, err := loadJWKS(ctx, cfg.client, *jwksSrc)
+	if err != nil {
+		fmt.Fprintf(stderr, "plumbline-verify: %v\n", err)
+		return 2
+	}
+	load := func(f string) (*dsse.Envelope, error) {
+		data, err := readFile(f, maxPackBytes)
+		if err != nil {
+			return nil, err
+		}
+		return dsse.Decode(data)
+	}
+	var prev *dsse.Envelope
+	if *prevFile != "" {
+		if prev, err = load(*prevFile); err != nil {
+			fmt.Fprintf(stderr, "plumbline-verify: %s: %v\n", *prevFile, err)
+			return 2
+		}
+	}
+	cpEnv, err := load(files[0])
+	if err != nil {
+		fmt.Fprintf(stderr, "plumbline-verify: %s: %v\n", files[0], err)
+		return 2
+	}
+	fmt.Fprintln(stdout, files[0])
+	cp, err := checkpoint.Verify(cpEnv, keys, prev)
+	if err != nil {
+		fmt.Fprintf(stdout, "  checkpoint ........... FAILED: %s\n", strings.TrimPrefix(err.Error(), "checkpoint: "))
+		fmt.Fprintln(stdout, "RESULT: FAILED")
+		return 1
+	}
+	fmt.Fprintf(stdout, "  checkpoint ........... valid: %s (%s), %d pack(s), root %s\n", cp.Day, cp.Timezone, cp.PackCount, cp.Root)
+	if prev != nil {
+		fmt.Fprintln(stdout, "  previous day ......... linked")
+	}
+	ok := true
+	for _, f := range files[1:] {
+		env, err := load(f)
+		if err != nil {
+			fmt.Fprintf(stderr, "plumbline-verify: %s: %v\n", f, err)
+			return 2
+		}
+		d := pack.Digest(env)
+		proof, err := checkpoint.Prove(cp, d)
+		if err != nil {
+			fmt.Fprintf(stdout, "%s\n  in checkpoint ........ NO: %s is not in %s\n", f, d, cp.Day)
+			ok = false
+			continue
+		}
+		var path []string
+		for _, s := range proof.Steps {
+			path = append(path, fmt.Sprintf("%c %x", s.Side, s.Hash[:]))
+		}
+		fmt.Fprintf(stdout, "%s\n  in checkpoint ........ yes: %s is pack %d of %d on %s\n", f, d, proof.Index+1, cp.PackCount, cp.Day)
+		for _, p := range path {
+			fmt.Fprintf(stdout, "    proof %s\n", p)
+		}
+	}
+	if !ok {
+		fmt.Fprintln(stdout, "RESULT: FAILED")
+		return 1
+	}
+	fmt.Fprintln(stdout, "RESULT: VERIFIED")
+	return 0
 }

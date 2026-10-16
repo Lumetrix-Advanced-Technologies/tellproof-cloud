@@ -1,0 +1,58 @@
+{{define "content"}}
+<div class="head"><p class="label">AI system</p><h1>{{.System.Name}}</h1>
+  <p class="muted">{{.System.Environment}} · periods in {{.System.Timezone}}</p></div>
+{{template "systemtabs" .}}
+
+<section class="panel">
+  <h2>1. Connect an evidence agent</h2>
+  <p>The agent runs next to your product, drops all message content, and sends only signed hourly aggregates. Create a one-time token, then run the agent with it.</p>
+  {{with .Data.NewToken}}
+  <div class="secret">
+    <p><b>Enrolment token</b> (shown once, valid for 24 hours, one use):</p>
+    <p class="mono">{{.}}</p>
+    <p class="small"><b>Run the agent</b> on the machine or cluster next to your app (Docker):</p>
+<pre class="snippet">docker run -d --name plumbline-agent --restart unless-stopped -p 127.0.0.1:4318:4318 -v plumbline-agent:/data -e PLUMBLINE_SERVER={{$.Data.APIBase}} ghcr.io/lumetrix-advanced-technologies/plumbline-agent:latest connect {{.}}</pre>
+    <p class="small">Or with the downloaded binary: <code>PLUMBLINE_SERVER={{$.Data.APIBase}} plumbline-agent connect {{.}}</code></p>
+    <p class="small"><b>Add one line to your app</b> (<code>pip install plumbline</code> or <code>npm install @plumbline/sdk</code>):</p>
+<pre class="snippet">import plumbline; plumbline.init()                              # Python
+import * as plumbline from '@plumbline/sdk'; plumbline.init();   // Node.js</pre>
+    <p class="small muted">The agent's first batch appears below about a minute after your app's first model call. Keep the <code>plumbline-agent</code> volume: it holds the agent's key and the salt that lets you disclose a trace later.</p>
+  </div>
+  {{end}}
+  <form method="post" action="/systems/{{.System.ID}}/enrolment-tokens"><button class="primary" type="submit">Create enrolment token</button></form>
+
+  <h3>Agents</h3>
+  {{if .Data.Agents}}
+  <div class="table-scroll"><table>
+    <thead><tr><th>Agent</th><th>Host</th><th>Enrolled</th><th class="num">Batches</th><th>Last batch</th><th></th></tr></thead>
+    <tbody>{{range .Data.Agents}}<tr>
+      <td class="mono">{{.ID}}</td><td>{{.Hostname}}</td><td>{{fmtTime .Enrolled}}</td><td class="num">{{.LastSeq}}</td>
+      <td>{{if .LastBatch}}{{fmtTime .LastBatch}}{{else}}<span class="muted">none yet</span>{{end}}</td>
+      <td>{{if .Revoked}}<span class="pill neutral">Revoked</span>{{else}}<form class="inline" method="post" action="/systems/{{$.System.ID}}/agents/{{.ID}}/revoke"><button class="danger" type="submit">Revoke agent</button></form>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}<p class="empty">No agent has enrolled yet.</p>{{end}}
+</section>
+
+<section class="panel">
+  <h2>2. Declare what the system uses</h2>
+  <p class="muted">Packs compare what the telemetry shows with these declarations.</p>
+  <form class="stack" method="post" action="/systems/{{.System.ID}}/declarations">
+    <div class="field"><label for="models">Declared models</label>
+      <textarea id="models" name="models" spellcheck="false">{{.Data.ModelsText}}</textarea>
+      <span class="hint">One per line: provider, model, role. For example <code>aws.bedrock, anthropic.claude-sonnet-4-5, summary drafting</code></span></div>
+    <div class="field"><label for="regions">Declared regions</label>
+      <input type="text" id="regions" name="regions" value="{{.Data.RegionsText}}" spellcheck="false">
+      <span class="hint">Comma separated, for example <code>ap-southeast-2</code></span></div>
+    <div class="field"><label for="description">Description</label>
+      <input type="text" id="description" name="description" value="{{.System.Description}}" maxlength="500"></div>
+    <div class="row">
+      <div class="field"><label for="timezone">Timezone</label>
+        <select id="timezone" name="timezone">{{range .Data.Timezones}}<option value="{{.}}"{{if eq . $.System.Timezone}} selected{{end}}>{{.}}</option>{{end}}</select></div>
+      <div class="field"><label for="prefix">Pack ID prefix</label>
+        <input type="text" id="prefix" name="prefix" value="{{.System.PackPrefix}}" pattern="[A-Z0-9]{2,12}" maxlength="12"></div>
+    </div>
+    <div><button class="primary" type="submit">Save declarations</button></div>
+  </form>
+</section>
+{{end}}

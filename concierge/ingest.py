@@ -55,7 +55,7 @@ def load_semconv() -> dict:
 class Span:
     """The only facts kept about a span. No names, no content, no free text."""
 
-    __slots__ = ("trace_id", "start", "kind", "provider", "model", "region", "input_tokens", "output_tokens",
+    __slots__ = ("trace_id", "start", "kind", "operation", "provider", "model", "region", "input_tokens", "output_tokens",
                  "error", "content_present", "pii", "redacted", "guardrail", "prompt_name", "prompt_version",
                  "slot", "high_impact", "approved", "escalation")
 
@@ -93,7 +93,7 @@ def _span_from_values(trace_id, start, operation, values, presence_keys, error, 
     content = langfuse_content or any(k in semconv["presence_only"] or (prefixes and k.startswith(prefixes)) for k in presence_keys)
     model = _pick(values, f["response_model"]) or _pick(values, f["request_model"])
     return Span(
-        trace_id=trace_id, start=start, kind=kind,
+        trace_id=trace_id, start=start, kind=kind, operation=str(operation or ""),
         provider=str(_pick(values, f["provider"]) or "unknown"),
         model=str(model or "unknown"),
         region=str(_pick(values, f["region"]) or "unknown"),
@@ -273,7 +273,9 @@ def aggregate(spans, attrs, salt_secret: bytes):
         if s.kind != "llm":
             continue
         if s.model != "unknown":
-            slot = s.slot or "default"
+            # Per slot and operation, so a chat model and an embeddings model
+            # used side by side are not read as changes (D-033).
+            slot = (s.slot or "default", s.operation)
             if slot in last_model and last_model[slot] != s.model:
                 transitions[_hour(s.start)].append({"at": _iso(s.start), "kind": "model", "from": last_model[slot], "to": s.model})
             last_model[slot] = s.model

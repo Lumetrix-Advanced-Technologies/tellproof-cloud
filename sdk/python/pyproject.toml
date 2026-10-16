@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plumbline"
+version = "0.1.0"
+description = "One-line evidence telemetry for AI products: sends model-call facts (never content) to the local Plumbline agent."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Lumetrix" }]
+dependencies = []
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/Lumetrix-Advanced-Technologies/plumbline"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+plumbline = ["py.typed"]

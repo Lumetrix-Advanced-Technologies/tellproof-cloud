@@ -1,0 +1,58 @@
+{{define "content"}}
+<div class="head"><h1>Settings</h1></div>
+<section class="panel narrow">
+  <h2>Organisation</h2>
+  <p><b>{{.Data.Org}}</b></p>
+  <h3>Members</h3>
+  <table><thead><tr><th>Email</th><th>Role</th></tr></thead><tbody>
+  {{range .Data.Members}}<tr><td>{{.Email}}</td><td>{{.Role}}</td></tr>{{end}}</tbody></table>
+</section>
+<section class="panel narrow">
+  <h2>Issuer keys</h2>
+  <p>Packs are signed by Plumbline's key. Reviewers verify them against <a href="/.well-known/jwks.json">/.well-known/jwks.json</a>, and every pack issued each day is listed in the public daily checkpoint.</p>
+</section>
+<section class="panel narrow">
+  <h2>Vanta</h2>
+  {{with .Data.Vanta}}
+  <p>Each hour Plumbline sends Vanta one resource per evidence objective of each AI system, from its latest pack (status, pack digest and a verify link), and uploads new packs to a Vanta document. Nothing else is sent.</p>
+  <details class="small"><summary>Set up Vanta first</summary>
+    <ol>
+      <li>In Vanta's developer console, create an application for a private integration. Note its client ID and secret.</li>
+      <li>In the application's Resources tab, add a custom resource named <b>AI assurance objective</b> with these properties: <span class="mono">objectiveId</span>, <span class="mono">objective</span>, <span class="mono">system</span>, <span class="mono">status</span>, <span class="mono">packId</span>, <span class="mono">packDigest</span>, <span class="mono">periodStart</span>, <span class="mono">periodEnd</span>, <span class="mono">verifyUrl</span> (all strings), <span class="mono">passing</span> (boolean) and <span class="mono">lastEvaluated</span> (timestamp). Copy its resource ID.</li>
+      <li>Optional: create a document in Vanta for the signed packs and copy its ID.</li>
+      <li>Paste them below. In Vanta, a custom test with the rule <span class="mono">passing equals true</span> then fails when an objective does.</li>
+    </ol></details>
+  {{if .Connected}}
+  <p><span class="pill pass"><span class="sym" aria-hidden="true">✓</span> Connected</span> client ID ending <span class="mono">{{.Config.ClientIDHint}}</span>, resource <span class="mono">{{.Config.ResourceID}}</span>{{if .Config.DocumentID}}, document <span class="mono">{{.Config.DocumentID}}</span>{{else}}, packs not uploaded{{end}}.</p>
+  {{if .LastSync}}<p class="small">Last sync {{fmtTime .LastSync}}: {{.Config.Resources}} resources sent, {{.Config.Uploaded}} packs uploaded.</p>{{else}}<p class="small muted">Not synced yet.</p>{{end}}
+  {{if .LastError}}<p class="notice warn"><span class="sym" aria-hidden="true">!</span> <b>Attention:</b> {{.LastError}}</p>{{end}}
+  {{if .SyncPending}}<p class="small muted">A sync is waiting to run.</p>{{end}}
+  {{else}}
+  <p><span class="pill neutral">Not connected</span></p>
+  {{end}}
+  {{if not .Available}}
+  <p class="muted">Vanta cannot be connected on this server yet: it needs an INTEGRATION_KEY to seal the credentials.</p>
+  {{else if .Admin}}
+  <form class="stack" method="post" action="/settings/vanta">
+    <div class="field"><label for="client_id">Client ID</label><input type="text" id="client_id" name="client_id" maxlength="200" autocomplete="off" {{if not .Connected}}required{{end}}></div>
+    <div class="field"><label for="client_secret">Client secret</label><input type="password" id="client_secret" name="client_secret" maxlength="500" autocomplete="off" {{if not .Connected}}required{{end}}>
+      <span class="hint">{{if .Connected}}Leave both empty to keep the stored credentials. {{end}}They are sealed on the server and never shown again.</span></div>
+    <div class="field"><label for="resource_id">Custom resource ID</label><input type="text" id="resource_id" name="resource_id" maxlength="128" required value="{{.Config.ResourceID}}">
+      <span class="hint">From the Resources tab of your application in Vanta's developer console.</span></div>
+    <div class="field"><label for="document_id">Document ID (optional)</label><input type="text" id="document_id" name="document_id" maxlength="128" value="{{.Config.DocumentID}}">
+      <span class="hint">The Vanta document to upload packs to. Empty: packs are not uploaded.</span></div>
+    <div><button class="primary" type="submit">{{if .Connected}}Save Vanta settings{{else}}Connect Vanta{{end}}</button></div>
+  </form>
+  {{if .Connected}}
+  <div class="actions">
+    <form class="inline" method="post" action="/settings/vanta/sync"><button type="submit">Sync now</button></form>
+    <form class="inline" method="post" action="/settings/vanta/disconnect"><button class="danger" type="submit">Disconnect Vanta</button></form>
+  </div>
+  <p class="small muted">Disconnecting revokes the verify links Plumbline made for Vanta and deletes the credentials. Remove the resources in Vanta by removing the integration there.</p>
+  {{end}}
+  {{else}}
+  <p class="small muted">Only an admin of the organisation can change the Vanta integration.</p>
+  {{end}}
+  {{end}}
+</section>
+{{end}}

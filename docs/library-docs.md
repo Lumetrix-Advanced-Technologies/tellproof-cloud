@@ -64,6 +64,7 @@ Working notes on every external interface, as of October 2026. Items marked **(v
 
 - Region: `ap-southeast-2` (Sydney) is available. Pro plan US$25/month incl. US$10 compute credit; SOC 2 reports only on the Team plan.
 - Connect the app with a dedicated role `plumbline_app` that does not bypass RLS. Use the session pooler or direct connection with `pgx`.
+- Auth endpoints used (checked against the supabase/auth source on 16 Oct 2026): `POST /auth/v1/otp?redirect_to=…` with `{email, create_user, code_challenge, code_challenge_method: "s256"}`; the magic link returns to `redirect_to` with `?code=`; `POST /auth/v1/token?grant_type=pkce` with `{auth_code, code_verifier}`; `POST /auth/v1/token?grant_type=refresh_token` with `{refresh_token}`; `POST /auth/v1/logout` with the access token as bearer. Every call sends the publishable key as `apikey`. Access-token claims: `sub`, `iss`, `aud` (string or array), `exp`, `role`, `email`, `session_id`. JWKS at `/auth/v1/.well-known/jwks.json`.
 - Auth: magic-link email sign-in. The app verifies the access token itself. Newer projects sign with asymmetric keys published at `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`; check `alg` ES256, `exp`, `aud` = `authenticated`, `iss` = `https://<project-ref>.supabase.co/auth/v1`. (verify the project uses asymmetric keys; open decision D-007)
 - Docs: https://supabase.com/docs/guides/platform/regions , https://supabase.com/pricing
 
@@ -71,8 +72,10 @@ Working notes on every external interface, as of October 2026. Items marked **(v
 
 - The customer creates an application in Vanta and pastes the client ID and secret. Private integrations may define **custom resource types**; public integrations are limited to built-in types. (verify with integrationpartners@vanta.com before a public listing)
 - Sync is an idempotent, full-state `PUT` of all resources of one type, keyed by `uniqueId`; resources left out count as deleted. Up to 10,000 resources and 10 MB per call. Rate limit **20 requests per minute per token**. Tokens last 3,600 s and minting a new one revokes the old, so one job owns one token per customer.
-- Upload packs as documents with the `self:write-document` scope.
-- Docs: https://developer.vanta.com/reference/build-integrations/overview , https://developer.vanta.com/docs/concepts/resources
+- Token: `POST https://api.vanta.com/oauth/token`, JSON `{client_id, client_secret, scope, grant_type: "client_credentials"}` → `{access_token, expires_in}`. Scopes used: `connectors.self:write-resource` and, for uploads, `connectors.self:write-document`.
+- Resources: `PUT /v1/resources/custom_resource` with `{resourceId, resources: [{displayName, uniqueId, externalUrl (https), customProperties: {...}}]}` → `{success}`. Custom properties are flat (boolean, int32, string, timestamp as ISO 8601) and declared in the resource's schema in the developer console.
+- Documents: `POST /v1/documents/{documentId}/uploads`, multipart `file` (required), `effectiveAtDate`, `description` → 201. (confirm the scope with a real account: the guides name `connectors.self:write-document` but do not demonstrate it)
+- Docs: https://developer.vanta.com/reference/build-integrations/overview , https://developer.vanta.com/docs/concepts/resources , https://developer.vanta.com/docs/quickstart/build-private-integration
 
 ## Drata
 
@@ -106,3 +109,32 @@ Working notes on every external interface, as of October 2026. Items marked **(v
 - DSSE envelope and PAE: https://github.com/secure-systems-lab/dsse
 - in-toto Statement v1: https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md
 - TRACE (optional export after M2): https://github.com/agentrust-io/trace-spec
+
+## Client libraries the Python SDK instruments (S-2, D-034)
+
+Checked against the libraries' sources and the AWS API reference on 15 Oct 2026.
+
+- **openai** (`openai-python`): resource classes `openai.resources.chat.completions.{Completions,AsyncCompletions}` (`create`, `parse`, `stream` calls `self.create`), `openai.resources.responses.{Responses,AsyncResponses}` (`create`, `parse`, `stream` calls `self.create`), `openai.resources.embeddings.{Embeddings,AsyncEmbeddings}`, `openai.resources.completions`. Usage: `prompt_tokens`/`completion_tokens` (chat, embeddings, completions), `input_tokens`/`output_tokens` (responses). Streams: `openai.Stream` / `AsyncStream`; chat chunks carry `usage` only on a final choice-less chunk when `stream_options.include_usage` is set; Responses streams end with `response.completed` (or `.incomplete` / `.failed`) carrying the response and its usage. Omitted arguments are passed as `NotGiven` / `Omit` sentinels.
+- **anthropic** (`anthropic-sdk-python`): `anthropic.resources.messages.{Messages,AsyncMessages}` and `anthropic.resources.beta.messages`; `create(stream=True)` returns a raw event stream (`message_start` with the message and its usage, `message_delta` with cumulative usage); `stream()` returns a `MessageStreamManager` built on `self._post`, not `create`, whose `MessageStream` keeps a snapshot (`_current_snapshot_or_none()`). `Usage`: `input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`; `MessageDeltaUsage` has the same fields, all optional except `output_tokens`.
+- **Bedrock Runtime** (botocore): every operation goes through `BaseClient._make_api_call(operation_name, api_params)`. Converse `TokenUsage`: `inputTokens`, `outputTokens`, `totalTokens`, `cacheReadInputTokens`, `cacheWriteInputTokens`; ConverseStream ends with `messageStop` (`stopReason`) and `metadata` (`usage`). CloudWatch `InputTokenCount` is separate from `CacheReadInputTokenCount` / `CacheWriteInputTokenCount`. InvokeModel returns `x-amzn-bedrock-input-token-count` and `x-amzn-bedrock-output-token-count` headers for at least Anthropic models (verify for others). Docs: https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_TokenUsage.html
+
+## Client libraries the TypeScript SDK instruments (S-4, D-036)
+
+Checked against the libraries' sources on 15 Oct 2026 (openai-node 7.34, anthropic-sdk-typescript 0.134).
+
+- **openai** (Node): `OpenAI.Chat.Completions`, `OpenAI.Responses`, `OpenAI.Embeddings`, `OpenAI.Completions` are static class properties; `chat.completions.parse()` and `responses.parse()` call `create()`, as do the `stream()` helpers (`partial(self.create)` in Python, `create(...)` in Node). `create` returns `APIPromise` (lazy: parses only in `then`/`catch`/`finally`/`withResponse`; `_thenUnwrap(transform)` returns a new `APIPromise` over the same `responsePromise`). `Stream` has `#client` and a private `iterator`; `tee()` and `toReadableStream()` use the private iterator. Package exports: `import` → `dist/index.mjs`, `require` → `dist/index.js`.
+- **@anthropic-ai/sdk**: `Anthropic.Messages`, `Anthropic.Beta`, `Beta.Messages`; `MessageStream._createMessage` calls `messages.create({ ...params, stream: true }, ...).withResponse()`. Same `APIPromise` design.
+- **@aws-sdk/client-bedrock-runtime**: `BedrockRuntimeClient` extends the smithy `Client` (`send(command, options?, cb?)`); `config.region` is an async provider; commands carry `input` and their own `middlewareStack`; Converse output has `usage` and `stopReason`, ConverseStream output has `stream` (async iterable of `messageStart`, `contentBlockDelta`, `messageStop`, `metadata` events), InvokeModel output has `body` (bytes) and no headers.
+
+## AWS KMS (pack signing, P4-5)
+
+- `GetPublicKey(KeyId)` → `PublicKey` (DER SubjectPublicKeyInfo), `KeySpec` (must be `ECC_NIST_P256`), `KeyUsage` (`SIGN_VERIFY`).
+- `Sign(KeyId, Message, MessageType=DIGEST, SigningAlgorithm=ECDSA_SHA_256)`: `Message` is the 32-byte SHA-256 of the DSSE PAE (KMS takes at most 4,096 bytes of `RAW` message); the `Signature` is ASN.1 DER, which every verifier accepts. Through `github.com/aws/aws-sdk-go-v2/service/kms` only (no hand-rolled request signing).
+- Docs: https://docs.aws.amazon.com/kms/latest/APIReference/API_Sign.html
+
+## GitHub contents API (checkpoints, P4-7)
+
+- `PUT /repos/{owner}/{repo}/contents/{path}` with `{message, content: base64}` creates a file and returns `201 {content, commit: {sha}}`; without `sha` it fails (422) when the file exists, which the publisher treats as "already published" and checks byte for byte.
+- `GET /repos/{owner}/{repo}/contents/{path}` returns `{content (base64, wrapped at 60 characters), encoding: "base64", sha}`; `GET /repos/{owner}/{repo}/commits?path={path}&per_page=1` gives the file's latest commit.
+- Headers: `Authorization: Bearer <token>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`. A fine-grained token with contents write on the checkpoint repository only.
+- Docs: https://docs.github.com/en/rest/repos/contents
