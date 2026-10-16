@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="96" viewBox="0 0 440 96" role="img" aria-label="Plumbline">
+  <rect x="4" y="8" width="80" height="80" rx="18" fill="#1f56c9"/>
+  <path d="M44 22v20" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+  <path d="M44 42l-15 15 15 19 15-19z" fill="#fff"/>
+  <text x="104" y="58" font-family="Archivo, 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif" font-size="44" font-weight="700" fill="#e8eaee" letter-spacing="-0.5">Plumbline</text>
+  <text x="106" y="82" font-family="'Public Sans', 'Segoe UI', Arial, sans-serif" font-size="15" fill="#a0a7b4" letter-spacing="0.4">EVIDENCE FOR AI SYSTEMS</text>
+</svg>

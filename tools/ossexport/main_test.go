@@ -19,13 +19,14 @@ func TestExportIsTheOpenSourceTreeOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	pkgs := strings.Join(r.Packages, " ")
-	for _, want := range []string{"cmd/agent", "cmd/verify", "internal/jcs", "internal/dsse", "internal/merkle", "internal/pack"} {
+	for _, want := range []string{"cmd/agent", "cmd/verify", "internal/jcs", "internal/dsse", "internal/merkle", "internal/pack",
+		"internal/evaluate", "internal/policy", "internal/localcheck", "internal/aibom"} {
 		if !strings.Contains(" "+pkgs+" ", " "+want+" ") {
 			t.Errorf("package %s is missing from %s", want, pkgs)
 		}
 	}
-	for _, private := range []string{"internal/store", "internal/server", "internal/webapp", "internal/issue", "internal/evaluate",
-		"internal/vanta", "internal/kmssign", "cmd/server", "migrations", "docs/decisions.md", "docs/architecture.md", "docs/launch", "concierge/evaluate.py", "concierge/evidencepack.py",
+	for _, private := range []string{"internal/store", "internal/server", "internal/webapp", "internal/issue",
+		"internal/vanta", "internal/kmssign", "cmd/server", "migrations", "docs/decisions.md", "docs/architecture.md", "docs/launch", "concierge/evidencepack.py",
 		"internal/secretbox", "e2e", "tools/ossexport", "reference", "cmd/agent/connect_test.go", "web/app", "web/embed.go"} {
 		if exists(filepath.Join(out, private)) {
 			t.Errorf("%s is in the open-source tree", private)

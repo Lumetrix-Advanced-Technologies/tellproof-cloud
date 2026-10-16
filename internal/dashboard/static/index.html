@@ -45,6 +45,11 @@ npm install plumbline-sdk     →  import * as plumbline from 'plumbline-sdk'; p
   <div id="board" hidden>
     <section class="tiles" id="tiles" aria-label="Totals for the selected range"></section>
 
+    <section class="card" id="card-objectives">
+      <header class="card-head"><div><h2>Evidence objectives</h2><p class="sub" id="obj-sub"></p></div></header>
+      <div class="obj-grid" id="objectives"></div>
+    </section>
+
     <section class="grid">
       <article class="card span-2" id="card-calls">
         <header class="card-head">

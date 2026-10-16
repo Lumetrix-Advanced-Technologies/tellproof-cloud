@@ -235,12 +235,7 @@ func loadPeriod(ctx context.Context, tx pgx.Tx, systemID string, start, end time
 	if err != nil {
 		return in, nil, err
 	}
-	type usageKey struct {
-		provider, model, region string
-		hour                    time.Time
-	}
-	usage := map[usageKey]evaluate.UsageRow{}
-	var usageOrder []usageKey
+	var bs []batch.Batch
 	providers := map[string]bool{}
 	for rows.Next() {
 		var digest, payload string
@@ -253,13 +248,7 @@ func loadPeriod(ctx context.Context, tx pgx.Tx, systemID string, start, end time
 			rows.Close()
 			return in, nil, fmt.Errorf("issue: stored batch %s: %w", digest, err)
 		}
-		hour, err := time.Parse(time.RFC3339, b.Window.Start)
-		if err != nil {
-			rows.Close()
-			return in, nil, err
-		}
-		in.Windows = append(in.Windows, evaluate.Window{Window: b.Window, Metrics: b.Metrics, Observed: b.Observed, Commit: b.Commit})
-		in.Evals = append(in.Evals, b.Metrics.Evals...)
+		bs = append(bs, b)
 		p.digests = append(p.digests, digest)
 		if b.Commit.Leaves > 0 {
 			raw, err := hex.DecodeString(b.Commit.Root)
@@ -272,24 +261,14 @@ func loadPeriod(ctx context.Context, tx pgx.Tx, systemID string, start, end time
 		}
 		for _, u := range b.Usage {
 			providers[u.Provider] = true
-			k := usageKey{u.Provider, u.Model, u.Region, hour.UTC()}
-			row := evaluate.UsageRow{Provider: u.Provider, Model: u.Model, Region: u.Region, Start: hour.UTC(),
-				InputTokens: u.InputTokens, OutputTokens: u.OutputTokens, Requests: u.Requests}
-			old, seen := usage[k]
-			if !seen {
-				usageOrder = append(usageOrder, k)
-			}
-			if !seen || row.InputTokens+row.OutputTokens > old.InputTokens+old.OutputTokens {
-				usage[k] = row
-			}
 		}
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
 		return in, nil, err
 	}
-	for _, k := range usageOrder {
-		in.Usage = append(in.Usage, usage[k])
+	if in.Windows, in.Usage, in.Evals, err = evaluate.FromBatches(bs); err != nil {
+		return in, nil, err
 	}
 	for pr := range providers {
 		p.usageProviders = append(p.usageProviders, pr)

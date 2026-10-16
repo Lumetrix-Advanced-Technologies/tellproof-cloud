@@ -53,14 +53,20 @@ var extra = []string{
 	"tools/demolog",
 	".dockerignore",
 	// The concierge's reference implementations the public tests compare
-	// against: ingest (window roots), schema (batch schema) and the Python
-	// verifier. The evaluator stays private.
+	// against: ingest (window roots), schema (batch schema), the Python
+	// verifier and (below) the Python evaluator.
 	"concierge/ingest.py",
 	"concierge/merkle.py",
 	"concierge/schema.py",
 	"concierge/verify.py",
 	"concierge/tests/test_verify_keys.py",
 	"concierge/testdata/otlp-sample.jsonl",
+	// The evaluator's Python twin and the fixtures their parity test compares
+	// on: the evidence objectives are evaluated in the open (D-055).
+	"concierge/evaluate.py",
+	"concierge/canon.py",
+	"concierge/testdata/demo",
+	"concierge/testdata/partner-month",
 }
 
 // overlay holds the files only the public repository has (licence, README,
@@ -73,7 +79,7 @@ var skip = map[string]bool{"__pycache__": true, "node_modules": true, ".DS_Store
 // forbidden must not appear anywhere in the exported tree: names that would
 // mean control-plane code or configuration slipped in.
 var forbidden = []string{
-	"internal/store", "internal/server", "internal/webapp", "internal/issue", "internal/evaluate",
+	"internal/store", "internal/server", "internal/webapp", "internal/issue",
 	"internal/vanta", "internal/secretbox", "internal/kmssign", "internal/auth", "internal/share",
 	"jackc/pgx", "SUPABASE_", "INTEGRATION_KEY", "DATABASE_URL",
 }

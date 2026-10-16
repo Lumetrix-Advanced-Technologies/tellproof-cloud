@@ -36,6 +36,7 @@ import (
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/dashboard"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/enrol"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/policy"
 )
 
 // version is set at link time: go build -ldflags "-X main.version=v0.1.0".
@@ -45,6 +46,7 @@ const usage = `usage:
   plumbline-agent run --local [--config <agent.json>]
   plumbline-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
   plumbline-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen <host:port>]
+  plumbline-agent policy init | check | aibom ...   (run one with --help for its flags)
   plumbline-agent connect [--config <agent.json>] <token>
   plumbline-agent enrol --config <agent.json> [--token <token>]
   plumbline-agent [run] --config <agent.json> [--dry-run] [--replay <export.jsonl>]
@@ -65,6 +67,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, getenv func(string) string, stdout, stderr io.Writer) int {
+	if isGovernance(args) {
+		return governance(args, getenv, stdout, stderr)
+	}
 	cmd := "run"
 	if len(args) > 0 && (args[0] == "run" || args[0] == "enrol" || args[0] == "connect" || args[0] == "version" || args[0] == "local" || args[0] == "report" || args[0] == "dashboard") {
 		cmd, args = args[0], args[1:]
@@ -302,7 +307,8 @@ func startDashboard(addr, dataDir string, log *slog.Logger) (func(), string, err
 	if err != nil {
 		return nil, "", fmt.Errorf("plumbline-agent: dashboard: %w (set PLUMBLINE_DASHBOARD_LISTEN, or off)", err)
 	}
-	srv := &http.Server{Handler: dashboard.Handler(dashboard.Options{DataDir: dataDir, Version: version}), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: dashboard.Handler(dashboard.Options{DataDir: dataDir, Version: version, PolicyPath: policy.Find(os.Getenv, dataDir)}),
+		ReadHeaderTimeout: 10 * time.Second}
 	go func() { _ = srv.Serve(ln) }()
 	host, port, _ := net.SplitHostPort(ln.Addr().String())
 	if ip := net.ParseIP(host); ip == nil || ip.IsUnspecified() || ip.IsLoopback() {
