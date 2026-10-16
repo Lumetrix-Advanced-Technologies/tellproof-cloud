@@ -24,7 +24,8 @@ What must be true before Plumbline is announced (P6-3). Code-side items were don
 - [ ] PyPI: trusted publisher for `plumbline-sdk` (repository `Lumetrix-Advanced-Technologies/plumbline`, workflow `sdk-release.yml`, environment `release`). npm: an account that owns `plumbline-sdk` and an `NPM_TOKEN` secret in the public repository.
 - [x] Tag `v0.1.0`, check the draft release (checksums, attestations, versions, local mode smoke test), publish it.
 - [x] v0.2.0 released (dashboard, pip/npm packages attached to the release, `run --local`).
-- [ ] PyPI pending publishers: `plumbline-agent` (workflow `packages.yml`) and `plumbline-sdk` (workflow `sdk-release.yml`), both environment `release`. npm: an `NPM_TOKEN` secret. Then `PUBLISH_PACKAGES=true`, run `packages` for v0.2.0, and tag `sdk-v0.1.0`.
+- [x] Published: `plumbline-agent` 0.2.0 (PyPI, npm and six npm platform packages) and `plumbline-sdk` 0.1.0 (PyPI and npm), all with provenance; PyPI and npm both on trusted publishing.
+- [ ] Delete the `NPM_TOKEN` repository secret and revoke the token on npmjs.com (the workflows no longer use it).
 - [ ] Choose a private contact address for early access and security, or confirm GitHub-only is enough.
 - [ ] Check that the agent snippet in the app works with the published image.
 
