@@ -303,8 +303,17 @@ func (c *copier) file(rel string) error {
 // overlay copies the public repository's own files, replacing any of the same name.
 func (c *copier) overlay(dir string) error {
 	return filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+		if err != nil {
 			return err
+		}
+		if skip[d.Name()] {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() {
+			return nil
 		}
 		r, _ := filepath.Rel(dir, p)
 		c.res.Files++

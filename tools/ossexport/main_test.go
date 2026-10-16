@@ -25,7 +25,7 @@ func TestExportIsTheOpenSourceTreeOnly(t *testing.T) {
 		}
 	}
 	for _, private := range []string{"internal/store", "internal/server", "internal/webapp", "internal/issue", "internal/evaluate",
-		"internal/vanta", "internal/kmssign", "cmd/server", "migrations", "docs", "concierge/evaluate.py", "concierge/evidencepack.py",
+		"internal/vanta", "internal/kmssign", "cmd/server", "migrations", "docs/decisions.md", "docs/architecture.md", "docs/launch", "concierge/evaluate.py", "concierge/evidencepack.py",
 		"internal/secretbox", "e2e", "tools/ossexport", "reference", "cmd/agent/connect_test.go", "web/app", "web/embed.go"} {
 		if exists(filepath.Join(out, private)) {
 			t.Errorf("%s is in the open-source tree", private)
@@ -38,6 +38,13 @@ func TestExportIsTheOpenSourceTreeOnly(t *testing.T) {
 			t.Errorf("%s is missing", want)
 		}
 	}
+	// Nothing generated locally comes along (bytecode caches, node_modules).
+	_ = filepath.WalkDir(out, func(p string, d os.DirEntry, err error) error {
+		if err == nil && (d.Name() == "__pycache__" || d.Name() == "node_modules" || strings.HasSuffix(p, ".pyc")) {
+			t.Errorf("%s is in the open-source tree", p)
+		}
+		return nil
+	})
 	if len(r.Dropped) != 1 || !strings.HasPrefix(r.Dropped[0], "cmd/agent/connect_test.go") {
 		t.Errorf("dropped tests = %v", r.Dropped)
 	}
