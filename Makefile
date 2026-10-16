@@ -28,13 +28,14 @@ test:
 	go test -race $(GO_PKGS)
 	go test -race -tags bedrock ./internal/usage/...
 
-# Every verifier must agree with spec/vectors/manifest.json and spec/jcs-vectors.json.
+# Every verifier must agree with spec/vectors/manifest.json, extra-manifest.json, key-manifest.json and spec/jcs-vectors.json.
 vectors:
 	@if [ -n "$$(go list ./internal/... 2>/dev/null)" ]; then go test -race -run 'Vector|JCS' ./internal/...; fi
 	node --test reference/verify-reference.test.mjs
 	@if [ -f web/verify/verify.test.js ]; then node --test web/verify/verify.test.js; fi
 	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/KST-CTA-0001.dsse.json spec/vectors/pass/KST-CTA-0002.dsse.json spec/vectors/pass/KST-CTA-0003.dsse.json
 	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/extra/pass-no-disclosure.dsse.json
+	python3 -m unittest concierge/tests/test_verify_keys.py
 
 db:
 	docker compose up -d db

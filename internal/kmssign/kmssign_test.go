@@ -64,7 +64,7 @@ func TestKMSSignsTheDigestAndVerifies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, kid, err := dsse.Verify(env, "application/vnd.in-toto+json", keys); err != nil || kid != s.KeyID() {
+	if _, kid, err := dsse.Verify(env, "application/vnd.in-toto+json", keys.PublicKeys()); err != nil || kid != s.KeyID() {
 		t.Errorf("verify: %v %s", err, kid)
 	}
 	if s.KeyRef() != "arn:aws:kms:ap-southeast-2:111122223333:key/test" {
@@ -87,7 +87,7 @@ func TestLocalSigner(t *testing.T) {
 		t.Fatal(err)
 	}
 	keys, _ := pack.ParseJWKS(JWKS(l.PublicKey(), l.KeyID()))
-	if _, _, err := dsse.Verify(env, "t", keys); err != nil {
+	if _, _, err := dsse.Verify(env, "t", keys.PublicKeys()); err != nil {
 		t.Error(err)
 	}
 	sec1, _ := x509.MarshalECPrivateKey(key)

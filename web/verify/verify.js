@@ -183,22 +183,34 @@ async function checkSignature(env, keys) {
 
 // ---------- JWKS ----------
 
-// importJWKS mirrors Go's pack.ParseJWKS: ES256 (EC P-256) keys by kid, no
-// unknown members, coordinates checked on the curve. Returns Map kid -> CryptoKey.
+// NumericDate (D-042): a JSON number with a whole value in [0, 2^53-1].
+const isNumericDate = (v) => typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= Number.MAX_SAFE_INTEGER;
+
+// importJWKS mirrors Go's pack.ParseJWKS (D-042): ES256 (EC P-256) keys by kid,
+// each with an optional nbf and exp (NumericDate), an optional "revoked" list of
+// {kid, revoked_at, reason}, no unknown members, coordinates checked on the
+// curve. Returns a Map kid -> CryptoKey carrying .validity (kid -> {nbf, exp})
+// and .revoked (kid -> revoked_at).
 export async function importJWKS(jwks) {
   if (!isObject(jwks)) throw new PackError("jwks: not a JSON object");
-  exactKeys(jwks, ["keys"], "jwks");
+  exactKeys(jwks, ["keys", "revoked"], "jwks");
   if (!Array.isArray(jwks.keys) || jwks.keys.length === 0) throw new PackError("jwks: no keys");
   const keys = new Map();
+  const validity = new Map();
   for (const [i, k] of jwks.keys.entries()) {
     const where = `jwks: keys[${i}]`;
     if (!isObject(k)) throw new PackError(`${where} is not an object`);
-    exactKeys(k, ["kty", "crv", "kid", "use", "alg", "x", "y"], where);
-    for (const f of Object.keys(k)) if (typeof k[f] !== "string") throw new PackError(`${where}.${f} is not a string`);
+    exactKeys(k, ["kty", "crv", "kid", "use", "alg", "x", "y", "nbf", "exp"], where);
+    for (const f of Object.keys(k)) {
+      if (f === "nbf" || f === "exp") {
+        if (!isNumericDate(k[f])) throw new PackError(`${where}.${f} must be a whole number of seconds (NumericDate)`);
+      } else if (typeof k[f] !== "string") throw new PackError(`${where}.${f} is not a string`);
+    }
     if (!k.kid) throw new PackError(`${where}: kid is required`);
     if (k.kty !== "EC" || k.crv !== "P-256") throw new PackError(`${where}: want kty EC and crv P-256`);
     if (k.alg !== undefined && k.alg !== "" && k.alg !== "ES256") throw new PackError(`${where}: alg is not ES256`);
     if (k.use !== undefined && k.use !== "" && k.use !== "sig") throw new PackError(`${where}: use is not sig`);
+    if (k.nbf !== undefined && k.exp !== undefined && k.exp <= k.nbf) throw new PackError(`${where}: exp must be after nbf`);
     let x, y;
     try {
       x = b64urlDecode(k.x ?? "");
@@ -215,8 +227,58 @@ export async function importJWKS(jwks) {
       throw new PackError(`${where}: not a valid P-256 point`);
     }
     keys.set(k.kid, key);
+    validity.set(k.kid, { nbf: k.nbf, exp: k.exp });
   }
+  const revoked = new Map();
+  if (jwks.revoked !== undefined) {
+    if (!Array.isArray(jwks.revoked)) throw new PackError("jwks: revoked must be an array");
+    for (const [i, r] of jwks.revoked.entries()) {
+      const where = `jwks: revoked[${i}]`;
+      if (!isObject(r)) throw new PackError(`${where} is not an object`);
+      exactKeys(r, ["kid", "revoked_at", "reason"], where);
+      if (typeof r.kid !== "string" || r.kid === "" || !isNumericDate(r.revoked_at)) throw new PackError(`${where} needs a kid and a revoked_at NumericDate`);
+      if (r.reason !== undefined && typeof r.reason !== "string") throw new PackError(`${where}.reason is not a string`);
+      if (revoked.has(r.kid)) throw new PackError(`jwks: kid ${JSON.stringify(r.kid)} is revoked twice`);
+      revoked.set(r.kid, r.revoked_at);
+    }
+  }
+  Object.defineProperty(keys, "validity", { value: validity });
+  Object.defineProperty(keys, "revoked", { value: revoked });
   return keys;
+}
+
+const ISSUED_AT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+// issuedAtSeconds parses an RFC 3339 date-time strictly (no Date.parse
+// leniency) and returns whole Unix seconds, or null.
+export function issuedAtSeconds(s) {
+  const m = ISSUED_AT.exec(s);
+  if (!m) return null;
+  const [y, mo, d, h, mi, se] = m.slice(1, 7).map(Number);
+  const ms = Date.UTC(y, mo - 1, d, h, mi, se);
+  const t = new Date(ms);
+  if (t.getUTCFullYear() !== y || t.getUTCMonth() !== mo - 1 || t.getUTCDate() !== d || t.getUTCHours() !== h || t.getUTCMinutes() !== mi || t.getUTCSeconds() !== se) return null;
+  let offset = 0;
+  if (m[8] !== "Z") {
+    const oh = Number(m[10]), om = Number(m[11]);
+    if (oh > 23 || om > 59) return null;
+    offset = (m[9] === "+" ? 1 : -1) * (oh * 3600 + om * 60);
+  }
+  return ms / 1000 - offset;
+}
+
+// keyVouches mirrors Go's KeySet.Vouches: null when the key may vouch for a pack A revoked key vouches for nothing.
+// issued at issuedAt, otherwise {status, message}: status is revoked,
+// not_yet_valid, expired or bad_issued_at. A revoked key vouches for nothing.
+export function keyVouches(keys, kid, issuedAt) {
+  if (keys.revoked && keys.revoked.has(kid)) return { status: "revoked", message: "the signing key has been revoked" };
+  const v = keys.validity ? keys.validity.get(kid) : undefined;
+  if (!v || (v.nbf === undefined && v.exp === undefined)) return null;
+  const t = issuedAtSeconds(issuedAt);
+  if (t === null) return { status: "bad_issued_at", message: "issued_at is not an RFC 3339 date-time, so the key's validity cannot be checked" };
+  if (v.nbf !== undefined && t < v.nbf) return { status: "not_yet_valid", message: "the pack was issued before its signing key's nbf" };
+  if (v.exp !== undefined && t >= v.exp) return { status: "expired", message: "the pack was issued at or after its signing key's exp" };
+  return null;
 }
 
 // ---------- statement shape (the Go v0.1 types, field for field) ----------
@@ -365,6 +427,7 @@ export async function verifyEnvelope(envObj, jwks, prev = null) {
     digest: await packDigest(env.payload),
     key_id: "",
     signature_error: "",
+    key_status: "", // revoked | not_yet_valid | expired | bad_issued_at when the signature matched but its key may not vouch
     statement: null,
   };
   const sig = await checkSignature(env, keys);
@@ -380,6 +443,14 @@ export async function verifyEnvelope(envObj, jwks, prev = null) {
     throw e;
   }
   const p = st.predicate;
+  if (r.signature) {
+    const why = keyVouches(keys, r.key_id, p.issued_at);
+    if (why) {
+      r.signature = false;
+      r.signature_error = why.message;
+      r.key_status = why.status;
+    }
+  }
   r.statement = st;
   r.pack_id = p.pack_id;
   r.seq_no = p.seq_no;

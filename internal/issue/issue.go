@@ -29,6 +29,7 @@ import (
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/evaluate"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/jcs"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/merkle"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
@@ -138,7 +139,12 @@ func (is *Issuer) Issue(ctx context.Context, r Request) (*Issued, error) {
 		}
 		root := tree.Root()
 		loc, _ := time.LoadLocation(s.sys.Timezone)
-		pred := predicate(s, ev, seq, prevDigest, now().In(loc).Truncate(time.Second).Format(time.RFC3339),
+		issuedAt := now().In(loc).Truncate(time.Second)
+		// The key must be registered and in date at issued_at, by the rule verifiers apply to the JWKS (D-042).
+		if err := keys.CheckSigner(ctx, tx, is.Signer.KeyID(), is.Signer.PublicKey(), issuedAt); err != nil {
+			return err
+		}
+		pred := predicate(s, ev, seq, prevDigest, issuedAt.Format(time.RFC3339),
 			hex.EncodeToString(root[:]), p.leaves, p.digests, p.usageProviders, len(in.Changes)+len(in.Incidents) > 0)
 		payload, err := statement(pred)
 		if err != nil {
@@ -149,7 +155,7 @@ func (is *Issuer) Issue(ctx context.Context, r Request) (*Issued, error) {
 			return err
 		}
 		// Verify before storing: a key mix-up or a broken chain never leaves this transaction.
-		res, err := pack.Verify(env, map[string]crypto.PublicKey{is.Signer.KeyID(): is.Signer.PublicKey()}, prevEnv)
+		res, err := pack.Verify(env, pack.KeySetOf(map[string]crypto.PublicKey{is.Signer.KeyID(): is.Signer.PublicKey()}), prevEnv)
 		if err != nil {
 			return fmt.Errorf("issue: the pack does not decode as a v0.1 statement: %w", err)
 		}

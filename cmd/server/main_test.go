@@ -166,3 +166,42 @@ func TestPackSignerConfig(t *testing.T) {
 		t.Errorf("local: %v %v", s, err)
 	}
 }
+
+func TestKeysCommand(t *testing.T) {
+	db := storetest.MigratedDB(t)
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	der, _ := x509.MarshalPKCS8PrivateKey(key)
+	p := filepath.Join(t.TempDir(), "k.pem")
+	_ = os.WriteFile(p, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), 0o600)
+	e := env("DATABASE_URL_OWNER", db, "KMS_KEY_ID", "local", "LOCAL_SIGNING_KEY", p)
+	do := func(args ...string) (int, string) {
+		var out, errb bytes.Buffer
+		code := run(context.Background(), append([]string{"keys"}, args...), e, &out, &errb)
+		return code, out.String() + errb.String()
+	}
+	code, out := do("add", "--nbf", "2026-01-01T00:00:00Z")
+	if code != 0 || !strings.Contains(out, "added ") {
+		t.Fatalf("add: %d %s", code, out)
+	}
+	kid := strings.Fields(out)[1]
+	if code, out := do("add"); code != 1 {
+		t.Errorf("adding the same key twice: %d %s", code, out)
+	}
+	if code, out := do("retire", kid, "--at", "2026-06-01T00:00:00Z"); code != 0 {
+		t.Errorf("retire: %d %s", code, out)
+	}
+	if code, out := do("revoke", kid); code != 1 || !strings.Contains(out, "--reason") {
+		t.Errorf("revoke without a reason: %d %s", code, out)
+	}
+	if code, out := do("revoke", kid, "--reason", "rotation drill"); code != 0 {
+		t.Errorf("revoke: %d %s", code, out)
+	}
+	if code, out := do("list"); code != 0 || !strings.Contains(out, kid) || !strings.Contains(out, "revoked") {
+		t.Errorf("list: %d %s", code, out)
+	}
+	for _, args := range [][]string{{}, {"list", "extra"}, {"frobnicate"}} {
+		if code, _ := do(args...); code == 0 {
+			t.Errorf("%v succeeded", args)
+		}
+	}
+}

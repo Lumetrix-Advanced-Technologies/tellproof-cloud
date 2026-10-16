@@ -3,10 +3,15 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -25,7 +30,10 @@ import (
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/batchsign"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/otlp"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
 )
 
@@ -372,3 +380,44 @@ var p256PEM = func() string {
 	}
 	return string(b)
 }()
+
+func TestJWKSEndpoint(t *testing.T) {
+	f := newFixture(t)
+	get := func() (*http.Response, []byte) {
+		resp, err := f.srv.Client().Get(f.srv.URL + "/.well-known/jwks.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return resp, b
+	}
+	if resp, _ := get(); resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("no keys: HTTP %d", resp.StatusCode)
+	}
+	k, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	der, _ := x509.MarshalPKCS8PrivateKey(k)
+	s, err := kmssign.NewLocal(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pgx.BeginFunc(context.Background(), f.owner, func(tx pgx.Tx) error {
+		if err := keys.Add(context.Background(), tx, s, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)); err != nil {
+			return err
+		}
+		return keys.Revoke(context.Background(), tx, s.KeyID(), "test")
+	}); err != nil {
+		t.Fatal(err)
+	}
+	resp, body := get()
+	if resp.StatusCode != 200 || resp.Header.Get("Cache-Control") != "public, max-age=300" || resp.Header.Get("Access-Control-Allow-Origin") != "*" {
+		t.Errorf("HTTP %d, headers %v", resp.StatusCode, resp.Header)
+	}
+	ks, err := pack.ParseJWKS(body)
+	if err != nil {
+		t.Fatalf("the served JWKS does not parse: %v\n%s", err, body)
+	}
+	if !errors.Is(ks.Vouches(s.KeyID(), "2026-02-01T00:00:00Z"), pack.ErrKeyRevoked) {
+		t.Errorf("the revocation is not published: %s", body)
+	}
+}
