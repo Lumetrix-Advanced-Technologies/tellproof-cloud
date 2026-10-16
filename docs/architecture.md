@@ -62,23 +62,30 @@ Predicate fields (schema: `spec/pack.schema.json`): `pack_schema`, `pack_id`, `s
 - Leaf: `sha256(0x00 || salt16 || utf8(trace_id))`. Node: `sha256(0x01 || left || right)`. An odd node at the end of a level is carried up unchanged (not duplicated).
 - Proof: list of `{side: "L"|"R", hash: hex}` from leaf to root; levels where the node was carried up contribute no entry.
 
-### 2.5 Agent batch payload (schema: `spec/batch.schema.json`)
+### 2.5 Agent batch payload (schema: `spec/batch.schema.json`, v0.2; v0.1 kept as `spec/batch-v0.1.schema.json`)
 
 ```json
-{"schema": "plumbline-batch/v0.1", "agent_id": "agt_…", "seq": 1842, "prev": "sha256:<hex of previous batch payload> | null",
+{"schema": "plumbline-batch/v0.2", "agent_id": "agt_…", "seq": 1842, "prev": "sha256:<hex of previous batch payload> | null",
  "window": {"start": "2026-11-30T13:00:00Z", "end": "2026-11-30T14:00:00Z"}, "semconv_map": "v1",
  "metrics": {"tokens": [...], "pii": {...}, "content_present_spans": 0, "guardrails": {...}, "evals": [...], "agent": {...}, "transitions": [...]},
+ "observed": {"models": [{"provider": "aws.bedrock", "model": "..."}], "versions": [{"model": "...", "prompt_version": "14"}]},
  "usage": [{"provider": "aws.bedrock", "model": "...", "region": "...", "input_tokens": 0, "output_tokens": 0, "requests": 0}],
  "commit": {"root": "<hex>", "leaves": 402}}
 ```
 
-## 3. Evidence agent (`cmd/agent`)
+## 3. One-line SDKs (`sdk/python`, `sdk/js`) and the evidence agent
 
-- **Inputs:** OTLP/HTTP JSON receiver on `127.0.0.1:4318` path `/v1/traces` (no protobuf); Langfuse puller (Observations v2, Scores v3); provider usage pollers (OpenAI Usage API, Anthropic Usage & Cost API, Bedrock CloudWatch with build tag `bedrock`); register files (CSV for changes and incidents).
+### 3.0 SDKs (D-025)
+
+`pip install plumbline` / `npm install @plumbline/sdk`, then one line: `plumbline.init()`. The SDK patches the LLM clients the app uses (OpenAI, Anthropic, AWS Bedrock Runtime; sync, async, streaming) and records one span per call with provider, model, region, token usage, operation, duration and error status. Helpers add what no client knows: `prompt(name, version)`, `guardrail(decision)`, `personal_data(redacted)`, `tool(name, high_impact, approved)`, `escalation()`, `agent_run(name)` (attribute names from D-020). Spans go as OTLP JSON to the agent (`http://127.0.0.1:4318/v1/traces`, or `PLUMBLINE_AGENT_URL`) from a bounded background queue that drops rather than blocks. No message content is ever read. No runtime dependencies. Apps already on OpenTelemetry can skip the SDK and point an OTLP JSON exporter at the agent.
+
+## 3.1 Evidence agent (`cmd/agent`)
+
+- **Inputs:** OTLP/HTTP JSON receiver on `127.0.0.1:4318` path `/v1/traces` (no protobuf); Langfuse puller (Observations v2, Scores v3); provider usage pollers (OpenAI Usage API, Anthropic Usage & Cost API, Bedrock CloudWatch with build tag `bedrock`). Change and incident registers are uploaded in the web app, not read by the agent (D-032).
 - **Normaliser:** `spec/semconv-map.json` maps old and new OTel GenAI attribute names to internal fields. The map version is recorded in each batch. Message-content attributes are dropped on parse; only their presence is counted.
 - **Aggregation:** hourly windows, UTC, closed 5 minutes after the hour to absorb late spans. Late spans after close go into the next window and are counted in `metrics.late_spans`.
 - **Queue:** append-only segment files under `--data-dir`, `fsync` before acknowledgement, deleted after the server returns 201. Retry with exponential backoff capped at 15 minutes.
-- **Keys:** Ed25519 key generated at `agent enrol --token <one-time>`, private key stored `0600` in the data dir; the public key is registered with the server.
+- **Keys:** Ed25519 key generated at `plumbline-agent enrol` (one-time token from `PLUMBLINE_ENROL_TOKEN`), private key stored `0600` in the data dir; the public key is registered with the server.
 - **Egress:** one host (`--server`). `--dry-run` prints each batch envelope to stdout and sends nothing.
 - **Config:** JSON file plus env overrides; secrets (Langfuse keys, provider admin keys, salt secret) only from env or files with `0600`.
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://lumetrix.example/plumbline/schema/batch-v0.1.json",
-  "title": "Plumbline agent batch payload v0.1",
+  "$id": "https://lumetrix.example/plumbline/schema/batch-v0.2.json",
+  "title": "Plumbline agent batch payload v0.2",
   "type": "object",
   "required": [
     "schema",
@@ -11,13 +11,14 @@
     "window",
     "semconv_map",
     "metrics",
+    "observed",
     "usage",
     "commit"
   ],
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "plumbline-batch/v0.1"
+      "const": "plumbline-batch/v0.2"
     },
     "agent_id": {
       "type": "string",
@@ -256,6 +257,55 @@
         "late_spans": {
           "type": "integer",
           "minimum": 0
+        }
+      }
+    },
+    "observed": {
+      "description": "What was live in this window, for eval freshness (EO-EVAL-01): every model seen on an LLM call, and every model and prompt version pair seen together. Added in v0.2 (D-021, P3-0).",
+      "type": "object",
+      "required": [
+        "models",
+        "versions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "provider",
+              "model"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "provider": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "model",
+              "prompt_version"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "prompt_version": {
+                "type": "string"
+              }
+            }
+          }
         }
       }
     },

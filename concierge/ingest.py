@@ -31,7 +31,7 @@ DEFAULT_ATTRIBUTES = {
     "high_impact": "plumbline.tool.high_impact",
     "approved": "plumbline.tool.approved",
     "escalation": "plumbline.escalation",
-    "llm_operations": ["chat", "text_completion", "generate_content", "embeddings"],
+    "llm_operations": ["chat", "text_completion", "generate_content", "embeddings", "completion", "embedding"],
     "anomaly": {"min_calls": 20, "error_rate": 0.05, "guardrail_block_rate": 0.03},
 }
 
@@ -89,7 +89,8 @@ def _span_from_values(trace_id, start, operation, values, presence_keys, error, 
     """values: only the attribute values we are allowed to read (already filtered)."""
     f = semconv["fields"]
     kind = _classify(operation, attrs)
-    content = langfuse_content or any(k in semconv["presence_only"] for k in presence_keys)
+    prefixes = tuple(semconv.get("presence_only_prefixes", []))
+    content = langfuse_content or any(k in semconv["presence_only"] or (prefixes and k.startswith(prefixes)) for k in presence_keys)
     model = _pick(values, f["response_model"]) or _pick(values, f["request_model"])
     return Span(
         trace_id=trace_id, start=start, kind=kind,
@@ -113,7 +114,7 @@ def _readable_names(semconv, attrs) -> set[str]:
     names = {n for ns in semconv["fields"].values() for n in ns}
     names |= {attrs[k] for k in ("pii_marker", "redacted", "guardrail_decision", "prompt_name", "prompt_version",
                                   "slot", "high_impact", "approved", "escalation")}
-    names |= {"service.name", "gen_ai.operation.name"}
+    names |= {"service.name"}
     return names
 
 
@@ -159,7 +160,7 @@ def parse_otlp(docs, semconv, attrs):
                     merged = {**res_values, **values}
                     error = (sp.get("status") or {}).get("code") in (2, "STATUS_CODE_ERROR")
                     yield _span_from_values(str(sp.get("traceId", "")), _ns_to_dt(sp["startTimeUnixNano"]),
-                                            merged.get("gen_ai.operation.name"), merged, keys, error, semconv, attrs)
+                                            _pick(merged, semconv["fields"]["operation"]), merged, keys, error, semconv, attrs)
 
 
 # ---------- Langfuse export (JSON array/JSONL of observations, or CSV) ----------
@@ -322,12 +323,12 @@ def aggregate(spans, attrs, salt_secret: bytes):
         leaves = [merkle.leaf_hash(merkle.salt(salt_secret, tid), tid) for tid in traces_by_hour[hour]]
         commit = {"root": merkle.root(leaves).hex() if leaves else "0" * 64, "leaves": len(leaves)}
         # Which model and prompt versions were live, for eval freshness (EO-EVAL-01). The batch
-        # metrics schema has no field for this yet, so it sits beside metrics (D-021).
+        # batch schema v0.2 carries it beside metrics (D-021, P3-0).
         observed = {
-            "models": sorted({(s.provider, s.model) for s in llm if s.model != "unknown"}),
-            "versions": sorted({(s.model, str(s.prompt_version)) for s in llm if s.model != "unknown" and s.prompt_version not in (None, "")}),
+            "models": [{"provider": p, "model": m} for p, m in sorted({(s.provider, s.model) for s in llm if s.model != "unknown"})],
+            "versions": [{"model": m, "prompt_version": v} for m, v in
+                         sorted({(s.model, str(s.prompt_version)) for s in llm if s.model != "unknown" and s.prompt_version not in (None, "")})],
         }
-        observed = {k: [list(x) for x in v] for k, v in observed.items()}
         windows.append({"window": {"start": _iso(hour), "end": _iso(end)}, "metrics": metrics, "observed": observed, "commit": commit})
         all_leaves.extend(l.hex() for l in leaves)
     return windows, all_leaves

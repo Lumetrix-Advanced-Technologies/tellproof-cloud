@@ -130,3 +130,80 @@ The core manifest covers eight cases; the verifiers could still disagree on malf
 - **Nothing unverified is published**: `share` checks the signature against the JWKS it publishes, canonical form, subject digest, the chain against `--prev` (required for any pack after the first) and the disclosed proof. A kid already published with a different key is refused.
 - **Revoking** deletes the share file (`unshare --token` or `--token-sha256` from the log); the page then reports no pack at the link. Static hosting cannot return 410 or log views; both arrive with P5-1.
 - **Framework map labels** (supersedes the format in D-021): "framework ref title" using our own short titles (for example "AIUC-1 E Accountability"), or "framework: title" where the ref adds nothing (APRA letter themes, CPS 230), asterisked when unverified.
+
+## D-024 Build the whole product before trial runs; the M1 gate no longer blocks Phases 3–6 (15 Oct 2026)
+
+Decided by a founder on 15 Oct 2026, to be confirmed by the other founder in review. The plan was to validate demand with concierge pilots before building the platform: Phases 3–6 were blocked until `M1: PASSED` (≥15 qualified calls, ≥40% with a deal blocked in AI review, ≥3 paid pilots at ≥A$3K, ≥60% choosing the telemetry pack). The founders now want a complete, self-serve product to pitch, so trials run on the real product rather than on hand-built packs.
+
+- Phases 3–6 and the new Phase S (D-025) are unblocked, in the order in `build-plan.md`.
+- M1's criteria are unchanged and become the goal of the trial runs. The tracker never says `M1: PASSED` until they are actually met.
+- The concierge CLI stays usable for early pilots until the platform issues packs; it is frozen (bug fixes with vectors only) from then.
+- Risk accepted: building weeks of platform before demand is proven. Mitigations: keep tasks one PR each, ship the SDK and agent early so a design partner can try them before the web app exists, and keep the open-source verifier and agent as the first public artefacts.
+
+Supersedes the gate in CLAUDE.md ("Respect the gate") and in `build-plan.md`.
+
+## D-025 One-line integration: zero-dependency SDKs that feed the local evidence agent (15 Oct 2026)
+
+Adoption must feel like Sentry: install a package, add one line. Chosen model (over an SDK that signs and uploads from inside the app, which is weak in serverless and multi-worker apps and puts signing keys in every process):
+
+- **SDKs** `plumbline` (Python, `sdk/python`) and `@plumbline/sdk` (TypeScript, `sdk/js`). `plumbline.init()` patches the LLM clients the app already uses (OpenAI, Anthropic, AWS Bedrock Runtime; sync, async and streaming) and exports spans as OTLP JSON to the agent at `http://127.0.0.1:4318` (override with `PLUMBLINE_AGENT_URL`). Manual helpers set the facts no client knows: prompt name and version, guardrail decisions, personal-data tags and redaction, tool calls (high impact, approved), escalations, agent runs, using the attribute names of D-020.
+- **No content, by construction.** The SDKs record only provider, model, region, token usage, operation, duration, error status and the helper attributes. They never read message arguments or responses beyond the usage block, so there is nothing to drop. Tests prove argument text never reaches an exported span.
+- **No dependencies.** Python standard library only; TypeScript uses only `fetch` and Node built-ins, shipped as plain `.js` with `.d.ts` (no bundler, no build step). The SDKs have no runtime dependencies to audit; tests use fakes shaped like the real client libraries, plus the real libraries when installed. This extends the "standard library first" rule to the SDKs; publishing to PyPI and npm is a release step (P6-2).
+- **Never break the app.** Instrumentation errors are swallowed and counted; the exporter is a bounded background queue that drops (and counts drops) rather than block a request; `init()` is idempotent and a no-op when disabled (`PLUMBLINE_DISABLED=1`).
+- **The agent stays the trust boundary.** It aggregates, salts, signs (Ed25519) and queues batches to one host, exactly as §3 describes, and also accepts spans from any OpenTelemetry SDK or collector. The one-command install (S-5) is a `docker run` line or a static binary with `plumbline-agent connect <token>`; the web app shows both lines with the token filled in.
+
+## D-026 Agent span intake: semconv map v2, embedded spec, JSON-only receiver (15 Oct 2026)
+
+`internal/otlp` (P3-1) is the agent's intake. Choices:
+
+- **semconv map v2.** The D-020 concierge attribute names (`plumbline.data_class`, `plumbline.redaction.applied`, `plumbline.guardrail.decision`, `plumbline.prompt.name` and `.version`, `plumbline.tool.high_impact` and `.approved`, `plumbline.escalation`, and `gen_ai.agent.name` as the slot) now live in `spec/semconv-map.json` as fields, so the agent, the SDKs and the concierge read the same names. `llm.request.type` (OpenLLMetry) is an alias of the operation, and `llm_operations` lists the values that make a span an LLM call. `presence_only_prefixes` (`gen_ai.prompt.`, `gen_ai.completion.`, `llm.prompts.` and others) catches indexed content attributes such as `gen_ai.prompt.0.content`. `internal/spec` refuses a map that would read any attribute under a content prefix.
+- **Embedded spec.** Package `spec` (`specdata`) embeds the spec JSON files as immutable strings, so a binary carries exactly the mappings and rules it was tested with.
+- **Two guards against content.** Content attributes (exact names or prefixes, on spans and on span events) are counted and never decoded; other unmapped attributes are skipped, and span facts are filled only by lookups of mapped names. Span names, status messages and event names are never read.
+- **Receiver.** `POST /v1/traces`, `Content-Type: application/json` only (protobuf gets 415 with a message to switch the exporter to JSON, D-010), optional gzip, 8 MB on the wire and 32 MB after decompression (a gzip-bomb guard), OTLP partial success for spans without a valid trace ID or start time. Error messages are fixed text and never echo the request. Trace IDs are normalised to lower-case hex.
+
+## D-027 Period commitment = Merkle tree over window roots (15 Oct 2026)
+
+The agent commits each hourly window to a salted root and sends only that root and its leaf count; the server never sees leaves. A pack's `trace_merkle_root` (P4-5) is therefore the Merkle root over the period's non-empty window roots, in time order, combined with the ordinary node hash (`sha256(0x01 ‖ left ‖ right)`, odd node carried up), and `leaf_count` is the sum of the windows' leaves. A disclosure proof is the trace's proof to its window root followed by the window root's proof to the period root; every verifier checks it with the existing side/hash rule, unchanged. The agent keeps each window's leaves locally (`internal/commitment`) so a vendor can disclose one trace later; the server supplies the upper half of the proof. Concierge packs, built from all leaves at once, use a flat tree; both forms verify identically, and a proof still shows membership, not position (D-015). The salt secret comes from `PLUMBLINE_SALT_SECRET` or a file readable only by its owner, and must be at least 16 bytes.
+
+## D-028 Provider usage and coverage reconciliation (15 Oct 2026)
+
+`internal/usage` (P3-4) polls billed usage per hour and model: OpenAI (completions and embeddings, admin key), Anthropic (messages usage report, Admin API key), and Amazon Bedrock (CloudWatch `AWS/Bedrock` by `ModelId`, built only with `-tags bedrock`). Rules the evaluator (P4-4) and the SDKs (S-2, S-4) must follow:
+
+- **Tokens are input + output, and input includes cached tokens.** OpenAI's `input_tokens` already includes cached tokens; for Anthropic, billed input is uncached + cache creation (5 min and 1 h) + cache reads. The SDKs therefore record Anthropic input the same way, or coverage would read low for any app that uses prompt caching.
+- **Coverage is matched per provider.** OpenAI and Anthropic usage carries no cloud region (Anthropic's `inference_geo` is `global`, `us` or not available), so traced and billed tokens are compared per provider across regions; Bedrock usage is per region. Only providers with usage data count toward total coverage; a provider with traces but no usage is listed (and named in the pack's limitations).
+- **Never leak keys.** Errors name the endpoint and HTTP status only; response bodies are discarded on error; keys are never logged.
+- Each response is capped at 16 MB and a poll at 50 pages, so a misbehaving API cannot loop the agent.
+
+## D-029 Langfuse puller: same facts as OTLP; content fetched only as presence; evals from scores (15 Oct 2026)
+
+`internal/langfuse` (P3-5) pulls Observations v2 and Scores v3 and maps each observation into an `otlp.Span` through the same semconv mapping (`otlp.Mapping.Build`), so a Langfuse source and an OTLP source aggregate identically.
+
+- **Mapping.** `type` gives the operation (`GENERATION` → chat, `EMBEDDING` → embeddings, `AGENT` → invoke_agent, `TOOL` → execute_tool), `level: ERROR` the error flag, `providedModelName` the model, `inputUsage`/`outputUsage` the tokens, `promptName`/`promptVersion` the prompt. Metadata is read as OpenTelemetry ingestion stores it (`attributes`, `resourceAttributes`) or as flat SDK metadata (`provider`, `region` and attribute names); only mapped names are read. Langfuse trace IDs may be any string up to 256 characters (lower-cased), not only 32-hex.
+- **Content.** Langfuse stores prompts and completions, so content-present must be counted from them, as the concierge does. The puller requests the `io` group but decodes `input` and `output` only as raw JSON to test whether they are empty; the text is never parsed, stored or sent. This is the same exposure as the OTLP receiver, whose request bodies also carry content that is dropped at parse.
+- **Evals.** Configured score names become eval runs: for each suite, model and prompt version (from the scored observation, or the trace's earliest generation for a trace score), the pass rate is the share of `BOOLEAN` scores that are true and `NUMERIC` scores at or above the configured threshold; other data types are ignored. `ran_at` is the latest score's time. The aggregator files runs into the hour of `ran_at` (late runs into the current hour). To verify with a design partner how they record eval runs.
+- **Reliability.** 429 and 5xx are retried up to five times (honouring `Retry-After`, otherwise 1 s doubling, at most 60 s); other errors fail at once with the status only. Pulls stop at 1,000 pages.
+
+## D-030 Agent identity and the enrolment and batch wire formats (15 Oct 2026)
+
+`internal/enrol` and `internal/batchsign` (P3-6) fix what the server's enrol and ingest endpoints (P4-2) must accept:
+
+- **Enrolment.** `POST /v1/agents/enrol` with `Authorization: Bearer <one-time token>` and `{"public_key": "<PEM SubjectPublicKeyInfo, Ed25519>", "hostname": "<display only>"}`; the reply (200 or 201) is `{"agent_id": "agt_<8-40 alphanumerics>"}`. The server URL must be https, except http for localhost. The token is never stored, logged or included in an error.
+- **On disk.** The data directory is 0700. `agent.key` is the Ed25519 private key as PKCS#8 PEM, 0600, and the agent refuses to start if anyone else can read it. `agent.json` (agent ID, server) is written last, so its presence means enrolment finished; a failed enrolment leaves no key behind, and enrolling again over an existing identity is refused.
+- **Batches.** The payload is the canonical (JCS) `plumbline-batch/v0.2` JSON; the DSSE envelope has payload type `application/vnd.lumetrix.plumbline.batch+json` and one Ed25519 signature whose keyid is the agent ID. `seq` starts at 1 and increases by one; `prev` is null for the first batch, then `sha256:` + hex of the previous payload. A batch's digest (what ingest returns, and what the next `prev` names) is computed the same way. Verification requires the signature by the enrolled key, the canonical form, no unknown fields, schema v0.2 and `agent_id` equal to the signer. Counts must be exact in JSON (at most 2^53).
+- **State.** `Build` returns the next chain state but does not persist it; the queue (P3-7) persists it together with the envelope so a crash can neither skip nor reuse a `seq`.
+
+## D-031 Agent outbox: one durable file per batch, delete only when stored (15 Oct 2026)
+
+`internal/queue` (P3-7): each signed batch is written to its own file (`<seq>.batch.json`, the envelope plus the chain state after it) by temp file, fsync, rename and directory fsync, before `state.json` is updated; on start the state is the newer of `state.json` and the newest queued batch, so a crash can neither skip nor reuse a `seq`. Batches are sent in `seq` order to the one configured server and deleted only on 201, or on 200 when the server reports the same digest for a seq it already holds; that is how a batch re-sent after a crash is accepted without being stored twice. Network errors, 429 and 5xx are retried with exponential backoff (1 s doubling, jittered to between half and the full wait, capped at 15 minutes); 400, 401, 409, 413 and a different digest under the same seq stop delivery and keep the batch, because retrying cannot fix them and the operator must see them. The queue directory is 0700 and its files 0600.
+
+## D-032 Agent config, dry-run and replay (15 Oct 2026)
+
+`internal/agent` and `cmd/agent` (P3-8) wire the agent together:
+
+- **Config.** One JSON file (`agent.example.json`), decoded strictly (unknown fields and trailing data are errors, so a misspelt key or a pasted secret fails loudly). It never holds secrets: it names the environment variables (or the salt file) that do, and an enabled source whose variable is unset fails at start with the variable's name, never a value. `PLUMBLINE_SERVER`, `PLUMBLINE_DATA_DIR` and `PLUMBLINE_OTLP_LISTEN` override the file. The server must be https (http only for localhost). The OTLP receiver has no authentication, so it listens on loopback only unless `otlp_allow_remote` is set. `grace_minutes` is 1–55. Register files (change, incident) left the agent config: registers are uploaded in the web app (P5-3), so the agent only sends telemetry aggregates.
+- **Commands.** `plumbline-agent enrol` (token from `PLUMBLINE_ENROL_TOKEN`, or `--token`, which would show in the process list), `run` (the default) and `version`. Exit 2 for usage and config errors, 1 for runtime errors.
+- **`--dry-run`** prints each batch exactly as it would be sent (the envelope) followed by its decoded payload, and sends, queues and stores nothing; it does not create the data directory. Without an enrolment it signs with an ephemeral key under `agt_dryrun0000000000`, so the output is the real shape.
+- **`--replay <file>`** feeds an OTLP JSON export (one request per line, or one document) through the same pipeline, emits every window and exits; with `--dry-run` it is the offline check a customer runs before connecting anything (`make agent-dry`).
+- **Leaves.** Each window's salted leaves are kept in `data_dir/leaves/<seq>.json` (0600, directory 0700) so a trace can be disclosed later (D-027); they are hashes, never IDs.
+- **Restarts.** On shutdown the agent emits the open window as a partial batch rather than losing it, so after a restart the same hour can arrive in two batches. Windows are additive: the server and evaluator (P4-2, P4-4) must sum batches that share a window, not reject or overwrite them.
+- **One HTTP client** for usage, Langfuse and delivery; delivery still goes to the one configured server only.

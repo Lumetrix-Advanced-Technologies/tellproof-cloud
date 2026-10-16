@@ -15,15 +15,18 @@ fmt-check:
 
 vet:
 	go vet $(GO_PKGS)
+	go vet -tags bedrock $(GO_PKGS)
 
 staticcheck:
 	go run $(STATICCHECK) $(GO_PKGS)
 
 vuln:
 	go run $(GOVULNCHECK) $(GO_PKGS)
+	go run $(GOVULNCHECK) -tags bedrock $(GO_PKGS)
 
 test:
 	go test -race $(GO_PKGS)
+	go test -race -tags bedrock ./internal/usage/...
 
 # Every verifier must agree with spec/vectors/manifest.json and spec/jcs-vectors.json.
 vectors:
@@ -48,7 +51,7 @@ run-worker:
 	set -a; source .env.local; set +a; go run ./cmd/server work
 
 agent-dry:
-	go run ./cmd/agent --config agent.example.json --dry-run
+	PLUMBLINE_SALT_SECRET=$${PLUMBLINE_SALT_SECRET:-dry-run-salt-not-a-secret} go run ./cmd/agent --config agent.example.json --dry-run --replay concierge/testdata/otlp-sample.jsonl
 
 concierge-test:
 	python3 -m unittest discover -s concierge/tests

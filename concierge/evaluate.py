@@ -143,10 +143,10 @@ class Facts:
             anomalies += wm.get("anomalies", [])
             ws = parse_time(w["window"]["start"])
             for v in w.get("observed", {}).get("versions", []):
-                first_seen.setdefault(tuple(v), ws)
+                first_seen.setdefault((v["model"], v["prompt_version"]), ws)
             if not w.get("observed", {}).get("versions"):
-                for p, model in w.get("observed", {}).get("models", []):
-                    first_seen.setdefault((model, None), ws)
+                for m in w.get("observed", {}).get("models", []):
+                    first_seen.setdefault((m["model"], None), ws)
             m["leaves"] += w["commit"]["leaves"]
         self.m, self.traced, self.calls_by_model = m, traced, calls_by_model
         self.transitions, self.anomalies = transitions, anomalies

@@ -2,6 +2,78 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-15 · P3-8 · Agent command, config and dry-run
+
+**Built.** `internal/agent` (`LoadConfig`, `New`, `Receiver`, `Replay`, `Tick`, `Shutdown`, `Deliver`, `Run`) wiring the receiver, Langfuse puller, aggregator, usage pollers, commitments, batch signing and the queue; `cmd/agent` (`enrol`, `run`, `version`, `--dry-run`, `--replay`); Bedrock usage only in `-tags bedrock` builds (a clear error otherwise). Anthropic usage gained `workspace_ids`. `agent.example.json` lost its register files (now a web app upload) and gained the aggregation settings. `make agent-dry` replays the sample export.
+
+**Problems.** The first end-to-end run failed because the test's provider-redirecting transport also redirected batch delivery to the fake OpenAI server; the transport now rewrites only the provider host. Emitting the open window at shutdown means an hour can arrive in two batches after a restart; recorded in D-032 as a requirement on the server (windows are additive). `config` from the AWS SDK brings in its own indirect modules (credentials, sso, sts); it is on the allowed list and only compiled with the bedrock tag.
+
+**Verified.** Config: the example loads, env overrides apply, unknown fields, trailing data, plain http to a remote server, a non-loopback listener and an out-of-range grace are refused; an enabled source without its key names the variable. Dry-run replay of the sample prints two envelopes whose decoded payloads match the signed ones, contains no prompt text, PII sample or trace ID, makes no request and creates no data directory. End to end: enrol against a fake server, post the sample to the receiver, tick past the grace, deliver: the server verifies and stores seq 1 and 2 with the OpenAI usage for each hour, and the leaves files match each commit. CLI: dry-run replay exits 0 with two batches; six usage errors exit 2; `version` works.
+
+## 2026-10-15 · P3-7 · Disk queue
+
+**Built.** `internal/queue`: `Open` (recovers the chain state), `Enqueue` (durable write of batch, then state), `Pending`, `Envelope`, `Remove`, and `Sender.Drain` (seq order, one host, delete on 201 or matching 200, backoff on transient errors, stop on refusals).
+
+**Problems.** The first run failed one test for a real reason: `MkdirAll` does not tighten an existing directory's mode, so a pre-existing queue directory stayed group-readable; `Open` now sets 0700 explicitly.
+
+**Verified.** The acceptance test starts the test binary as a separate agent process against a server that stores batches by seq the way P4-2 must, kills it with SIGKILL three times at different points mid-send, then lets it finish: all 12 batches are stored exactly once and the queue ends empty (stable across repeated runs, with the race detector). Also: state recovered from the newest batch after a crash between the two writes; a response lost after the server stored a batch leads to a resend answered 200 and stored once; 409, 401 and 400 stop delivery and keep the batch; a different digest under the same seq is reported; backoff doubles to the cap with jitter; out-of-order enqueues are refused. Injected bugs (deleting refused batches, not recovering state) are caught.
+
+## 2026-10-15 · P3-6 · Enrolment and batch signing
+
+**Built.** `internal/enrol` (Ed25519 key generation, the enrol call, owner-only key and identity files written atomically, `Load` that refuses loose permissions) and `internal/batchsign` (`Builder.Build`: canonical v0.2 payload, DSSE signature keyed by agent ID, next seq/prev state; `Verify`: the server-side check; `Digest`).
+
+**Problems.** The build plan gives no acceptance test for this task; I used the properties ingest will rely on (below). Crash safety of seq/prev is a queue concern, so `Build` returns the state rather than saving it (D-030). A leftover no-op line in a test was removed.
+
+**Verified.** Enrolment sends the token as a bearer header and a PEM public key the server can parse; the key file is 0600 in a 0700 directory and loads back to the same key; re-enrolment is refused; failed enrolments (401, 500, a malformed agent ID) leave no key and never echo the token; plain http to a remote host is refused. Two batches from the sample chain correctly (seq 1 then 2, prev null then the first payload's digest), verify with the enrolled public key, are canonical, and validate against `spec/batch.schema.json` with the concierge's validator. `Verify` rejects a tampered payload, another agent's key, a keyid mismatch, unknown fields, the old schema version, non-canonical payloads and an agent_id that differs from the signer; `Build` refuses counts beyond 2^53.
+
+## 2026-10-15 · P3-5 · Langfuse puller
+
+**Built.** `internal/langfuse`: `Puller.Pull` over Observations API v2 and Scores API v3 with cursor paging, Basic auth and backoff; observations mapped through `otlp.Mapping.Build` (a small refactor of `internal/otlp` so both sources share one mapping); eval runs from configured scores. `aggregate.AddEvals` files eval runs into windows. `testdata/make_pages.py` writes recorded pages for the same synthetic traffic as the OTLP sample.
+
+**Problems.** The Langfuse paths, field groups and the Scores v3 `subject` object were checked against the docs today; two things still need a partner to confirm (the stored metadata shape of OpenTelemetry-ingested spans, and whether `inputUsage` includes cached tokens). Counting content needs `input`/`output`; they are fetched but only tested for emptiness (D-029). The first draft kept a package-level map, against the standards; it is now a function. `max` does not order `time.Time`; replaced with an explicit comparison.
+
+**Verified.** Acceptance: the recorded pages (800 observations newest first over three cursor pages, metadata in the nested OpenTelemetry form, content in `input`/`output` and in metadata) aggregate to exactly the same windows, observed versions and trace lists as the OTLP sample through the OTLP path. Eval runs: 21 eval scores across two pages give one run at 16/21; a categorical annotation is ignored. 429 then 502 are retried with the right waits; persistent 500s give up after five attempts without leaking the key; 401 fails at once; a cursor that never ends stops at the page limit. Injected bugs (ERROR level ignored, nested metadata ignored, paging stopped early) are caught.
+
+## 2026-10-15 · P3-4 · Provider usage
+
+**Built.** `internal/usage`: `OpenAI` and `Anthropic` pollers on `net/http`, a `Bedrock` CloudWatch poller behind `-tags bedrock`, merging into hourly `batch.Usage`, and `Reconcile` (coverage per provider and in total). `make check` now also vets, tests and vulnerability-scans the `bedrock` build.
+
+**Problems.** The library notes marked both APIs "(verify)". I checked them against the live documentation today: the Anthropic API reference gave the full response schema; OpenAI's API reference page refused the fetch, so its fields were checked against the official SDK's published TypeScript types. Anthropic splits input into uncached, cache-creation and cache-read tokens, so billed input is their sum, and the SDKs must count cached input the same way (D-028). Neither API carries a cloud region, so coverage is matched per provider. My fake CloudWatch first returned its paged results in random map order, so pages overlapped; the fake now has a fixed order.
+
+**Verified.** Recorded responses in the documented shapes (two OpenAI completions pages and an embeddings page; two Anthropic pages including an empty bucket; two CloudWatch pages): every hour and model maps as expected, including the request parameters and headers sent. Coverage against those responses matches a hand calculation written in the test within 0.1 point (OpenAI 99.0%, Anthropic 98.64%, total 98.85%), with a provider lacking usage listed but not counted. Errors never contain the key; bad windows and missing keys are refused; a server that pages forever stops at the limit.
+
+## 2026-10-15 · P3-3 · Commitments
+
+**Built.** `internal/commitment`: `LoadSecret` (env or owner-only file, at least 16 bytes, never echoed), `ForWindow`/`FromLeaves` (the batch `commit` plus the leaves kept for disclosure), `Window.Disclose`, and `ForPeriod`/`Period.Disclose` for a period root over window roots.
+
+**Problems.** The server never receives leaves, so a pack cannot use the concierge's flat tree over every leaf. A tree over window roots keeps disclosure working with the existing verifiers: a proof to the window root followed by the window root's proof to the period root is an ordinary node-hash chain (D-027).
+
+**Verified.** Every window of the sample: three traces (first, middle, last) disclose and verify against the window root; unknown traces and the wrong secret are refused. The window roots and leaf counts equal the Python concierge's for the same secret (the test runs it). A period proof through the window root verifies against the period root, and disclosing under the wrong window fails. Secret loading refuses missing, world-readable, short or doubly specified secrets without echoing them.
+
+## 2026-10-15 · P3-2 · Hourly aggregator
+
+**Built.** `internal/batch` (the v0.2 payload types, shared by signing and server ingest later) and `internal/aggregate`: UTC hours that close a 5-minute grace after the hour, late spans moved into the current window and counted, traces committed once in the window of their first span (in first-seen order), transitions tracked per slot and prompt name across windows, anomalies by the D-020 rule, empty lists encoded as `[]`, safe for concurrent `Add`.
+
+**Problems.** None in the code. Two judgment calls: a late span whose "current" hour is itself already closed (a clock running behind) goes into the first open hour; trace IDs are remembered for two hours after their window closes, so a long trace is not committed twice without the agent's memory growing without bound.
+
+**Verified.** The acceptance test runs the Python concierge ingest on the same sample in the test itself and compares window, metrics and observed field for field, plus trace counts per window: identical. Further tests: windows close exactly at the grace, never twice; late spans; first-window commitment; transitions across windows and slots; anomaly thresholds at and below the boundaries; empty arrays; 8 goroutines adding concurrently under `-race`. Injected bugs (grace off by one, late spans uncounted, transitions not per slot) are each caught.
+
+## 2026-10-15 · P3-1 · OTLP JSON receiver and normaliser
+
+**Built.** `internal/otlp`: `Mapping` (a validated semconv map), `Parse` (one OTLP JSON export to content-free `Span` facts) and `Receiver` (`POST /v1/traces`). Package `spec` embeds the spec files. `semconv-map.json` v2 adopts the D-020 names, adds an operation alias, the LLM operation list and content prefixes; `internal/spec` validates the new parts; the concierge reads the same map (D-026).
+
+**Problems.** OpenLLMetry-style instrumentation writes content under indexed names (`gen_ai.prompt.0.content`) and marks calls with `llm.request.type` rather than `gen_ai.operation.name`, so exact-name content detection and operation matching both needed extending. My first fuzz seeds included strings equal to the span's legitimate mapped values ("openai"), a false positive in the test. staticcheck caught an unneeded `fmt.Sprint` in a test. A mutation that makes every attribute readable is not caught by tests, by design: values reach a span only through mapped-name lookups, and content is skipped before decoding, so the two guards back each other up.
+
+**Verified.** The concierge's collector-style sample parses to the same counts and token totals the Python ingest produces (240 traces, 320 LLM calls, 54 of 60 PII spans redacted, and so on). A hand-written OpenLLMetry/JavaScript-style export (numbers as JSON numbers, upper-case hex IDs, old attribute names, indexed and array content, content in events) parses exactly to four expected spans with two malformed spans rejected, and no field holds any of its marker text. `FuzzNoContentInSpans`: 198k inputs, no content in any span. Receiver: JSON and gzip accepted, charset parameter allowed, protobuf 415, GET 405, oversized body and gzip bomb 413, bad gzip 400, unknown encoding 415, partial success reported, no error echoes content. Injected bugs (content prefixes ignored, enum status codes ignored) are caught.
+
+## 2026-10-15 · P3-0 · Batch schema v0.2
+
+**Built.** `spec/batch.schema.json` is now v0.2: a required `observed` object beside `metrics` with the models (`{provider, model}`) and model + prompt version pairs (`{model, prompt_version}`) live in the window. The v0.1 file is kept unchanged as `spec/batch-v0.1.schema.json`. The concierge emits and reads the object form.
+
+**Problems.** The concierge had emitted `observed` as bare pairs (`[provider, model]`); JSON Schema describes objects more clearly than positional arrays, so the format moved to objects and the fixture month was converted.
+
+**Verified.** Go: v0.2 differs from v0.1 only in the version const, `$id`, title and `observed` (every other property byte-identical). Python: every ingest window's `window`, `metrics`, `observed` and `commit` validate against v0.2; a v0.1 batch validates against the v0.1 schema and fails v0.2 until it carries the v0.2 const and `observed`. All 44 concierge tests pass, including the hand-calculated month.
+
 ## 2026-10-15 · C-4 · Concierge share
 
 **Built.** `concierge/share.py` and `evidencepack.py share` / `unshare`: a self-contained static site (verify page, brand tokens, issuer JWKS, one file per share at `/v1/verify/<token>` in the future API's response shape), random 16-byte tokens, a share log with token hashes only, verification of every pack before it is published, and revocation by deleting the share file.

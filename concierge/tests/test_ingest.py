@@ -227,6 +227,30 @@ class ObservedTest(unittest.TestCase):
     def test_observed_versions_per_window(self):
         out, _ = ingest.ingest("otlp", OTLP, SECRET)
         first, second = out["windows"]
-        self.assertEqual(first["observed"]["versions"], [["anthropic.claude-sonnet-4-5", "13"]])
-        self.assertEqual(second["observed"]["versions"], [["anthropic.claude-sonnet-4-5", "13"], ["anthropic.claude-sonnet-4-5", "14"], ["anthropic.claude-sonnet-4-6", "14"]])
-        self.assertIn(["openai", "gpt-4.1-mini"], first["observed"]["models"])
+        v = lambda m, p: {"model": m, "prompt_version": p}  # noqa: E731
+        self.assertEqual(first["observed"]["versions"], [v("anthropic.claude-sonnet-4-5", "13")])
+        self.assertEqual(second["observed"]["versions"], [v("anthropic.claude-sonnet-4-5", "13"), v("anthropic.claude-sonnet-4-5", "14"), v("anthropic.claude-sonnet-4-6", "14")])
+        self.assertIn({"provider": "openai", "model": "gpt-4.1-mini"}, first["observed"]["models"])
+
+    def test_windows_match_batch_schema_v02(self):
+        # P3-0: concierge windows validate against the v0.2 batch schema's window parts.
+        import schema
+        s = json.loads((ROOT / "spec/batch.schema.json").read_text())
+        self.assertEqual(s["properties"]["schema"]["const"], "plumbline-batch/v0.2")
+        out, _ = ingest.ingest("otlp", OTLP, SECRET)
+        for w in out["windows"]:
+            for part in ("window", "metrics", "observed", "commit"):
+                self.assertEqual(schema.errors(w[part], s["properties"][part], part), [], part)
+
+    def test_v01_batches_still_validate_against_the_v01_schema(self):
+        import schema
+        v01 = json.loads((ROOT / "spec/batch-v0.1.schema.json").read_text())
+        v02 = json.loads((ROOT / "spec/batch.schema.json").read_text())
+        out, _ = ingest.ingest("otlp", OTLP, SECRET)
+        w = out["windows"][0]
+        batch = {"schema": "plumbline-batch/v0.1", "agent_id": "agt_abcdef12", "seq": 1, "prev": None, "window": w["window"],
+                 "semconv_map": "v1", "metrics": w["metrics"], "usage": [], "commit": w["commit"]}
+        self.assertEqual(schema.errors(batch, v01), [])
+        self.assertTrue(schema.errors(batch, v02))  # v0.2 needs its own const and observed
+        batch.update(schema="plumbline-batch/v0.2", observed=w["observed"])
+        self.assertEqual(schema.errors(batch, v02), [])

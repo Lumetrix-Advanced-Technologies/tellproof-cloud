@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -152,10 +153,24 @@ func TestBrokenSpecFails(t *testing.T) {
 			wantErr: `semconv-map.json: presence-only attribute "gen_ai.usage.input_tokens" is also mapped to field "input_tokens"; content values must never be read`,
 		},
 		{
+			name:    "mapped attribute under a content prefix",
+			file:    "semconv-map.json",
+			old:     `"gen_ai.request.model"`,
+			new:     `"gen_ai.prompt.model"`,
+			wantErr: `semconv-map.json: attribute "gen_ai.prompt.model" of field "request_model" falls under presence-only prefix "gen_ai.prompt."; content values must never be read`,
+		},
+		{
+			name:    "content prefix without a trailing dot",
+			file:    "semconv-map.json",
+			old:     `"llm.prompts."`,
+			new:     `"llm.prompts"`,
+			wantErr: `semconv-map.json: presence-only prefix "llm.prompts" must be a name followed by a dot`,
+		},
+		{
 			name:    "unknown field in semconv map",
 			file:    "semconv-map.json",
-			old:     `"version": "v1",`,
-			new:     `"version": "v1", "extra": 1,`,
+			old:     `"version": "v2",`,
+			new:     `"version": "v2", "extra": 1,`,
 			wantErr: `semconv-map.json: json: unknown field "extra"`,
 		},
 	}
@@ -184,5 +199,49 @@ func TestBrokenSpecFails(t *testing.T) {
 				t.Errorf("Check error =\n%v\nwant it to contain\n%s", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+// P3-0: batch schema v0.2 adds "observed" and changes the version const;
+// everything else must be exactly as in v0.1 (kept as batch-v0.1.schema.json).
+func TestBatchSchemaV02OnlyAddsObserved(t *testing.T) {
+	load := func(name string) map[string]any {
+		var m map[string]any
+		if err := json.Unmarshal([]byte(readSpec(t, name)), &m); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		return m
+	}
+	v01, v02 := load("batch-v0.1.schema.json"), load("batch.schema.json")
+	props := func(m map[string]any) map[string]any { return m["properties"].(map[string]any) }
+	if got := props(v01)["schema"].(map[string]any)["const"]; got != "plumbline-batch/v0.1" {
+		t.Errorf("v0.1 schema const = %v", got)
+	}
+	if got := props(v02)["schema"].(map[string]any)["const"]; got != "plumbline-batch/v0.2" {
+		t.Errorf("v0.2 schema const = %v", got)
+	}
+	obs, ok := props(v02)["observed"].(map[string]any)
+	if !ok {
+		t.Fatal("v0.2 has no observed property")
+	}
+	if req := obs["required"].([]any); len(req) != 2 || req[0] != "models" || req[1] != "versions" {
+		t.Errorf("observed.required = %v", req)
+	}
+	for name, p := range props(v01) {
+		if name == "schema" {
+			continue
+		}
+		a, _ := json.Marshal(p)
+		b, _ := json.Marshal(props(v02)[name])
+		if string(a) != string(b) {
+			t.Errorf("property %q changed between v0.1 and v0.2", name)
+		}
+	}
+	if len(props(v02)) != len(props(v01))+1 {
+		t.Errorf("v0.2 has %d properties, want v0.1's %d plus observed", len(props(v02)), len(props(v01)))
+	}
+	reqs := func(m map[string]any) []any { return m["required"].([]any) }
+	if len(reqs(v02)) != len(reqs(v01))+1 {
+		t.Errorf("v0.2 required = %v", reqs(v02))
 	}
 }

@@ -22,24 +22,27 @@ Working notes on every external interface, as of October 2026. Items marked **(v
 ## Langfuse
 
 - Auth: HTTP Basic with the project public key as user and secret key as password.
-- Regions: EU, US, JP and a HIPAA region; **no Australian region**. The customer's region decides the base URL.
-- Use the Observations API v2 (cursor pagination, up to 1,000 per page) and Scores API v3 (100 per page). The legacy ingestion API is switched off on Langfuse Cloud on **16 Nov 2026**; do not build on v1 endpoints. (verify exact paths)
-- Docs: https://langfuse.com/docs/api-and-data-platform/features/public-api
+- Base URLs: EU `https://cloud.langfuse.com`, US `https://us.cloud.langfuse.com`, Japan `https://jp.cloud.langfuse.com`, HIPAA `https://hipaa.cloud.langfuse.com`; **no Australian region**. Self-hosted instances have their own URL and no enforced rate limit.
+- **Observations API v2**: `GET /api/public/v2/observations` with `fromStartTime`, `toStartTime` (ISO 8601; start inclusive, end exclusive), `fields` (groups: `core` always; `basic`, `time`, `io`, `metadata`, `model`, `usage`, `prompt`, `metrics`), `limit` (max 1,000), `cursor`. Response `{data: [...], meta: {cursor}}`, newest first; follow `meta.cursor` until null. Fields used: `traceId`, `startTime`, `type` (`GENERATION`, `EMBEDDING`, `AGENT`, `TOOL`, `SPAN`, `EVENT`, `CHAIN`, `RETRIEVER`, `EVALUATOR`, `GUARDRAIL`), `level`, `providedModelName`, `inputUsage`, `outputUsage`, `promptName`, `promptVersion`, `metadata`; `input`/`output` for presence only. Metadata is truncated to 200 characters per value unless `expandMetadata` is set.
+- **Scores API v3**: `GET /api/public/v3/scores` with `fromTimestamp`, `toTimestamp`, `name` (comma-separated), `fields` (`core`, `details`, `subject`, `annotation`), `limit` (max 100), `cursor`. Each score has `name`, `value`, `dataType` (`NUMERIC`, `BOOLEAN`, `CATEGORICAL`, `TEXT`, `CORRECTION`), `timestamp` and `subject: {kind: trace | observation | session | experiment, id, traceId?}`.
+- The legacy Ingestion API is switched off on Langfuse Cloud on **16 Nov 2026**; v1 observations are deprecated. Paths and fields above checked against the Langfuse docs on 15 Oct 2026. Still to verify with a partner: the exact metadata shape Langfuse stores for OpenTelemetry-ingested spans (assumed `{attributes, resourceAttributes}`), and whether `inputUsage` includes cached tokens.
+- Docs: https://langfuse.com/docs/api-and-data-platform/features/public-api, https://langfuse.com/docs/api-and-data-platform/features/observations-api, https://langfuse.com/docs/api-and-data-platform/features/scores-api
 
 ## OpenAI usage (for trace coverage)
 
-- `GET https://api.openai.com/v1/organization/usage/completions` (and `/usage/embeddings`). Needs an **organisation admin key**.
-- Query: `start_time` (Unix seconds), `end_time`, `bucket_width` (`1m`, `1h`, `1d`), `group_by` (e.g. `model`, `project_id`, `api_key_id`), `limit`, `page`.
-- Returns buckets with `input_tokens`, `output_tokens`, `num_model_requests` per group. (verify field names and bucket freshness)
-- Docs: https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage
+- `GET https://api.openai.com/v1/organization/usage/completions` and `/usage/embeddings`, `Authorization: Bearer <organisation admin key>`.
+- Query: `start_time`, `end_time` (Unix seconds; start inclusive, end exclusive), `bucket_width` (`1m`, `1h`, `1d`), `group_by` (e.g. `model`, `project_id`, `api_key_id`), `project_ids`, `limit`, `page`. Repeated parameters are sent as `group_by=model&group_by=project_id` (verify against a live call).
+- Response: `{object: "page", data: [{object: "bucket", start_time, end_time, results: [...]}], has_more, next_page}`. Completions results: `input_tokens` (includes `input_cached_tokens`), `output_tokens`, `num_model_requests`, `model`, `project_id`, and others. Embeddings results: `input_tokens`, `num_model_requests`, `model`. Fields checked against the official SDK's types on 15 Oct 2026 (`internal/usage/openai.go`).
+- No region: usage is reconciled per provider (D-028).
+- Docs: https://developers.openai.com/cookbook/examples/completions_usage_api
 
 ## Anthropic usage (for trace coverage)
 
-- `GET https://api.anthropic.com/v1/organizations/usage_report/messages` with an **Admin API key** (`x-api-key`) and `anthropic-version` header.
-- Buckets `1m`, `1h`, `1d`; group by model, workspace, API key and `inference_geo`. Data lands about 5 minutes after use. Poll no more than once a minute.
-- Returns **tokens only, no request counts**. Coverage is therefore token-based for every provider.
-- Not available programmatically for Claude on AWS; use Bedrock metrics there. (verify)
-- Docs: https://platform.claude.com/docs/en/manage-claude/usage-cost-api
+- `GET https://api.anthropic.com/v1/organizations/usage_report/messages` with an **Admin API key** (`x-api-key`) and `anthropic-version: 2023-06-01`; workspace keys do not work. Not available for Claude on AWS; use Bedrock metrics there.
+- Query: `starting_at`, `ending_at` (RFC 3339), `bucket_width` (`1m`, `1h`, `1d`; `1h` allows up to 168 buckets per page), `group_by[]` (`model`, `inference_geo`, `workspace_id`, `api_key_id`, `service_tier`, ...), `limit`, `page` (the previous `next_page`).
+- Response: `{data: [{starting_at, ending_at, results: [{uncached_input_tokens, cache_creation: {ephemeral_5m_input_tokens, ephemeral_1h_input_tokens}, cache_read_input_tokens, output_tokens, model, inference_geo, ...}]}], has_more, next_page}`. Buckets with no usage have empty `results`. **Tokens only, no request counts.** Billed input = uncached + cache creation + cache reads (D-028).
+- Data lands about 5 minutes after use; poll at most once a minute for sustained use.
+- Verified against the API reference on 15 Oct 2026 (`internal/usage/anthropic.go`). Docs: https://platform.claude.com/docs/en/manage-claude/usage-cost-api
 
 ## Amazon Bedrock (CloudWatch metrics)
 
