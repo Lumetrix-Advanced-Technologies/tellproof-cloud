@@ -16,7 +16,8 @@ A pack reports ten evidence objectives for one AI system over one period (trace 
 | TypeScript SDK (`sdk/js`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
 | Control plane (`plumbline-server`: migrate, ingest, jobs, evaluator, pack issue and KMS signing, JWKS with rotation, daily checkpoints, share links and verify API, Supabase sign-in, the vendor web app) | Built |
 | One-command agent install (`plumbline-agent connect`), end-to-end test in CI | Built |
-| Vanta integration, release and open-source split, launch | In progress (build plan Phase 6) (build plan Phases S, 4, 5, 6; D-024, D-025) |
+| Vanta integration (D-049); release tooling and the open-source split (D-050) | Built; the public repository and first release are not published yet |
+| Launch checklist | In progress (build plan Phase 6) |
 
 Progress per task: [`docs/progress-tracker.md`](docs/progress-tracker.md). What was built and how it was tested: [`docs/engineering-log.md`](docs/engineering-log.md).
 
