@@ -21,12 +21,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/jackc/pgx/v5"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/auth"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/dailycheckpoint"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/issue"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
@@ -135,6 +137,21 @@ func serve(ctx context.Context, getenv func(string) string, log *slog.Logger, st
 		log.Warn("VIEW_HASH_SECRET is unset or short: viewer counts reset when this process restarts")
 	}
 	api := &server.Server{Store: st, Log: log, ViewSecret: viewSecret, ClientIPHeader: getenv("CLIENT_IP_HEADER")}
+	if sb := strings.TrimRight(getenv("SUPABASE_URL"), "/"); sb != "" {
+		jwksURL := getenv("SUPABASE_JWKS_URL")
+		if jwksURL == "" {
+			jwksURL = sb + "/auth/v1/.well-known/jwks.json"
+		}
+		base := strings.TrimRight(getenv("PUBLIC_BASE_URL"), "/")
+		if base == "" || getenv("SUPABASE_ANON_KEY") == "" {
+			fmt.Fprintln(stderr, "plumbline-server: SUPABASE_URL needs SUPABASE_ANON_KEY and PUBLIC_BASE_URL")
+			return 2
+		}
+		api.Sessions = &auth.Sessions{Verifier: &auth.Verifier{JWKSURL: jwksURL, Issuer: sb + "/auth/v1"},
+			Supabase: &auth.Supabase{URL: sb, AnonKey: getenv("SUPABASE_ANON_KEY")}, Store: st, BaseURL: base}
+	} else {
+		log.Warn("sign-in is off: SUPABASE_URL is not set")
+	}
 	srv := &http.Server{Handler: api.Handler(),
 		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second}
 	errc := make(chan error, 1)

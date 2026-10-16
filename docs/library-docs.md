@@ -64,6 +64,7 @@ Working notes on every external interface, as of October 2026. Items marked **(v
 
 - Region: `ap-southeast-2` (Sydney) is available. Pro plan US$25/month incl. US$10 compute credit; SOC 2 reports only on the Team plan.
 - Connect the app with a dedicated role `plumbline_app` that does not bypass RLS. Use the session pooler or direct connection with `pgx`.
+- Auth endpoints used (checked against the supabase/auth source on 16 Oct 2026): `POST /auth/v1/otp?redirect_to=…` with `{email, create_user, code_challenge, code_challenge_method: "s256"}`; the magic link returns to `redirect_to` with `?code=`; `POST /auth/v1/token?grant_type=pkce` with `{auth_code, code_verifier}`; `POST /auth/v1/token?grant_type=refresh_token` with `{refresh_token}`; `POST /auth/v1/logout` with the access token as bearer. Every call sends the publishable key as `apikey`. Access-token claims: `sub`, `iss`, `aud` (string or array), `exp`, `role`, `email`, `session_id`. JWKS at `/auth/v1/.well-known/jwks.json`.
 - Auth: magic-link email sign-in. The app verifies the access token itself. Newer projects sign with asymmetric keys published at `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`; check `alg` ES256, `exp`, `aud` = `authenticated`, `iss` = `https://<project-ref>.supabase.co/auth/v1`. (verify the project uses asymmetric keys; open decision D-007)
 - Docs: https://supabase.com/docs/guides/platform/regions , https://supabase.com/pricing
 
