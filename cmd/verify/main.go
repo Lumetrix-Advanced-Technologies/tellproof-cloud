@@ -9,7 +9,6 @@ package main
 
 import (
 	"context"
-	"crypto"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -144,7 +143,7 @@ func parseArgs(args []string) (options, error) {
 	return o, nil
 }
 
-func loadJWKS(ctx context.Context, client *http.Client, src string) (map[string]crypto.PublicKey, error) {
+func loadJWKS(ctx context.Context, client *http.Client, src string) (*pack.KeySet, error) {
 	var data []byte
 	var err error
 	switch {
@@ -214,7 +213,7 @@ type packReport struct {
 	env *dsse.Envelope
 }
 
-func verifyOne(file string, data []byte, keys map[string]crypto.PublicKey, prev *dsse.Envelope) packReport {
+func verifyOne(file string, data []byte, keys *pack.KeySet, prev *dsse.Envelope) packReport {
 	rep := packReport{File: file}
 	env, err := dsse.Decode(data)
 	if err != nil {
@@ -261,7 +260,7 @@ func writeHuman(w io.Writer, verified bool, reports []packReport) {
 		if r.Signature {
 			line("signature", "valid (key "+r.KeyID+")")
 		} else {
-			line("signature", "FAILED: "+strings.TrimPrefix(r.SignatureError, "dsse: "))
+			line("signature", "FAILED: "+strings.TrimPrefix(strings.TrimPrefix(r.SignatureError, "dsse: "), "pack: "))
 			failed = append(failed, "signature")
 		}
 		if r.SubjectDigest {

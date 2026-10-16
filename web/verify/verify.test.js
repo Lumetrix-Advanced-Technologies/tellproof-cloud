@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { jcs, pae, derToRaw, verifyEnvelope, verifyMerkle, parseCanonical, importJWKS, decodeEnvelope, b64decode, PackError } from "./verify.js";
+import { jcs, pae, derToRaw, verifyEnvelope, verifyMerkle, parseCanonical, importJWKS, decodeEnvelope, b64decode, PackError, issuedAtSeconds } from "./verify.js";
 
 const VEC = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "spec", "vectors");
 const load = (f) => JSON.parse(readFileSync(join(VEC, f), "utf8"));
@@ -130,8 +130,14 @@ test("importJWKS is as strict as Go", async () => {
   assert.equal((await importJWKS({ keys: [base] })).size, 1);
   const bad = {
     "no keys": { keys: [] },
-    "unknown top-level member": { keys: [base], revoked: [] },
-    "unknown key member": { keys: [{ ...base, nbf: 1 }] },
+    "unknown top-level member": { keys: [base], expires: 1 },
+    "unknown key member": { keys: [{ ...base, iat: 1 }] },
+    "nbf as a string": { keys: [{ ...base, nbf: "1" }] },
+    "negative exp": { keys: [{ ...base, exp: -1 }] },
+    "exp not after nbf": { keys: [{ ...base, nbf: 5, exp: 5 }] },
+    "null nbf": { keys: [{ ...base, nbf: null }] },
+    "revocation without kid": { keys: [base], revoked: [{ revoked_at: 1 }] },
+    "kid revoked twice": { keys: [base], revoked: [{ kid: base.kid, revoked_at: 1 }, { kid: base.kid, revoked_at: 2 }] },
     "missing kid": { keys: [{ ...base, kid: undefined }] },
     "duplicate kid": { keys: [base, base] },
     RSA: { keys: [{ ...base, kty: "RSA" }] },
@@ -170,4 +176,27 @@ test("verifyMerkle on a vector's disclosed trace", async () => {
   assert.equal(await verifyMerkle(st.predicate.commitments), true);
   st.predicate.commitments.disclosed.trace_id += "x";
   assert.equal(await verifyMerkle(st.predicate.commitments), false);
+});
+
+// spec/vectors/key-manifest.json (D-042): which JWKS keys may vouch for a pack.
+const keyCases = load("key-manifest.json").cases;
+for (const c of keyCases) {
+  test(`key vector ${c.name}`, async () => {
+    if (c.expect === "jwks_error") {
+      await assert.rejects(importJWKS(load(c.jwks)), PackError);
+      return;
+    }
+    const r = await verifyEnvelope(load(c.file), load(c.jwks), null);
+    assert.deepEqual(checks(r), c.expect, r.signature_error);
+    assert.equal(r.key_status !== "", c.expect.signature === false, "key_status is set exactly when a matching signature's key may not vouch");
+  });
+}
+
+test("issued_at is parsed strictly, as Go parses it", () => {
+  assert.equal(issuedAtSeconds("1970-01-01T00:01:40Z"), 100);
+  assert.equal(issuedAtSeconds("1970-01-01T10:01:40+10:00"), 100);
+  assert.equal(issuedAtSeconds("1970-01-01T00:01:40.999Z"), 100); // whole seconds, as Go's Unix()
+  for (const bad of ["1970-01-01 00:01:40Z", "1970-02-30T00:00:00Z", "1970-01-01T24:00:00Z", "1970-01-01T00:00:60Z", "1970-01-01T00:00:00+24:00", "1970-01-01T00:00:00"]) {
+    assert.equal(issuedAtSeconds(bad), null, bad);
+  }
 });

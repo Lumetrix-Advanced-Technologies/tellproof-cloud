@@ -108,7 +108,7 @@ Predicate fields (schema: `spec/pack.schema.json`): `pack_schema`, `pack_id`, `s
 | `POST /v1/packs/{id}/shares` | session | `{verifier_org, expires_at}` → `{url}` (token shown once) |
 | `DELETE /v1/shares/{id}` | session | revoke |
 | `GET /v1/verify/{token}` | public | `{envelope, prev_envelope_digest, pack_meta}`; `410` revoked or expired; logs a view |
-| `GET /.well-known/jwks.json` | public | issuer public keys with `kid`, `nbf`, `exp`, and `revoked` list |
+| `GET /.well-known/jwks.json` | public | issuer public keys with `kid` (RFC 7638 thumbprint), `nbf`, `exp` (NumericDate), and a `revoked` list; a signature counts only if its key may vouch for the pack's `issued_at` (D-042) |
 
 Sessions: Supabase Auth issues the JWT; the server verifies it against the project's published JWKS (ES256) with `crypto/ecdsa`, checks `exp`, `aud`, `iss`, and maps `sub` to `members.user_id`.
 

@@ -31,6 +31,7 @@ import (
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/evaluate"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
@@ -96,8 +97,20 @@ func newFixture(t *testing.T) *fixture {
 		}
 	}
 	s := localSigner(t)
-	return &fixture{owner: owner, signer: s, issuer: &Issuer{Store: storetest.App(t, db), Signer: s,
+	f := &fixture{owner: owner, signer: s, issuer: &Issuer{Store: storetest.App(t, db), Signer: s,
 		Now: func() time.Time { return time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC) }}}
+	f.register(t, s)
+	return f
+}
+
+// register adds a signing key, valid from well before the fixture's clock.
+func (f *fixture) register(t *testing.T, s kmssign.Signer) {
+	t.Helper()
+	if err := pgx.BeginFunc(context.Background(), f.owner, func(tx pgx.Tx) error {
+		return keys.Add(context.Background(), tx, s, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+	}); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // storeBatch inserts a batch as ingest would have stored it.
@@ -404,6 +417,7 @@ func TestIssueWithKMSRecordsTheKeyARN(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.issuer.Signer = k
+	f.register(t, k)
 	if _, err := f.issuer.Issue(context.Background(), september); err != nil {
 		t.Fatal(err)
 	}
@@ -414,18 +428,22 @@ func TestIssueWithKMSRecordsTheKeyARN(t *testing.T) {
 	}
 }
 
-// A signer whose signatures do not verify (a key mix-up) stores nothing.
-type wrongKey struct{ *kmssign.Local }
-
-func (w wrongKey) PublicKey() *ecdsa.PublicKey {
-	k, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	return &k.PublicKey
+// A signer whose signatures do not verify with its claimed public key (a key
+// mix-up, even one registered by mistake) stores nothing.
+type wrongKey struct {
+	*kmssign.Local
+	claimed *ecdsa.PublicKey
 }
+
+func (w wrongKey) PublicKey() *ecdsa.PublicKey { return w.claimed }
 
 func TestAKeyMixUpStoresNothing(t *testing.T) {
 	f := newFixture(t)
 	f.loadMonth(t)
-	f.issuer.Signer = wrongKey{f.signer}
+	k, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	mixed := wrongKey{Local: localSigner(t), claimed: &k.PublicKey}
+	f.register(t, mixed)
+	f.issuer.Signer = mixed
 	if _, err := f.issuer.Issue(context.Background(), september); err == nil || !strings.Contains(err.Error(), "does not verify") {
 		t.Fatalf("err = %v", err)
 	}
@@ -534,5 +552,39 @@ func TestIssuePackJob(t *testing.T) {
 	_ = f.owner.QueryRow(ctx, `SELECT count(*) FROM packs`).Scan(&packs)
 	if a, e := state(good); a != 1 || e != nil || packs != 1 {
 		t.Errorf("good job: attempts %d, last_error %v, %d packs", a, e, packs)
+	}
+}
+
+// The issuer signs only with a registered key in date at issued_at (D-042).
+func TestIssuerRefusesKeysThatMayNotSign(t *testing.T) {
+	f := newFixture(t)
+	f.loadMonth(t)
+	ctx := context.Background()
+	stranger := localSigner(t)
+	f.issuer.Signer = stranger
+	if _, err := f.issuer.Issue(ctx, september); !errors.Is(err, keys.ErrCannotSign) || !strings.Contains(err.Error(), "not registered") {
+		t.Errorf("unregistered key: %v", err)
+	}
+	f.issuer.Signer = f.signer
+	tx := func(fn func(pgx.Tx) error) {
+		if err := pgx.BeginFunc(ctx, f.owner, fn); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Retired one second after the fixture's clock: still signs; retired at it: refused.
+	tx(func(tx pgx.Tx) error {
+		return keys.Retire(ctx, tx, f.signer.KeyID(), time.Date(2026, 10, 1, 9, 0, 1, 0, time.UTC))
+	})
+	if _, err := f.issuer.Issue(ctx, september); err != nil {
+		t.Errorf("a key retired one second later: %v", err)
+	}
+	f.issuer.Now = func() time.Time { return time.Date(2026, 10, 1, 9, 0, 1, 500_000_000, time.UTC) }
+	if _, err := f.issuer.Issue(ctx, september); !errors.Is(err, keys.ErrCannotSign) || !strings.Contains(err.Error(), "retired") {
+		t.Errorf("a retired key: %v", err)
+	}
+	tx(func(tx pgx.Tx) error { return keys.Revoke(ctx, tx, f.signer.KeyID(), "test") })
+	f.issuer.Now = func() time.Time { return time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC) }
+	if _, err := f.issuer.Issue(ctx, september); !errors.Is(err, keys.ErrCannotSign) || !strings.Contains(err.Error(), "revoked") {
+		t.Errorf("a revoked key: %v", err)
 	}
 }

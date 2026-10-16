@@ -12,6 +12,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -36,7 +37,7 @@ func loadEnvelope(t testing.TB, name string) *dsse.Envelope {
 	return env
 }
 
-func testJWKS(t testing.TB) map[string]crypto.PublicKey {
+func testJWKS(t testing.TB) *KeySet {
 	t.Helper()
 	b, err := os.ReadFile(vectorPath("test-jwks.json"))
 	if err != nil {
@@ -252,7 +253,7 @@ func TestVerifyWithoutDisclosure(t *testing.T) {
 	st := statementMap(t)
 	predicateOf(st)["commitments"].(map[string]any)["disclosed"] = nil
 	env, keys := resign(t, st)
-	r, err := Verify(env, keys, nil)
+	r, err := Verify(env, KeySetOf(keys), nil)
 	if err != nil {
 		t.Fatalf("Verify: %v", err)
 	}
@@ -281,12 +282,12 @@ func TestVerifySignatureDependsOnKeys(t *testing.T) {
 	env := loadEnvelope(t, "pass/KST-CTA-0001.dsse.json")
 	_, otherKeys := signPayload(t, []byte("{}"))
 	for name, keys := range map[string]map[string]crypto.PublicKey{
-		"kid not in JWKS":           {"other-kid": testJWKS(t)["test-p256-2026-10"]},
+		"kid not in JWKS":           {"other-kid": testJWKS(t).PublicKeys()["test-p256-2026-10"]},
 		"another key under the kid": {"test-p256-2026-10": otherKeys["test-kid"]},
 		"empty JWKS":                nil,
 	} {
 		t.Run(name, func(t *testing.T) {
-			r, err := Verify(env, keys, nil)
+			r, err := Verify(env, KeySetOf(keys), nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -354,7 +355,7 @@ func TestVerifyMalformedStatement(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			env, keys := signPayload(t, tt.payload(t))
-			r, err := Verify(env, keys, nil)
+			r, err := Verify(env, KeySetOf(keys), nil)
 			if err == nil {
 				t.Fatalf("Verify = %s with no error; want an error mentioning %q", checksOf(r), tt.wantErr)
 			}
@@ -378,9 +379,9 @@ func TestParseJWKS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, ok := keys["test-p256-2026-10"].(*ecdsa.PublicKey)
-	if !ok || len(keys) != 1 || !got.Equal(pemKey) {
-		t.Fatalf("test-jwks.json key does not equal test-public-key.pem (%d keys)", len(keys))
+	got, ok := keys.PublicKeys()["test-p256-2026-10"].(*ecdsa.PublicKey)
+	if !ok || len(keys.PublicKeys()) != 1 || !got.Equal(pemKey) {
+		t.Fatalf("test-jwks.json key does not equal test-public-key.pem (%d keys)", len(keys.PublicKeys()))
 	}
 
 	const x, y = "19PL3tWYOlQq5YwaFlplvZmNT45RiGERIv0sZz8uzo4", "KjLsfFbqYn6OHELPVMQHn3eTeTqo-xcxMwNxYxLpM_w"
@@ -395,8 +396,14 @@ func TestParseJWKS(t *testing.T) {
 	}{
 		{"no keys", `{"keys":[]}`},
 		{"not JSON", `{`},
-		{"unknown top-level field", `{"keys":[{` + base + `}],"revoked":[]}`},
-		{"unknown key field", jwk(base + `,"nbf":1`)},
+		{"unknown top-level field", `{"keys":[{` + base + `}],"expires":1}`},
+		{"unknown key field", jwk(base + `,"iat":1`)},
+		{"nbf as a string", jwk(base + `,"nbf":"1"`)},
+		{"negative exp", jwk(base + `,"exp":-1`)},
+		{"exp not after nbf", jwk(base + `,"nbf":5,"exp":5`)},
+		{"null nbf", jwk(base + `,"nbf":null`)},
+		{"revocation without kid", `{"keys":[{` + base + `}],"revoked":[{"revoked_at":1}]}`},
+		{"kid revoked twice", `{"keys":[{` + base + `}],"revoked":[{"kid":"k1","revoked_at":1},{"kid":"k1","revoked_at":2}]}`},
 		{"missing kid", jwk(strings.Replace(base, `"kid":"k1",`, ``, 1))},
 		{"duplicate kid", `{"keys":[{` + base + `},{` + base + `}]}`},
 		{"RSA", jwk(strings.Replace(base, `"kty":"EC"`, `"kty":"RSA"`, 1))},
@@ -460,5 +467,84 @@ func TestExtraVectors(t *testing.T) {
 				t.Errorf("Verify = %s\nexpected  %s", checksOf(got), want)
 			}
 		})
+	}
+}
+
+// spec/vectors/key-manifest.json (D-042): which JWKS keys may vouch for a pack.
+func TestKeyVectors(t *testing.T) {
+	b, err := os.ReadFile(vectorPath("key-manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct {
+		Cases []struct {
+			Name   string          `json:"name"`
+			File   string          `json:"file"`
+			JWKS   string          `json:"jwks"`
+			Expect json.RawMessage `json:"expect"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.Cases) == 0 {
+		t.Fatal("no key cases")
+	}
+	for _, c := range m.Cases {
+		t.Run(c.Name, func(t *testing.T) {
+			jb, err := os.ReadFile(vectorPath(c.JWKS))
+			if err != nil {
+				t.Fatal(err)
+			}
+			keys, err := ParseJWKS(jb)
+			if string(c.Expect) == `"jwks_error"` {
+				if err == nil {
+					t.Fatal("a malformed JWKS was loaded")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ParseJWKS: %v", err)
+			}
+			got, err := Verify(loadEnvelope(t, c.File), keys, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var want map[string]any
+			_ = json.Unmarshal(c.Expect, &want)
+			if g := checksOf(got); !reflect.DeepEqual(toMapOf(t, g.String()), want) {
+				t.Errorf("checks = %s, want %s (signature error: %v)", g, c.Expect, got.SignatureErr)
+			}
+		})
+	}
+}
+
+func toMapOf(t *testing.T, s string) map[string]any {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal([]byte(s), &m); err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+func TestVouchesExplainsWhy(t *testing.T) {
+	ks, err := ParseJWKS([]byte(`{"keys":[{"kty":"EC","crv":"P-256","kid":"k","x":"19PL3tWYOlQq5YwaFlplvZmNT45RiGERIv0sZz8uzo4","y":"KjLsfFbqYn6OHELPVMQHn3eTeTqo-xcxMwNxYxLpM_w","nbf":100,"exp":200}],"revoked":[{"kid":"gone","revoked_at":1,"reason":"x"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for at, want := range map[string]error{
+		"1970-01-01T00:01:40Z":      nil,
+		"1970-01-01T00:01:39.9Z":    ErrKeyNotYetValid,
+		"1970-01-01T00:03:20Z":      ErrKeyExpired,
+		"1970-01-01T10:03:19+10:00": nil,
+		"1970-01-01 00:01:40":       ErrIssuedAt,
+	} {
+		if got := ks.Vouches("k", at); !errors.Is(got, want) && got != want {
+			t.Errorf("Vouches(%s) = %v, want %v", at, got, want)
+		}
+	}
+	if !errors.Is(ks.Vouches("gone", "1970-01-01T00:01:40Z"), ErrKeyRevoked) {
+		t.Error("a revoked kid vouched")
 	}
 }

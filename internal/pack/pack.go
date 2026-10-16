@@ -5,7 +5,6 @@ package pack
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -38,21 +37,27 @@ type Result struct {
 }
 
 // Verify runs every check on env. Each check is computed on its own, so a pack
-// that fails its signature still reports whether the rest holds. keys are the
-// issuer's keys by kid (ParseJWKS); prev is the previous pack in the chain, or
-// nil to skip the chain check. An error means the payload is not a v0.1 pack
-// statement and could not be evaluated; Verified is then false.
-func Verify(env *dsse.Envelope, keys map[string]crypto.PublicKey, prev *dsse.Envelope) (Result, error) {
-	if env == nil {
-		return Result{}, errors.New("pack: nil envelope")
+// that fails its signature still reports whether the rest holds. keys is the
+// issuer's key set (ParseJWKS): the signature counts only if it verifies and
+// its key may vouch for the pack's issued_at (D-042). prev is the previous pack
+// in the chain, or nil to skip the chain check. An error means the payload is
+// not a v0.1 pack statement and could not be evaluated; Verified is then false.
+func Verify(env *dsse.Envelope, keys *KeySet, prev *dsse.Envelope) (Result, error) {
+	if env == nil || keys == nil {
+		return Result{}, errors.New("pack: nil envelope or key set")
 	}
 	r := Result{Digest: Digest(env)}
-	_, r.KeyID, r.SignatureErr = dsse.Verify(env, dsse.PayloadTypeInToto, keys)
+	_, r.KeyID, r.SignatureErr = dsse.Verify(env, dsse.PayloadTypeInToto, keys.PublicKeys())
 	r.Signature = r.SignatureErr == nil
 
 	st, err := DecodeStatement(env.Payload)
 	if err != nil {
 		return r, err
+	}
+	if r.Signature {
+		if err := keys.Vouches(r.KeyID, st.Predicate.IssuedAt); err != nil {
+			r.Signature, r.SignatureErr = false, err
+		}
 	}
 	r.PackID, r.SeqNo = st.Predicate.PackID, st.Predicate.SeqNo
 	r.SubjectDigest = CheckSubjectDigest(st)

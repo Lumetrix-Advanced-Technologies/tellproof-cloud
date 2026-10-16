@@ -42,7 +42,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P4-3 | Jobs | done | 2026-10-16 | `plumbline-server work`: SKIP LOCKED claims, retries with backoff, dead jobs, stale-lock recovery, atomic enqueue, daily `prune_jobs` (D-039) |
 | P4-4 | Evaluator | done | 2026-10-16 | `internal/evaluate`: Go twin of the concierge evaluator, identical JSON on five fixture sets; region-less usage and `unknown` values handled in both; concierge counter bug fixed (D-040). DB loading arrives with P4-5. |
 | P4-5 | Pack builder + KMS + chain | done | 2026-10-16 | `internal/issue` + `internal/kmssign` + migration 0002 (registers, system profile) + `issue_pack` job; 50 concurrent issues form one chain; all three verifiers accept issued packs (D-041) |
-| P4-6 | JWKS and rotation | not started | | |
+| P4-6 | JWKS and rotation | done | 2026-10-16 | nbf/exp/revoked in the JWKS with one rule in all three verifiers (14 new key vectors); `signing_keys` + `keys add/retire/revoke/list`; `/.well-known/jwks.json`; issuer signs only with an in-date registered key (D-042) |
 | P4-7 | Daily checkpoint | not started | | |
 | P5-1 | Share links + verify API | not started | | |
 | P5-2 | Auth | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-16 · P4-6 · PR pending · Signing keys can be rotated and revoked, and every verifier agrees which packs a key still vouches for.
 - 2026-10-16 · P4-5 · PR pending · The control plane issues signed, chained packs from stored evidence that every verifier accepts.
 - 2026-10-16 · P4-4 · PR pending · The control plane evaluates the ten objectives exactly as the concierge does, including on agent-collected data.
 - 2026-10-16 · P4-3 · PR pending · A shared job queue: any number of workers, no job run twice, failures retried then parked.
