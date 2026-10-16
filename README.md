@@ -14,8 +14,8 @@ A pack reports ten evidence objectives for one AI system over one period (trace 
 | Evidence agent (`plumbline-agent`: OTLP receiver, Langfuse puller, usage pollers, signed batches, durable queue, `--dry-run`) | Built; waits for the control plane's ingest API |
 | Python SDK (`sdk/python`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
 | TypeScript SDK (`sdk/js`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
-| Control plane core (`plumbline-server`: migrate, ingest, jobs, evaluator, pack issue and KMS signing, JWKS with rotation, daily checkpoints) | Built; sharing and the web app next |
-| Web app, share links, Vanta integration | In progress (build plan Phases S, 4, 5, 6; D-024, D-025) |
+| Control plane (`plumbline-server`: migrate, ingest, jobs, evaluator, pack issue and KMS signing, JWKS with rotation, daily checkpoints, share links and verify API, Supabase sign-in, the vendor web app) | Built |
+| One-command install, end-to-end CI, Vanta integration, release | In progress (build plan S-5, S-6, Phase 6) (build plan Phases S, 4, 5, 6; D-024, D-025) |
 
 Progress per task: [`docs/progress-tracker.md`](docs/progress-tracker.md). What was built and how it was tested: [`docs/engineering-log.md`](docs/engineering-log.md).
 
@@ -195,7 +195,8 @@ The normative description is [`docs/architecture.md`](docs/architecture.md) §2.
 | `cmd/verify/` | `plumbline-verify` CLI |
 | `cmd/agent/` | `plumbline-agent`: enrol, run, `--dry-run`, `--replay` |
 | `cmd/server/` | `plumbline-server`: `serve`, `work`, `migrate`, `keys` |
-| `internal/store`, `server`, `jobs`, `evaluate`, `issue`, `kmssign`, `keys`, `checkpoint`, `dailycheckpoint` | The control plane |
+| `internal/store`, `server`, `jobs`, `evaluate`, `issue`, `kmssign`, `keys`, `checkpoint`, `dailycheckpoint`, `share`, `auth`, `webapp` | The control plane |
+| `web/app/` | The vendor web app's templates and stylesheet |
 | `internal/agent/`, `otlp/`, `langfuse/`, `usage/`, `aggregate/`, `commitment/`, `enrol/`, `batchsign/`, `queue/` | The agent's pipeline |
 | `sdk/python/` | Python SDK (`plumbline.init()`), standard library only |
 | `sdk/js/` | Node.js/TypeScript SDK (`@plumbline/sdk`), no dependencies |
