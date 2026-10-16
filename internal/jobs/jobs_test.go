@@ -295,3 +295,20 @@ func TestRunStopsWithItsContext(t *testing.T) {
 		t.Fatal("Run did not stop")
 	}
 }
+
+func TestPermanentErrorsAreNotRetried(t *testing.T) {
+	d := setup(t)
+	id := d.enqueue(t, jobs.KindIssuePack, nil)
+	calls := 0
+	w := &jobs.Worker{Store: d.app, Backoff: noBackoff, Handlers: map[string]jobs.Handler{jobs.KindIssuePack: func(context.Context, jobs.Job) error {
+		calls++
+		return jobs.Permanent(errors.New("no evidence in this period"))
+	}}}
+	for range 3 {
+		_, _ = w.RunOnce(context.Background())
+	}
+	attempts, done, lastErr := d.row(t, id)
+	if calls != 1 || attempts != 1 || !done || lastErr == nil || *lastErr != "no evidence in this period" {
+		t.Errorf("calls %d, attempts %d, done %v, last_error %v", calls, attempts, done, lastErr)
+	}
+}

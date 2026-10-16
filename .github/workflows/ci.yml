@@ -26,7 +26,7 @@ jobs:
       - run: make check
       - name: Migration and RLS tests
         run: |
-          psql "$DATABASE_URL_OWNER" -v ON_ERROR_STOP=1 -f migrations/0001_init.sql
+          for f in migrations/[0-9][0-9][0-9][0-9]_*.sql; do psql "$DATABASE_URL_OWNER" -v ON_ERROR_STOP=1 -f "$f"; done
           psql "$DATABASE_URL_OWNER" -f migrations/tests/0001_rls_and_append_only.sql 2>&1 | tee rls.out
           grep -q "evidence is append-only" rls.out
           grep -q "violates row-level security policy" rls.out

@@ -2,7 +2,7 @@
 // subcommands (docs/architecture.md §4.1).
 //
 //	plumbline-server serve     # the API (DATABASE_URL as plumbline_app; LISTEN, default :8080)
-//	plumbline-server work      # run queued jobs (same DATABASE_URL and DATABASE_ROLE)
+//	plumbline-server work      # run queued jobs (same DATABASE_URL and DATABASE_ROLE; KMS_KEY_ID to issue packs)
 //	plumbline-server migrate   # apply migrations/ as the schema owner (DATABASE_URL_OWNER)
 //	plumbline-server version
 package main
@@ -20,8 +20,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/jackc/pgx/v5"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/issue"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/server"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
 	"github.com/lumetrix-advanced-technologies/plumbline/migrations"
@@ -153,13 +157,54 @@ func work(ctx context.Context, getenv func(string) string, log *slog.Logger, std
 		log.Error("work: scheduling prune_jobs", "error", err.Error())
 		return 1
 	}
-	w := &jobs.Worker{Store: st, Log: log, Handlers: map[string]jobs.Handler{
-		jobs.KindPruneJobs: jobs.Prune(st, 30*24*time.Hour, 24*time.Hour),
-	}}
+	if err := issue.EnsureObjectiveDefs(ctx, st); err != nil {
+		log.Error("work: storing objective definitions", "error", err.Error())
+		return 1
+	}
+	handlers := map[string]jobs.Handler{jobs.KindPruneJobs: jobs.Prune(st, 30*24*time.Hour, 24*time.Hour)}
+	signer, err := packSigner(ctx, getenv)
+	switch {
+	case err != nil:
+		log.Error("work: pack signer", "error", err.Error())
+		return 1
+	case signer == nil:
+		log.Warn("issue_pack is off: KMS_KEY_ID is not set")
+	default:
+		handlers[jobs.KindIssuePack] = (&issue.Issuer{Store: st, Signer: signer, Log: log}).Handler()
+		log.Info("pack signer ready", "kid", signer.KeyID())
+	}
+	w := &jobs.Worker{Store: st, Log: log, Handlers: handlers}
 	if err := w.Run(ctx); err != nil {
 		log.Error("work stopped", "error", err.Error())
 		return 1
 	}
 	log.Info("worker stopped")
 	return 0
+}
+
+// packSigner is the pack signing key: KMS_KEY_ID is a KMS key ARN (region
+// from AWS_REGION and the default AWS credential chain), or "local" for a
+// P-256 PEM at LOCAL_SIGNING_KEY (default .dev/local-signing.pem) in
+// development. Unset: no signer.
+func packSigner(ctx context.Context, getenv func(string) string) (kmssign.Signer, error) {
+	id := getenv("KMS_KEY_ID")
+	switch id {
+	case "":
+		return nil, nil
+	case "local":
+		path := getenv("LOCAL_SIGNING_KEY")
+		if path == "" {
+			path = ".dev/local-signing.pem"
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("local signing key: %w", err)
+		}
+		return kmssign.NewLocal(b)
+	}
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(getenv("AWS_REGION")))
+	if err != nil {
+		return nil, fmt.Errorf("AWS configuration: %w", err)
+	}
+	return kmssign.NewKMS(ctx, kms.NewFromConfig(cfg), id)
 }

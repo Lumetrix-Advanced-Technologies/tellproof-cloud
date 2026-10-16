@@ -122,3 +122,9 @@ Checked against the libraries' sources on 15 Oct 2026 (openai-node 7.34, anthrop
 - **openai** (Node): `OpenAI.Chat.Completions`, `OpenAI.Responses`, `OpenAI.Embeddings`, `OpenAI.Completions` are static class properties; `chat.completions.parse()` and `responses.parse()` call `create()`, as do the `stream()` helpers (`partial(self.create)` in Python, `create(...)` in Node). `create` returns `APIPromise` (lazy: parses only in `then`/`catch`/`finally`/`withResponse`; `_thenUnwrap(transform)` returns a new `APIPromise` over the same `responsePromise`). `Stream` has `#client` and a private `iterator`; `tee()` and `toReadableStream()` use the private iterator. Package exports: `import` → `dist/index.mjs`, `require` → `dist/index.js`.
 - **@anthropic-ai/sdk**: `Anthropic.Messages`, `Anthropic.Beta`, `Beta.Messages`; `MessageStream._createMessage` calls `messages.create({ ...params, stream: true }, ...).withResponse()`. Same `APIPromise` design.
 - **@aws-sdk/client-bedrock-runtime**: `BedrockRuntimeClient` extends the smithy `Client` (`send(command, options?, cb?)`); `config.region` is an async provider; commands carry `input` and their own `middlewareStack`; Converse output has `usage` and `stopReason`, ConverseStream output has `stream` (async iterable of `messageStart`, `contentBlockDelta`, `messageStop`, `metadata` events), InvokeModel output has `body` (bytes) and no headers.
+
+## AWS KMS (pack signing, P4-5)
+
+- `GetPublicKey(KeyId)` → `PublicKey` (DER SubjectPublicKeyInfo), `KeySpec` (must be `ECC_NIST_P256`), `KeyUsage` (`SIGN_VERIFY`).
+- `Sign(KeyId, Message, MessageType=DIGEST, SigningAlgorithm=ECDSA_SHA_256)`: `Message` is the 32-byte SHA-256 of the DSSE PAE (KMS takes at most 4,096 bytes of `RAW` message); the `Signature` is ASN.1 DER, which every verifier accepts. Through `github.com/aws/aws-sdk-go-v2/service/kms` only (no hand-rolled request signing).
+- Docs: https://docs.aws.amazon.com/kms/latest/APIReference/API_Sign.html

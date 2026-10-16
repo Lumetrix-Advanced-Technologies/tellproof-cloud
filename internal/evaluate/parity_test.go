@@ -272,6 +272,26 @@ func TestParityVariants(t *testing.T) {
 		}
 	}
 
+	// A first window that observed nothing (usage or eval runs only) does not
+	// decide which versions were live before the period (D-040).
+	quiet := month
+	quiet.aggregates = rewrite(t, dir, "quiet.json", month.aggregates, editAggregates(t, func(doc map[string]any) {
+		doc["windows"] = append([]any{map[string]any{
+			"window": map[string]any{"start": "2026-09-01T00:00:00Z", "end": "2026-09-01T01:00:00Z"},
+			"metrics": map[string]any{"tokens": []any{}, "pii": map[string]any{"pii_spans": 0, "pii_spans_redacted": 0}, "content_present_spans": 0,
+				"guardrails": map[string]any{"llm_calls": 0, "guarded_calls": 0, "blocked": 0}, "evals": []any{},
+				"agent":       map[string]any{"runs": 0, "tool_calls": 0, "tool_errors": 0, "high_impact_calls": 0, "high_impact_approved": 0, "escalations": 0},
+				"transitions": []any{}, "anomalies": []any{}, "late_spans": 0},
+			"observed": map[string]any{"models": []any{}, "versions": []any{}},
+			"commit":   map[string]any{"root": strings.Repeat("0", 64), "leaves": 0}}}, windows(doc)...)
+	}))
+	ev = compare(t, "quiet first window", quiet)
+	for _, o := range ev.Objectives {
+		if o.ID == "EO-EVAL-01" && o.Status != "attention" {
+			t.Errorf("EO-EVAL-01 = %s after an empty first window (want attention, as without it)", o.Status)
+		}
+	}
+
 	// No registers, no evals, nothing in the period but one window.
 	bare := conciergeFiles{system: month.system, usage: month.usage}
 	bare.aggregates = rewrite(t, dir, "bare.json", month.aggregates, editAggregates(t, func(doc map[string]any) {

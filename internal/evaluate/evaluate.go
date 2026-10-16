@@ -174,16 +174,19 @@ func ObjectiveSetHash() (string, error) {
 	return "sha256:" + hex.EncodeToString(sum[:]), nil
 }
 
+// ErrPeriod: the period or timezone cannot be used.
+var ErrPeriod = errors.New("evaluate: invalid period")
+
 // PeriodBounds is the period as a half-open UTC interval: whole days in the system's timezone.
 func PeriodBounds(s System) (time.Time, time.Time, error) {
 	loc, err := time.LoadLocation(s.Timezone)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("evaluate: timezone %q: %w", s.Timezone, err)
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: timezone %q: %v", ErrPeriod, s.Timezone, err)
 	}
 	a, err1 := time.ParseInLocation("2006-01-02", s.Period.Start, loc)
 	b, err2 := time.ParseInLocation("2006-01-02", s.Period.End, loc)
 	if err1 != nil || err2 != nil || b.Before(a) {
-		return time.Time{}, time.Time{}, errors.New("evaluate: the period must be two dates, start before end")
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: the period must be two dates, start before end", ErrPeriod)
 	}
 	return a.UTC(), b.AddDate(0, 0, 1).UTC(), nil
 }
@@ -263,7 +266,8 @@ func newFacts(in Input, windows []Window, usage []UsageRow, start, end time.Time
 			f.liveVersions = append(f.liveVersions, k)
 		}
 	}
-	for i, w := range windows {
+	sawObserved := false
+	for _, w := range windows {
 		wm := w.Metrics
 		for _, t := range wm.Tokens {
 			k := provRegion{t.Provider, t.Region}
@@ -296,8 +300,10 @@ func newFacts(in Input, windows []Window, usage []UsageRow, start, end time.Time
 		if err != nil {
 			return nil, err
 		}
-		if i == 0 {
-			f.firstWindow = ws
+		// The first window that observed anything: versions live there were live
+		// before the period. A window with only usage or eval runs observed nothing (D-040).
+		if !sawObserved && (len(w.Observed.Models) > 0 || len(w.Observed.Versions) > 0) {
+			f.firstWindow, sawObserved = ws, true
 		}
 		for _, v := range w.Observed.Versions {
 			seen(versionKey{v.Model, v.PromptVersion, true}, ws)
