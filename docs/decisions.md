@@ -324,3 +324,12 @@ The issuer's JWKS (`/.well-known/jwks.json`, P4-6) now says when each key may vo
 - **Across tenants without reading them.** `checkpoint_digests` and `first_pack_issued_at` (SECURITY DEFINER) return digests and times only.
 - **The proof.** `plumbline-verify checkpoint --jwks K [--prev yesterday.json] day.json pack.json…` checks the checkpoint's signature and key validity, that its list matches its root and count, its link to the previous day, and prints each pack's position and Merkle path. The verifier CLI has no database dependency.
 - **Schedule.** The `checkpoint` job runs at 00:10 Sydney time and reschedules itself (one pending run, never two).
+
+## D-044 Share links and the public verify API (16 Oct 2026)
+
+`internal/share`, migration 0005 and `GET /v1/verify/{token}` (P5-1):
+
+- **Links.** A link shows one pack, or a system's latest pack, to one named organisation, for at most a year. The token is 16 random bytes in base64url, returned once at creation; only its SHA-256 is stored. Creating a link runs in the tenant's scope and checks that the pack or system is visible there, because a foreign key alone would accept another tenant's pack. Links can be revoked (`share_links` is not evidence, so `revoked_at` is an update).
+- **The API.** `200 {envelope, prev_envelope_digest, pack_meta{pack_id, seq_no, digest, verifier_org, expires_at}}`; `410` for a revoked or expired link; `404` for an unknown or malformed token, or a system link before its first pack. `prev_envelope_digest` is the digest the issuer *stored* for the previous seq, so the page's chain check compares the pack's claim with the issuer's record (0001's `verify_fetch` returned the pack's own claim, which would compare a value with itself, and could not tell 404 from 410; `verify_lookup` replaces it). Public, `no-store`, `noindex`, `no-referrer`, CORS `*` without credentials.
+- **The view log.** A view is logged only when a pack is returned: the pack digest, a browser family (`chrome`, `safari`, `curl`, `plumbline-verify`…, never the raw User-Agent) and `HMAC-SHA256(VIEW_HASH_SECRET, UTC day | client address)`, so repeat views in a day are countable while addresses are not recoverable and cannot be linked across days. The client address comes from `CLIENT_IP_HEADER` behind a proxy (Fly-Client-IP on Fly.io), else the socket. Tokens are never logged.
+- **Not yet here.** Creating and revoking links over HTTP needs sessions (P5-2) and arrives with the web app (P5-3).

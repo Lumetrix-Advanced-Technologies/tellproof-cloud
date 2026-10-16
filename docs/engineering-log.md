@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-16 · P5-1 · Share links and the public verify API
+
+**Built.** `internal/share` (`Create`, `Revoke`, `List`, `Fetch`, `UAFamily`), migration `0005_verify_lookup.sql`, `GET /v1/verify/{token}`, and `serve` reading `VIEW_HASH_SECRET` and `CLIENT_IP_HEADER`. Choices in D-044.
+
+**Problems.** 0001's `verify_fetch` could not serve the page as specified: it returns nothing for both unknown and revoked links (the page shows different messages for 404 and 410), and it returned the pack's own `prev_digest`, which would make the page's chain check compare a value with itself. Migrations are immutable, so `verify_lookup` replaces it rather than edits it.
+
+**Verified (Postgres 16).** Acceptance: a system link returns pack 3 with the stored digest of pack 2, and the browser verifier (`verifyEnvelope` under Node) reports the API response verified with the chain check true; a pinned link to pack 1 has no previous digest; two views are logged with hashed addresses and the `chrome` family; no token appears in the database; the vendor's list shows the views and distinct viewers; a revoked and an expired link answer 410, an unknown and a malformed token 404, and none of these refused fetches logs a view. Creating a link is refused with no target, two targets, no organisation, a past or more-than-a-year expiry, an unknown pack, or another tenant's pack; a system link answers 404 until the system's first pack.
+
 ## 2026-10-16 · P4-7 · Daily checkpoint
 
 **Built.** `internal/checkpoint` (build, strict decode, verify, prove; no database code), `internal/dailycheckpoint` (the `checkpoint` job with catch-up and a GitHub contents publisher), migration `0004_checkpoint_digests.sql`, `jobs.Reschedule`, `plumbline-verify checkpoint`, and `work` running the job when a signer is configured. Choices in D-043.
