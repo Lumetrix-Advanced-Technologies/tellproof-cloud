@@ -40,6 +40,11 @@ var buildTags = "bedrock"
 var extra = []string{
 	"web/verify",
 	"web/brand.css",
+	// The static site's other pages, deployed with the verify page (D-019).
+	"web/site.css",
+	"web/security",
+	"web/docs",
+	"web/site_test.go",
 	"spec",
 	"sdk",
 	"examples",

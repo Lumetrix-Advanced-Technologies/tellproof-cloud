@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-16 · P6-3 · Launch checklist
+
+**Built.** `web/security/index.html`, `web/docs/agent/index.html`, `web/site.css`, `web/site_test.go`, the verifier-writer's section of `spec/vectors/README.md`, `docs/launch/hn-post.md` and `docs/launch/checklist.md`; the export (D-050) now carries the site pages. Choices in D-051. Nothing was posted or published.
+
+**Problems.** I checked each claim against the code before keeping it, and three were wrong or loose in my first drafts: the vectors guide pointed at a `disclosure` field the pack schema does not have, it said the chain hashes the previous envelope when `chain_rule` hashes the decoded payload, and the security page said checkpoints stop anyone backdating a pack, which is more than they prove (they show which day first listed it). All three are corrected. The browser pane loads local pages as `data:` URLs, where relative stylesheets cannot load, so I rendered the pages with headless Chrome instead. That showed the content's top padding was overridden by `.wrap` and the masthead ran wider than the content; both are fixed, and light, dark and phone widths render cleanly. The design hook reported low contrast on the security page; every text token pair measures at least 5.48:1 in both themes (WCAG AA needs 4.5:1), so I recorded a file-scoped ignore with that reason in `.impeccable/config.json`.
+
+**Verified.** `web/site_test.go` passes, and fails when a link is broken or a page says "certified" (both injected). The export includes the pages and its tests still pass. The agent docs' configuration table matches `internal/agent/config.go` and `agent.example.json`, the loopback rule matches the config validation, Bedrock uses the default AWS credential chain, and the SDK variables match both SDKs.
+
 ## 2026-10-16 · P6-2 · Release and open-source split
 
 **Built.** `tools/ossexport` (the public tree from `go list -deps` of `cmd/agent` and `cmd/verify`, with a leak check and an optional module rename), `oss/` (Apache-2.0 `LICENSE`, `NOTICE`, `README.md`, `SECURITY.md`, `CHANGELOG.md`, `Makefile`, `scripts/release-notes.sh`, and the `ci`, `release` and `sdk-release` workflows), `make oss-export` and `make oss-check`, the private CI job `oss`, a cross-compiling agent Dockerfile, and Apache-2.0 declared in both SDK manifests. Choices in D-050. Nothing was published: no public repository, tag, release, image or package.

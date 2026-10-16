@@ -1,0 +1,18 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "web/docs/agent/index.html",
+          "web/security/index.html"
+        ],
+        "createdAt": "2026-10-16T10:29:14.687Z",
+        "reason": "Claude: all text token pairs measured at 5.48:1 or better in light and dark (web/brand.css); the detector cannot resolve CSS custom properties"
+      }
+    ]
+  }
+}

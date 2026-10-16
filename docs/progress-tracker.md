@@ -51,7 +51,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | S-6 | End to end in CI | done | 2026-10-16 | `e2e/`: Python and Node sample apps → SDKs → agent → server → evaluation → signed pack → share link verified by the verify page in headless Chrome; CI job from a clean database (D-048) |
 | P6-1 | Vanta integration | done | 2026-10-16 | Settings connects the vendor's own Vanta private integration (credentials sealed with AES-256-GCM); hourly full-state sync of one resource per objective with a live verify link, packs uploaded once as documents, errors shown in plain words (D-049) |
 | P6-2 | Release + open-source split | done | 2026-10-16 | `tools/ossexport` generates the Apache-2.0 public tree from `go list -deps` of the agent and verifier, with a leak check; CI proves it builds and passes its own `make check`; tag-triggered release workflow: 6-platform matrix, checksums, attested binaries and notes, draft release; image and SDK publishing behind approval. Nothing published yet (D-050) |
-| P6-3 | Launch checklist | not started | | |
+| P6-3 | Launch checklist | done | 2026-10-16 | Security page and agent docs page on the static site (no JS, tested links and CSP), a verifier-writer's guide to the published vectors, the Show HN draft and the launch checklist of human steps; nothing posted or published (D-051) |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-16 · P6-3 · PR pending · Everything a launch needs is drafted; what is left needs a person, an account or a decision (docs/launch/checklist.md).
 - 2026-10-16 · P6-2 · PR pending · The open-source agent and verifier can be split out and released with signed provenance by pushing a tag; nothing is published yet.
 - 2026-10-16 · P6-1 · PR pending · A vendor's Vanta shows every objective's latest status with a link that verifies the pack, updated hourly.
 - 2026-10-16 · S-6 · PR pending · The whole product runs end to end in CI, down to a reviewer's browser saying "Verified".
