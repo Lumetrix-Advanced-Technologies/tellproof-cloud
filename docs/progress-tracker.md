@@ -39,7 +39,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | S-4 | TypeScript auto-instrumentation | done | 2026-10-15 | openai, @anthropic-ai/sdk, Bedrock client (CJS and ESM copies); returns the library's own APIPromise and streams; real libraries tested in CI (D-036) |
 | P4-1 | Migrate + store | done | 2026-10-15 | `plumbline-server migrate` (embedded, checksummed, atomic per file, advisory lock); `store.WithTenant` with transaction-local tenant; RLS isolation and append-only proved against Postgres 16 (D-037) |
 | P4-2 | Enrol and ingest endpoints | done | 2026-10-16 | `serve` with enrol (atomic token claim) and ingest (verify, row-locked seq/prev, idempotent 200 with stored digest); the real agent delivers to it end to end (D-038) |
-| P4-3 | Jobs | not started | | |
+| P4-3 | Jobs | done | 2026-10-16 | `plumbline-server work`: SKIP LOCKED claims, retries with backoff, dead jobs, stale-lock recovery, atomic enqueue, daily `prune_jobs` (D-039) |
 | P4-4 | Evaluator | not started | | |
 | P4-5 | Pack builder + KMS + chain | not started | | |
 | P4-6 | JWKS and rotation | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-16 · P4-3 · PR pending · A shared job queue: any number of workers, no job run twice, failures retried then parked.
 - 2026-10-16 · P4-2 · PR pending · Agents can enrol with the control plane and their signed batches are verified and stored exactly once.
 - 2026-10-15 · P4-1 · PR pending · The control plane can migrate a fresh database and every app query is confined to one tenant.
 - 2026-10-15 · S-4 · PR pending · Node apps now get every OpenAI, Anthropic and Bedrock call recorded with billed tokens from `plumbline.init()`, without content.
