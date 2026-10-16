@@ -6,7 +6,7 @@ GO_PKGS := ./...
 STATICCHECK := honnef.co/go/tools/cmd/staticcheck@2026.2.2
 GOVULNCHECK := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
-.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test test-db agent-binaries agent-image run-server run-worker agent-dry concierge-verify
+.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test test-db agent-binaries agent-image e2e run-server run-worker agent-dry concierge-verify
 
 check: fmt-check vet staticcheck vuln test vectors concierge-test sdk-test
 
@@ -16,6 +16,7 @@ fmt-check:
 vet:
 	go vet $(GO_PKGS)
 	go vet -tags bedrock $(GO_PKGS)
+	go vet -tags e2e ./e2e/
 
 staticcheck:
 	go run $(STATICCHECK) $(GO_PKGS)
@@ -82,3 +83,10 @@ agent-binaries:
 
 agent-image:
 	docker build -f cmd/agent/Dockerfile --build-arg VERSION=$(VERSION) -t plumbline-agent:$(VERSION) .
+
+# The whole product end to end (S-6): sample apps -> SDKs -> agent -> server -> pack -> verify page in headless Chrome.
+# Needs Postgres (see test-db), python3, node and Chrome.
+e2e:
+	docker compose up -d db
+	@until docker compose exec -T db pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
+	PLUMBLINE_TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable go test -tags e2e -count=1 -v ./e2e/
