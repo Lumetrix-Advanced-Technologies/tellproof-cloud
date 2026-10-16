@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
 )
 
@@ -22,7 +23,7 @@ func env(kv ...string) func(string) string {
 }
 
 func TestUsage(t *testing.T) {
-	for _, args := range [][]string{nil, {"frobnicate"}, {"migrate", "extra"}, {"migrate"}, {"serve"}} {
+	for _, args := range [][]string{nil, {"frobnicate"}, {"migrate", "extra"}, {"migrate"}, {"serve"}, {"work"}} {
 		var out, errb bytes.Buffer
 		if code := run(context.Background(), args, env(), &out, &errb); code != 2 {
 			t.Errorf("%v: exit %d", args, code)
@@ -103,4 +104,34 @@ func (s *syncBuffer) String() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.b.String()
+}
+
+func TestWorkSchedulesPruningAndStops(t *testing.T) {
+	db := storetest.MigratedDB(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	var errb syncBuffer
+	done := make(chan int)
+	go func() {
+		done <- run(ctx, []string{"work"}, env("DATABASE_URL", db, "DATABASE_ROLE", "plumbline_app"), &bytes.Buffer{}, &errb)
+	}()
+	for i := 0; i < 250 && !strings.Contains(errb.String(), `"job done"`); i++ {
+		time.Sleep(20 * time.Millisecond)
+	}
+	cancel()
+	if code := <-done; code != 0 {
+		t.Fatalf("work exit %d: %s", code, errb.String())
+	}
+	if !strings.Contains(errb.String(), `"kind":"prune_jobs"`) {
+		t.Errorf("the first prune did not run: %s", errb.String())
+	}
+	conn, err := pgx.Connect(context.Background(), db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close(context.Background())
+	var next int
+	_ = conn.QueryRow(context.Background(), `SELECT count(*) FROM jobs WHERE kind = 'prune_jobs' AND done_at IS NULL AND run_at > now() + interval '23 hours'`).Scan(&next)
+	if next != 1 {
+		t.Errorf("%d prunes scheduled for tomorrow", next)
+	}
 }

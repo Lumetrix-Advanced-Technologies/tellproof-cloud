@@ -2,10 +2,9 @@
 // subcommands (docs/architecture.md §4.1).
 //
 //	plumbline-server serve     # the API (DATABASE_URL as plumbline_app; LISTEN, default :8080)
+//	plumbline-server work      # run queued jobs (same DATABASE_URL and DATABASE_ROLE)
 //	plumbline-server migrate   # apply migrations/ as the schema owner (DATABASE_URL_OWNER)
 //	plumbline-server version
-//
-// work (jobs) arrives with P4-3.
 package main
 
 import (
@@ -22,6 +21,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/server"
 	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
 	"github.com/lumetrix-advanced-technologies/plumbline/migrations"
@@ -32,6 +32,7 @@ var version = "dev"
 
 const usage = `usage:
   plumbline-server serve      run the API (DATABASE_URL; optional DATABASE_ROLE, LISTEN)
+  plumbline-server work       run queued jobs (DATABASE_URL; optional DATABASE_ROLE)
   plumbline-server migrate    apply migrations as the schema owner (DATABASE_URL_OWNER)
   plumbline-server version
 `
@@ -54,6 +55,8 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 		return 0
 	case "serve":
 		return serve(ctx, getenv, log, stderr)
+	case "work":
+		return work(ctx, getenv, log, stderr)
 	case "migrate":
 		url := getenv("DATABASE_URL_OWNER")
 		if url == "" {
@@ -128,5 +131,35 @@ func serve(ctx context.Context, getenv func(string) string, log *slog.Logger, st
 		return 1
 	}
 	log.Info("stopped")
+	return 0
+}
+
+// work runs the job worker until ctx ends; a job in progress finishes first.
+// Each later task registers its job kind here (evaluate, issue_pack,
+// checkpoint, vanta_sync).
+func work(ctx context.Context, getenv func(string) string, log *slog.Logger, stderr io.Writer) int {
+	url := getenv("DATABASE_URL")
+	if url == "" {
+		fmt.Fprintln(stderr, "plumbline-server: DATABASE_URL is not set")
+		return 2
+	}
+	st, err := store.Open(ctx, url, store.Options{Role: getenv("DATABASE_ROLE")})
+	if err != nil {
+		log.Error("work: cannot connect to the database")
+		return 1
+	}
+	defer st.Close()
+	if err := jobs.EnsureScheduled(ctx, st, jobs.KindPruneJobs, time.Time{}); err != nil {
+		log.Error("work: scheduling prune_jobs", "error", err.Error())
+		return 1
+	}
+	w := &jobs.Worker{Store: st, Log: log, Handlers: map[string]jobs.Handler{
+		jobs.KindPruneJobs: jobs.Prune(st, 30*24*time.Hour, 24*time.Hour),
+	}}
+	if err := w.Run(ctx); err != nil {
+		log.Error("work stopped", "error", err.Error())
+		return 1
+	}
+	log.Info("worker stopped")
 	return 0
 }

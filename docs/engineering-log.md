@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-16 · P4-3 · Jobs
+
+**Built.** `internal/jobs` (`Enqueue`, `Worker.RunOnce`/`Run`, `EnsureScheduled`, `Prune`) and `plumbline-server work`, which schedules and runs `prune_jobs`; the other kinds get handlers in their own tasks. Choices in D-039.
+
+**Problems.** My first draft passed Go duration strings (`15m0s`) to Postgres as intervals, which is not reliable interval syntax; seconds now go through `make_interval`. The prune handler would have scheduled a second successor if it was retried after scheduling one; it now skips itself when checking for a pending prune.
+
+**Verified (Postgres 16).** Eight workers on 60 jobs, some slow, run every job exactly once (without `SKIP LOCKED` some run three times). A job that fails twice runs a third time and ends done with its error cleared; the default backoff puts the retry about 30 s out and it is not claimed early; a panicking handler is a failure and the job is dead after `MaxAttempts` with `panic: bug` recorded; a freshly locked job is left alone and one locked 16 minutes ago is reclaimed; future jobs and kinds without a handler are not claimed; an enqueue in a rolled-back transaction leaves nothing; prune deletes old finished and very old dead jobs, keeps recent ones and pending ones, and leaves exactly one prune scheduled a day out; `Run` stops with its context; `work` runs the first prune and stops cleanly.
+
 ## 2026-10-16 · P4-2 · Enrol and ingest endpoints
 
 **Built.** `internal/server` (`Server.Handler`: `POST /v1/agents/enrol`, `POST /v1/batches`, `GET /healthz`) and `plumbline-server serve`. The server side of the formats the agent already speaks (D-030, D-031), with the choices in D-038.
