@@ -236,6 +236,13 @@ func EnsureScheduled(ctx context.Context, s *store.Store, kind string, runAt tim
 	return ensure(ctx, s, kind, runAt, 0)
 }
 
+// Reschedule is for a recurring handler: it schedules the next run of its
+// kind at runAt unless one is already pending, not counting the job running
+// now (so a retried run never schedules twice).
+func Reschedule(ctx context.Context, s *store.Store, current Job, runAt time.Time) error {
+	return ensure(ctx, s, current.Kind, runAt, current.ID)
+}
+
 // ensure is EnsureScheduled, not counting job except (the one running now).
 func ensure(ctx context.Context, s *store.Store, kind string, runAt time.Time, except int64) error {
 	return s.Public(ctx, func(tx pgx.Tx) error {
