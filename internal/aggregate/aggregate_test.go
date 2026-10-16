@@ -299,3 +299,23 @@ func TestEvalsGoIntoTheirHour(t *testing.T) {
 		t.Fatalf("late eval windows = %+v", w)
 	}
 }
+
+// FlushOpen emits a window early without closing its hour: later spans for
+// that hour are not late, and each trace is committed once (S-5).
+func TestFlushOpenKeepsTheHourOpen(t *testing.T) {
+	a := New(DefaultConfig())
+	a.Add([]otlp.Span{llm("t1", at(10, 5)), llm("t2", at(10, 6))}, at(10, 7))
+	early := a.FlushOpen()
+	if len(early) != 1 || early[0].Metrics.Guardrails.LLMCalls != 2 || len(early[0].TraceIDs) != 2 {
+		t.Fatalf("early window %+v", early)
+	}
+	a.Add([]otlp.Span{llm("t2", at(10, 20)), llm("t3", at(10, 30))}, at(10, 31)) // t2 continues; t3 is new
+	if w := a.Flush(at(11, 4)); len(w) != 0 {
+		t.Fatal("the hour closed before its grace")
+	}
+	rest := a.Flush(at(11, 6))
+	if len(rest) != 1 || rest[0].Window.Start != early[0].Window.Start || rest[0].Metrics.LateSpans != 0 ||
+		rest[0].Metrics.Guardrails.LLMCalls != 2 || len(rest[0].TraceIDs) != 1 || rest[0].TraceIDs[0] != "t3" {
+		t.Errorf("the rest of the hour: %+v", rest)
+	}
+}

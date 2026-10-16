@@ -47,7 +47,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P5-1 | Share links + verify API | done | 2026-10-16 | `internal/share` (hashed tokens, tenant-checked targets, revoke, list with views) + `GET /v1/verify/{token}` (200/404/410) via `verify_lookup`; the browser verifier accepts its responses (D-044) |
 | P5-2 | Auth | done | 2026-10-16 | Supabase magic link (server-side PKCE), ES256 access tokens verified with `crypto/ecdsa` against the project JWKS, cookie sessions with refresh, Origin-checked forms, member mapping (D-045) |
 | P5-3 | Web app screens | done | 2026-10-16 | Onboarding, systems, setup and sources (tokens, agents, declarations), registers (forms and CSV), packs (issue, list, download), share links, settings; no JS; the partner journey runs end to end in a test (D-046) |
-| S-5 | One-command agent install and connect flow | not started | | |
+| S-5 | One-command agent install and connect flow | done | 2026-10-16 | `plumbline-agent connect <token>`, early first batch (default 60 s), container image, six static binaries, Setup snippet; a sample app's call reaches the server as a batch in about a second in the test (D-047) |
 | S-6 | End to end in CI | not started | | |
 | P6-1 | Vanta integration | not started | | |
 | P6-2 | Release + open-source split | not started | | |
@@ -59,6 +59,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-16 · S-5 · PR pending · One docker run line and one line of app code connect a system; the first batch arrives in about a minute.
 - 2026-10-16 · P5-3 · PR pending · A vendor can go from sign-up to a shared, verified pack using only the app's pages.
 - 2026-10-16 · P5-2 · PR pending · Vendors sign in with a Supabase magic link and every request is tied to their organisation.
 - 2026-10-16 · P5-1 · PR pending · A vendor's share link lets a bank open and verify a pack in the browser, and the vendor sees who looked.

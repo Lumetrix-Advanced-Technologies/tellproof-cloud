@@ -54,7 +54,11 @@ type Config struct {
 	SaltSecretFile string `json:"salt_secret_file"`
 	Aggregation    struct {
 		GraceMinutes int `json:"grace_minutes"`
-		Anomaly      struct {
+		// FirstBatchSeconds: after the first spans arrive, send what has been
+		// aggregated so far this soon (once per start), so a new agent shows up
+		// in minutes rather than after the hour (S-5). 0 turns it off.
+		FirstBatchSeconds int `json:"first_batch_seconds"`
+		Anomaly           struct {
 			MinCalls           int     `json:"min_calls"`
 			ErrorRate          float64 `json:"error_rate"`
 			GuardrailBlockRate float64 `json:"guardrail_block_rate"`
@@ -80,6 +84,7 @@ func LoadConfig(path string, getenv func(string) string) (Config, error) {
 	c := Config{DataDir: "./.plumbline-agent", OTLPListen: "127.0.0.1:4318", SaltSecretEnv: "PLUMBLINE_SALT_SECRET"}
 	d := aggregate.DefaultConfig()
 	c.Aggregation.GraceMinutes = int(d.Grace / time.Minute)
+	c.Aggregation.FirstBatchSeconds = 60
 	c.Aggregation.Anomaly.MinCalls, c.Aggregation.Anomaly.ErrorRate, c.Aggregation.Anomaly.GuardrailBlockRate = d.MinCalls, d.ErrorRate, d.GuardrailBlock
 	if path != "" {
 		b, err := os.ReadFile(path)
@@ -99,6 +104,11 @@ func LoadConfig(path string, getenv func(string) string) (Config, error) {
 		if v := getenv(env); v != "" {
 			*field = v
 		}
+	}
+	// The container image listens on all interfaces inside its network namespace;
+	// the docker run line publishes the port on the host's loopback only.
+	if getenv("PLUMBLINE_OTLP_ALLOW_REMOTE") == "1" {
+		c.OTLPAllowRemote = true
 	}
 	return c, c.validate()
 }
@@ -126,6 +136,9 @@ func (c Config) validate() error {
 	}
 	if c.Aggregation.GraceMinutes < 1 || c.Aggregation.GraceMinutes > 55 {
 		return errors.New("agent: aggregation.grace_minutes must be between 1 and 55")
+	}
+	if c.Aggregation.FirstBatchSeconds < 0 || c.Aggregation.FirstBatchSeconds > 3600 {
+		return errors.New("agent: aggregation.first_batch_seconds must be between 0 and 3600")
 	}
 	if c.DataDir == "" {
 		return errors.New("agent: data_dir is required")

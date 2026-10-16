@@ -80,3 +80,15 @@ jobs:
           npm ls --depth=0
       - run: node --test "$GITHUB_WORKSPACE/sdk/js/test/real-libs.test.mjs"
         working-directory: ${{ runner.temp }}/app
+
+  agent-image:
+    # The one-command install's container builds and runs (S-5).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f cmd/agent/Dockerfile --build-arg VERSION=ci -t plumbline-agent:ci .
+      - run: docker run --rm plumbline-agent:ci version | grep -q "plumbline-agent ci"
+      - run: |
+          out=$(docker run --rm -e PLUMBLINE_SERVER=https://example.invalid plumbline-agent:ci connect 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -q "enrolment token"

@@ -83,7 +83,8 @@ Predicate fields (schema: `spec/pack.schema.json`): `pack_schema`, `pack_id`, `s
 
 - **Inputs:** OTLP/HTTP JSON receiver on `127.0.0.1:4318` path `/v1/traces` (no protobuf); Langfuse puller (Observations v2, Scores v3); provider usage pollers (OpenAI Usage API, Anthropic Usage & Cost API, Bedrock CloudWatch with build tag `bedrock`). Change and incident registers are uploaded in the web app, not read by the agent (D-032).
 - **Normaliser:** `spec/semconv-map.json` maps old and new OTel GenAI attribute names to internal fields. The map version is recorded in each batch. Message-content attributes are dropped on parse; only their presence is counted.
-- **Aggregation:** hourly windows, UTC, closed 5 minutes after the hour to absorb late spans. Late spans after close go into the next window and are counted in `metrics.late_spans`.
+- **Aggregation:** hourly windows, UTC, closed 5 minutes after the hour to absorb late spans. Late spans after close go into the next window and are counted in `metrics.late_spans`. A new run also sends its open hour once, a minute after its first spans, so a new agent is seen at once (windows are additive, D-047).
+- **Install:** `plumbline-agent connect <token>` (enrols once, then runs), as a container (`cmd/agent/Dockerfile`) or a static binary (D-047).
 - **Queue:** append-only segment files under `--data-dir`, `fsync` before acknowledgement, deleted after the server returns 201. Retry with exponential backoff capped at 15 minutes.
 - **Keys:** Ed25519 key generated at `plumbline-agent enrol` (one-time token from `PLUMBLINE_ENROL_TOKEN`), private key stored `0600` in the data dir; the public key is registered with the server.
 - **Egress:** one host (`--server`). `--dry-run` prints each batch envelope to stdout and sends nothing.
