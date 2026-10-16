@@ -28,7 +28,7 @@ import (
 const (
 	// PredicateType uses the placeholder domain until D-008 is decided.
 	PredicateType = "https://lumetrix.example/plumbline/checkpoint/v0.1"
-	Schema        = "witnessmark-checkpoint/v0.1"
+	Schema        = "plumbline-checkpoint/v0.1"
 	LeafRule      = `sha256(0x00 || pack_digest), pack_digest as ASCII "sha256:<hex>"`
 	NodeRule      = "sha256(0x01 || left || right); odd node carried up; all-zero root when no packs"
 )
