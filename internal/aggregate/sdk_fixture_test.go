@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/otlp"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/otlp"
 )
 
 var update = flag.Bool("update", false, "rewrite sdk/testdata/expected-windows.json")

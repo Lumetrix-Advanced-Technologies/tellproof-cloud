@@ -19,10 +19,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jcs"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/merkle"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/jcs"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/merkle"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/pack"
 )
 
 const (

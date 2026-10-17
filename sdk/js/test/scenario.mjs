@@ -12,12 +12,12 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const core = require('../lib/core.cjs');
 const otlp = require('../lib/otlp.cjs');
-const witnessmark = require('../lib/index.cjs');
+const tellproof = require('../lib/index.cjs');
 
 export const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'testdata', 'js-export.jsonl');
 const RESOURCE = {
   'service.name': 'claims-api',
-  'telemetry.sdk.name': 'witnessmark',
+  'telemetry.sdk.name': 'tellproof',
   'telemetry.sdk.language': 'nodejs',
   'telemetry.sdk.version': 'scenario',
 };
@@ -52,11 +52,11 @@ export class Capture {
 // The app. Hour 10:00: four requests; hour 11:00: one.
 export function run(clock) {
   // 1. A triage call on personal data, redacted, allowed by the guardrail.
-  witnessmark.trace(() =>
-    witnessmark.prompt('triage', '14', () =>
-      witnessmark.personalData({ redacted: true }, () =>
-        witnessmark.guardrail('allow', () =>
-          witnessmark.llmCall({ provider: 'openai', model: 'gpt-4.1-mini', region: 'us-east-1' }, (c) => c.usage(1200, 80)),
+  tellproof.trace(() =>
+    tellproof.prompt('triage', '14', () =>
+      tellproof.personalData({ redacted: true }, () =>
+        tellproof.guardrail('allow', () =>
+          tellproof.llmCall({ provider: 'openai', model: 'gpt-4.1-mini', region: 'us-east-1' }, (c) => c.usage(1200, 80)),
         ),
       ),
     ),
@@ -65,50 +65,50 @@ export function run(clock) {
   // 2. An agent run: a model call the output guardrail then blocks, three tool
   //    calls (one high-impact approved, one high-impact unapproved that fails)
   //    and an escalation to a person.
-  witnessmark.agentRun('claims-agent', () => {
-    witnessmark.guardrail((g) => {
-      witnessmark.llmCall({ provider: 'anthropic', model: 'claude-sonnet-4-5', region: 'ap-southeast-2' }, (c) => c.usage(3000, 400));
+  tellproof.agentRun('claims-agent', () => {
+    tellproof.guardrail((g) => {
+      tellproof.llmCall({ provider: 'anthropic', model: 'claude-sonnet-4-5', region: 'ap-southeast-2' }, (c) => c.usage(3000, 400));
       g.block();
     });
-    witnessmark.tool('lookup_policy', () => {});
-    witnessmark.tool('issue_refund', { highImpact: true }, (t) => {
+    tellproof.tool('lookup_policy', () => {});
+    tellproof.tool('issue_refund', { highImpact: true }, (t) => {
       t.approved = true;
     });
     try {
-      witnessmark.tool('close_account', { highImpact: true }, () => {
+      tellproof.tool('close_account', { highImpact: true }, () => {
         throw new Error('not approved');
       });
     } catch {}
-    witnessmark.escalation();
+    tellproof.escalation();
   });
 
   // 3. The input guardrail blocks before any model call.
-  witnessmark.trace(() =>
-    witnessmark.personalData({ redacted: false }, () =>
-      witnessmark.guardrail({ decision: 'block', provider: 'openai', model: 'gpt-4.1-mini' }, () => {}),
+  tellproof.trace(() =>
+    tellproof.personalData({ redacted: false }, () =>
+      tellproof.guardrail({ decision: 'block', provider: 'openai', model: 'gpt-4.1-mini' }, () => {}),
     ),
   );
 
   // 4. A failed embeddings call outside any scope.
   try {
-    witnessmark.llmCall({ provider: 'openai', model: 'text-embedding-3-small', operation: 'embeddings', region: 'us-east-1' }, () => {
+    tellproof.llmCall({ provider: 'openai', model: 'text-embedding-3-small', operation: 'embeddings', region: 'us-east-1' }, () => {
       throw new Error('timeout');
     });
   } catch {}
 
   // 5. The next hour: the triage prompt moves to version 15 on another model.
   clock.at('2026-09-01T11:20:00');
-  witnessmark.prompt('triage', '15', () =>
-    witnessmark.guardrail('flag', () =>
-      witnessmark.llmCall({ provider: 'anthropic', model: 'claude-sonnet-4-5', region: 'ap-southeast-2' }, (c) => c.usage(900, 60)),
+  tellproof.prompt('triage', '15', () =>
+    tellproof.guardrail('flag', () =>
+      tellproof.llmCall({ provider: 'anthropic', model: 'claude-sonnet-4-5', region: 'ap-southeast-2' }, (c) => c.usage(900, 60)),
     ),
   );
 
   // 6. Guardrail canaries (D-057): the guardrail catches the injection probe
   //    and one of two personal-data probes.
-  witnessmark.canary('prompt_injection', 'block');
-  witnessmark.canary('pii', true);
-  witnessmark.canary('pii', 'allow');
+  tellproof.canary('prompt_injection', 'block');
+  tellproof.canary('pii', true);
+  tellproof.canary('pii', 'allow');
 }
 
 export function exportLines() {

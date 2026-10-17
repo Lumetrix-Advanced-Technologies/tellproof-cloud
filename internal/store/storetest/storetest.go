@@ -1,8 +1,8 @@
 // Package storetest gives tests a freshly migrated Postgres database.
 //
-// Set WITNESSMARK_TEST_DATABASE_URL to an owner (superuser) URL of a server the
+// Set TELLPROOF_TEST_DATABASE_URL to an owner (superuser) URL of a server the
 // tests may create databases on; CI's Postgres service is one. Without it the
-// tests skip, unless WITNESSMARK_REQUIRE_DB=1 (set in CI), when they fail.
+// tests skip, unless TELLPROOF_REQUIRE_DB=1 (set in CI), when they fail.
 package storetest
 
 import (
@@ -14,20 +14,20 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/envcompat"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
-	"github.com/lumetrix-advanced-technologies/witnessmark/migrations"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/envcompat"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store"
+	"github.com/lumetrix-advanced-technologies/tellproof/migrations"
 )
 
 // ServerURL is the owner URL from the environment, or skips the test.
 func ServerURL(t testing.TB) string {
 	t.Helper()
-	u := envcompat.Get("WITNESSMARK_TEST_DATABASE_URL")
+	u := envcompat.Get("TELLPROOF_TEST_DATABASE_URL")
 	if u == "" {
-		if envcompat.Get("WITNESSMARK_REQUIRE_DB") == "1" {
-			t.Fatal("WITNESSMARK_TEST_DATABASE_URL is not set")
+		if envcompat.Get("TELLPROOF_REQUIRE_DB") == "1" {
+			t.Fatal("TELLPROOF_TEST_DATABASE_URL is not set")
 		}
-		t.Skip("WITNESSMARK_TEST_DATABASE_URL is not set")
+		t.Skip("TELLPROOF_TEST_DATABASE_URL is not set")
 	}
 	return u
 }
@@ -45,7 +45,7 @@ func EmptyDB(t testing.TB) string {
 	defer conn.Close(ctx)
 	b := make([]byte, 6)
 	_, _ = rand.Read(b)
-	name := "witnessmark_t_" + hex.EncodeToString(b)
+	name := "tellproof_t_" + hex.EncodeToString(b)
 	if _, err := conn.Exec(ctx, "CREATE DATABASE "+name); err != nil {
 		t.Fatalf("storetest: create database: %v", err)
 	}
@@ -59,7 +59,7 @@ func EmptyDB(t testing.TB) string {
 	})
 	u, err := url.Parse(server)
 	if err != nil {
-		t.Fatal("storetest: WITNESSMARK_TEST_DATABASE_URL does not parse")
+		t.Fatal("storetest: TELLPROOF_TEST_DATABASE_URL does not parse")
 	}
 	u.Path = "/" + name
 	return u.String()

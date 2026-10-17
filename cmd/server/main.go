@@ -1,12 +1,12 @@
-// Command witnessmark-server is the Witnessmark control plane: one binary,
+// Command tellproof-server is the Tellproof control plane: one binary,
 // subcommands (docs/architecture.md §4.1).
 //
-//	witnessmark-server serve     # the API (DATABASE_URL as plumbline_app; LISTEN, default :8080)
-//	witnessmark-server work      # run queued jobs (same DATABASE_URL and DATABASE_ROLE; KMS_KEY_ID to issue
+//	tellproof-server serve     # the API (DATABASE_URL as plumbline_app; LISTEN, default :8080)
+//	tellproof-server work      # run queued jobs (same DATABASE_URL and DATABASE_ROLE; KMS_KEY_ID to issue
 //	                           # packs and checkpoints; CHECKPOINT_REPO and GITHUB_TOKEN to publish them)
-//	witnessmark-server migrate   # apply migrations/ as the schema owner (DATABASE_URL_OWNER)
-//	witnessmark-server keys ...  # add, retire, revoke and list pack signing keys (owner)
-//	witnessmark-server version
+//	tellproof-server migrate   # apply migrations/ as the schema owner (DATABASE_URL_OWNER)
+//	tellproof-server keys ...  # add, retire, revoke and list pack signing keys (owner)
+//	tellproof-server version
 package main
 
 import (
@@ -28,31 +28,31 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/auth"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dailycheckpoint"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/envcompat"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/issue"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/keys"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/kmssign"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/secretbox"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/server"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/vanta"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/webapp"
-	"github.com/lumetrix-advanced-technologies/witnessmark/migrations"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/auth"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dailycheckpoint"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/envcompat"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/issue"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/keys"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/kmssign"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/secretbox"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/server"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/vanta"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/webapp"
+	"github.com/lumetrix-advanced-technologies/tellproof/migrations"
 )
 
 // version is set at link time: go build -ldflags "-X main.version=v0.1.0".
 var version = "dev"
 
 const usage = `usage:
-  witnessmark-server serve      run the API (DATABASE_URL; optional DATABASE_ROLE, LISTEN)
-  witnessmark-server work       run queued jobs (DATABASE_URL; optional DATABASE_ROLE)
-  witnessmark-server migrate    apply migrations as the schema owner (DATABASE_URL_OWNER)
-  witnessmark-server keys list | add [--nbf T] | retire KID [--at T] | revoke KID --reason TEXT
+  tellproof-server serve      run the API (DATABASE_URL; optional DATABASE_ROLE, LISTEN)
+  tellproof-server work       run queued jobs (DATABASE_URL; optional DATABASE_ROLE)
+  tellproof-server migrate    apply migrations as the schema owner (DATABASE_URL_OWNER)
+  tellproof-server keys list | add [--nbf T] | retire KID [--at T] | revoke KID --reason TEXT
                               manage the pack signing keys (DATABASE_URL_OWNER; add signs with KMS_KEY_ID)
-  witnessmark-server version
+  tellproof-server version
 `
 
 func main() {
@@ -62,7 +62,7 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, getenv func(string) string, stdout, stderr io.Writer) int {
-	getenv = envcompat.Wrap(getenv) // WITNESSMARK_*, else the PLUMBLINE_* names of v0.1 and v0.2
+	getenv = envcompat.Wrap(getenv) // TELLPROOF_*, else the PLUMBLINE_* names of v0.1 and v0.2
 	if len(args) >= 1 && args[0] == "keys" {
 		return keysCmd(ctx, args[1:], getenv, stdout, stderr)
 	}
@@ -73,7 +73,7 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 	log := slog.New(slog.NewJSONHandler(stderr, nil))
 	switch args[0] {
 	case "version":
-		fmt.Fprintf(stdout, "witnessmark-server %s\n", version)
+		fmt.Fprintf(stdout, "tellproof-server %s\n", version)
 		return 0
 	case "serve":
 		return serve(ctx, getenv, log, stderr)
@@ -82,7 +82,7 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 	case "migrate":
 		url := getenv("DATABASE_URL_OWNER")
 		if url == "" {
-			fmt.Fprintln(stderr, "witnessmark-server: DATABASE_URL_OWNER is not set")
+			fmt.Fprintln(stderr, "tellproof-server: DATABASE_URL_OWNER is not set")
 			return 2
 		}
 		conn, err := pgx.Connect(ctx, url)
@@ -117,7 +117,7 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 func serve(ctx context.Context, getenv func(string) string, log *slog.Logger, stderr io.Writer) int {
 	url := getenv("DATABASE_URL")
 	if url == "" {
-		fmt.Fprintln(stderr, "witnessmark-server: DATABASE_URL is not set")
+		fmt.Fprintln(stderr, "tellproof-server: DATABASE_URL is not set")
 		return 2
 	}
 	listen := getenv("LISTEN")
@@ -149,7 +149,7 @@ func serve(ctx context.Context, getenv func(string) string, log *slog.Logger, st
 		}
 		base := strings.TrimRight(getenv("PUBLIC_BASE_URL"), "/")
 		if base == "" || getenv("SUPABASE_ANON_KEY") == "" {
-			fmt.Fprintln(stderr, "witnessmark-server: SUPABASE_URL needs SUPABASE_ANON_KEY and PUBLIC_BASE_URL")
+			fmt.Fprintln(stderr, "tellproof-server: SUPABASE_URL needs SUPABASE_ANON_KEY and PUBLIC_BASE_URL")
 			return 2
 		}
 		api.Sessions = &auth.Sessions{Verifier: &auth.Verifier{JWKSURL: jwksURL, Issuer: sb + "/auth/v1"},
@@ -161,7 +161,7 @@ func serve(ctx context.Context, getenv func(string) string, log *slog.Logger, st
 		app := &webapp.App{Store: st, Auth: api.Sessions.Require, Protect: api.Sessions.SameOrigin, APIBase: base, VerifyBase: verifyBase, Log: log}
 		box, err := integrationKey(getenv)
 		if err != nil {
-			fmt.Fprintln(stderr, "witnessmark-server:", err)
+			fmt.Fprintln(stderr, "tellproof-server:", err)
 			return 2
 		}
 		app.Secrets = box
@@ -200,7 +200,7 @@ func serve(ctx context.Context, getenv func(string) string, log *slog.Logger, st
 func work(ctx context.Context, getenv func(string) string, log *slog.Logger, stderr io.Writer) int {
 	url := getenv("DATABASE_URL")
 	if url == "" {
-		fmt.Fprintln(stderr, "witnessmark-server: DATABASE_URL is not set")
+		fmt.Fprintln(stderr, "tellproof-server: DATABASE_URL is not set")
 		return 2
 	}
 	st, err := store.Open(ctx, url, store.Options{Role: getenv("DATABASE_ROLE")})
@@ -243,7 +243,7 @@ func work(ctx context.Context, getenv func(string) string, log *slog.Logger, std
 	box, err := integrationKey(getenv)
 	switch {
 	case err != nil:
-		fmt.Fprintln(stderr, "witnessmark-server:", err)
+		fmt.Fprintln(stderr, "tellproof-server:", err)
 		return 2
 	case box == nil:
 		log.Warn("vanta_sync is off: INTEGRATION_KEY is not set")
@@ -334,12 +334,12 @@ func keysCmd(ctx context.Context, args []string, getenv func(string) string, std
 	}
 	url := getenv("DATABASE_URL_OWNER")
 	if url == "" {
-		fmt.Fprintln(stderr, "witnessmark-server: DATABASE_URL_OWNER is not set")
+		fmt.Fprintln(stderr, "tellproof-server: DATABASE_URL_OWNER is not set")
 		return 2
 	}
 	conn, err := pgx.Connect(ctx, url)
 	if err != nil {
-		fmt.Fprintln(stderr, "witnessmark-server: cannot connect to the database")
+		fmt.Fprintln(stderr, "tellproof-server: cannot connect to the database")
 		return 1
 	}
 	defer conn.Close(context.WithoutCancel(ctx))
@@ -398,7 +398,7 @@ func keysCmd(ctx context.Context, args []string, getenv func(string) string, std
 		return errors.New("unknown keys subcommand " + sub)
 	})
 	if err != nil {
-		fmt.Fprintln(stderr, "witnessmark-server keys:", err)
+		fmt.Fprintln(stderr, "tellproof-server keys:", err)
 		return 1
 	}
 	return 0

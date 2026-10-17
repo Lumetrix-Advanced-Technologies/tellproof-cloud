@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/evaluate"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/evaluate"
 )
 
 var changeKinds = []string{"model", "prompt", "guardrail", "config", "provider"}

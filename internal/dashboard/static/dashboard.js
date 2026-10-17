@@ -32,8 +32,8 @@ function sv(tag, attrs = {}) {
 // A link can pick the range: #range=7d.
 const linked = /range=(24h|7d|30d|all)/.exec(location.hash);
 let state = { range: linked ? linked[1] : load("range") || "24h", data: null, firstLoad: !linked };
-function load(k) { try { return localStorage.getItem("witnessmark." + k); } catch { return null; } }
-function save(k, v) { try { localStorage.setItem("witnessmark." + k, v); } catch { /* private window */ } }
+function load(k) { try { return localStorage.getItem("tellproof." + k); } catch { return null; } }
+function save(k, v) { try { localStorage.setItem("tellproof." + k, v); } catch { /* private window */ } }
 
 // ---- time buckets -------------------------------------------------------
 
@@ -472,7 +472,7 @@ function drawObjectives(api) {
     sub.textContent = "Checked against your policy file, with the same evaluator as signed packs.";
     box.replaceChildren(el("div", { class: "obj-note" },
       el("p", {}, (api && api.message) || "Objectives are not available."),
-      el("pre", {}, el("code", {}, "witnessmark-agent policy init     # declare the models and regions you see\nwitnessmark-agent check           # the same results in a terminal or CI"))));
+      el("pre", {}, el("code", {}, "tellproof-agent policy init     # declare the models and regions you see\ntellproof-agent check           # the same results in a terminal or CI"))));
     return;
   }
   const r = api.report, s = r.summary;

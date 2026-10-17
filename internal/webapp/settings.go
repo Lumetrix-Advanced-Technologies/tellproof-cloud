@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/vanta"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/vanta"
 )
 
 // vantaView is the Vanta panel. It never holds a credential.

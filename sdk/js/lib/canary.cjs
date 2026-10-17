@@ -10,8 +10,8 @@
 
 const core = require('./core.cjs');
 
-const CANARY_KIND = 'witnessmark.canary.kind';
-const CANARY_CAUGHT = 'witnessmark.canary.caught';
+const CANARY_KIND = 'tellproof.canary.kind';
+const CANARY_CAUGHT = 'tellproof.canary.caught';
 
 // spec/canaries.json v1; tests compare them with the file.
 const PROBES = Object.freeze({
@@ -47,7 +47,7 @@ function canary(kind, caught) {
       return;
     }
     const now = core.currentClient().clock();
-    core.record('witnessmark.canary', core.KIND_INTERNAL, now, now, { [CANARY_KIND]: k, [CANARY_CAUGHT]: caughtOf(caught) }, false, {
+    core.record('tellproof.canary', core.KIND_INTERNAL, now, now, { [CANARY_KIND]: k, [CANARY_CAUGHT]: caughtOf(caught) }, false, {
       frame: null,
     });
   } catch (e) {

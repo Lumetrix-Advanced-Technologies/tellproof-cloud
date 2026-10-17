@@ -1,14 +1,14 @@
-"""Witnessmark SDK: one line to send evidence telemetry to the local Witnessmark agent.
+"""Tellproof SDK: one line to send evidence telemetry to the local Tellproof agent.
 
-    import witnessmark
-    witnessmark.init()
+    import tellproof
+    tellproof.init()
 
 Spans go as OTLP JSON to the agent (http://127.0.0.1:4318, or
-WITNESSMARK_AGENT_URL). They carry provider, model, region, token counts,
+TELLPROOF_AGENT_URL). They carry provider, model, region, token counts,
 operation, timing, error status and the helper attributes below; never
 prompts, completions, function arguments or exception messages. The SDK has no
 dependencies, never blocks a request (a full buffer drops spans and counts
-them) and never raises into the app. WITNESSMARK_DISABLED=1 turns it off.
+them) and never raises into the app. TELLPROOF_DISABLED=1 turns it off.
 """
 
 from __future__ import annotations
@@ -36,8 +36,8 @@ _instrumented: list[str] = []
 
 
 def _env(name: str) -> str:
-    # WITNESSMARK_<name>, else PLUMBLINE_<name> from before the rename (D-056).
-    return os.environ.get("WITNESSMARK_" + name) or os.environ.get("PLUMBLINE_" + name) or ""
+    # TELLPROOF_<name>, else PLUMBLINE_<name> from before the rename (D-056).
+    return os.environ.get("TELLPROOF_" + name) or os.environ.get("PLUMBLINE_" + name) or ""
 
 
 def _resource(service: str | None, environment: str | None) -> dict:
@@ -45,7 +45,7 @@ def _resource(service: str | None, environment: str | None) -> dict:
     if not name:
         prog = os.path.basename(sys.argv[0]) if sys.argv and sys.argv[0] else "python"
         name = f"unknown_service:{prog}"
-    r = {"service.name": name[:_core.MAX_VALUE], "telemetry.sdk.name": "witnessmark",
+    r = {"service.name": name[:_core.MAX_VALUE], "telemetry.sdk.name": "tellproof",
          "telemetry.sdk.language": "python", "telemetry.sdk.version": __version__}
     env = environment or _env("ENVIRONMENT")
     if env:
@@ -81,7 +81,7 @@ def init(agent_url: str | None = None, service: str | None = None, *, environmen
                 atexit.register(shutdown)
                 _atexit = True
         except Exception:
-            _core.log.debug("witnessmark: init failed; the SDK stays off", exc_info=True)
+            _core.log.debug("tellproof: init failed; the SDK stays off", exc_info=True)
             return False
         return True
 

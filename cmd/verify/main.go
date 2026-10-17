@@ -1,6 +1,6 @@
-// Command witnessmark-verify checks Witnessmark evidence packs offline.
+// Command tellproof-verify checks Tellproof evidence packs offline.
 //
-//	witnessmark-verify --jwks <file|https-url> pack1.json [pack2.json ...]
+//	tellproof-verify --jwks <file|https-url> pack1.json [pack2.json ...]
 //
 // Packs are given oldest first; each one after the first is checked against
 // the one before it. It exits 0 only when every pack verifies, 1 when any pack
@@ -19,10 +19,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/checkpoint"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/cievidence"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/checkpoint"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/cievidence"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/pack"
 )
 
 // version is set at link time: go build -ldflags "-X main.version=v0.1.0".
@@ -43,15 +43,15 @@ func main() {
 	os.Exit(run(context.Background(), cfg, os.Args[1:], os.Stdout, os.Stderr))
 }
 
-const usage = `usage: witnessmark-verify --jwks <file|https-url> [--json] pack1.json [pack2.json ...]
-       witnessmark-verify checkpoint --jwks <file|https-url> [--prev yesterday.json] checkpoint.json [pack.json ...]
-       witnessmark-verify ci (--pub <key.pem> | --unsigned) --commit <sha> [--require a,b] [--canary a,b] [--json] statement.json
+const usage = `usage: tellproof-verify --jwks <file|https-url> [--json] pack1.json [pack2.json ...]
+       tellproof-verify checkpoint --jwks <file|https-url> [--prev yesterday.json] checkpoint.json [pack.json ...]
+       tellproof-verify ci (--pub <key.pem> | --unsigned) --commit <sha> [--require a,b] [--canary a,b] [--json] statement.json
 
-Verifies Witnessmark evidence packs: the issuer's signature, the subject digest,
+Verifies Tellproof evidence packs: the issuer's signature, the subject digest,
 the link to the previous pack and the disclosed trace's Merkle proof.
 Give packs oldest first. The checkpoint form verifies a daily checkpoint (its
 signature, root and link to the previous day) and proves each pack is in it.
-The ci form verifies a Witnessmark CI evidence statement (witnessmark-agent ci
+The ci form verifies a Tellproof CI evidence statement (tellproof-agent ci
 attest) and checks that the required gates passed on the commit and that each
 listed gate's must-fail canary was caught.
 Exit status: 0 all verified, 1 a check failed, 2 usage or input error.
@@ -71,16 +71,16 @@ func run(ctx context.Context, cfg config, args []string, stdout, stderr io.Write
 	}
 	opts, err := parseArgs(args)
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-verify: %v\n\n%s", err, usage)
+		fmt.Fprintf(stderr, "tellproof-verify: %v\n\n%s", err, usage)
 		return 2
 	}
 	if opts.version {
-		fmt.Fprintf(stdout, "witnessmark-verify %s\n", cfg.version)
+		fmt.Fprintf(stdout, "tellproof-verify %s\n", cfg.version)
 		return 0
 	}
 	keys, err := loadJWKS(ctx, cfg.client, opts.jwks)
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
+		fmt.Fprintf(stderr, "tellproof-verify: %v\n", err)
 		return 2
 	}
 
@@ -89,7 +89,7 @@ func run(ctx context.Context, cfg config, args []string, stdout, stderr io.Write
 	for i, file := range opts.files {
 		data, err := readFile(file, maxPackBytes)
 		if err != nil {
-			fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
+			fmt.Fprintf(stderr, "tellproof-verify: %v\n", err)
 			return 2
 		}
 		rep := verifyOne(file, data, keys, prev)
@@ -127,7 +127,7 @@ type options struct {
 // parseArgs accepts flags before, between or after the pack files.
 func parseArgs(args []string) (options, error) {
 	var o options
-	fs := flag.NewFlagSet("witnessmark-verify", flag.ContinueOnError)
+	fs := flag.NewFlagSet("tellproof-verify", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&o.jwks, "jwks", "", "issuer JWKS file or https URL")
 	fs.BoolVar(&o.json, "json", false, "print a JSON report")
@@ -317,14 +317,14 @@ func writeHuman(w io.Writer, verified bool, reports []packReport) {
 // runCheckpoint verifies a daily checkpoint and proves that each given pack
 // was published in it (D-043).
 func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet("witnessmark-verify checkpoint", flag.ContinueOnError)
+	fs := flag.NewFlagSet("tellproof-verify checkpoint", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	jwksSrc := fs.String("jwks", "", "issuer JWKS file or https URL")
 	prevFile := fs.String("prev", "", "the previous day's checkpoint, to check the link")
 	var files []string
 	for {
 		if err := fs.Parse(args); err != nil {
-			fmt.Fprintf(stderr, "witnessmark-verify: %v\n\n%s", err, usage)
+			fmt.Fprintf(stderr, "tellproof-verify: %v\n\n%s", err, usage)
 			return 2
 		}
 		if fs.NArg() == 0 {
@@ -334,12 +334,12 @@ func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stder
 		args = fs.Args()[1:]
 	}
 	if *jwksSrc == "" || len(files) == 0 {
-		fmt.Fprintf(stderr, "witnessmark-verify: checkpoint needs --jwks and a checkpoint file\n\n%s", usage)
+		fmt.Fprintf(stderr, "tellproof-verify: checkpoint needs --jwks and a checkpoint file\n\n%s", usage)
 		return 2
 	}
 	keys, err := loadJWKS(ctx, cfg.client, *jwksSrc)
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
+		fmt.Fprintf(stderr, "tellproof-verify: %v\n", err)
 		return 2
 	}
 	load := func(f string) (*dsse.Envelope, error) {
@@ -352,13 +352,13 @@ func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stder
 	var prev *dsse.Envelope
 	if *prevFile != "" {
 		if prev, err = load(*prevFile); err != nil {
-			fmt.Fprintf(stderr, "witnessmark-verify: %s: %v\n", *prevFile, err)
+			fmt.Fprintf(stderr, "tellproof-verify: %s: %v\n", *prevFile, err)
 			return 2
 		}
 	}
 	cpEnv, err := load(files[0])
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-verify: %s: %v\n", files[0], err)
+		fmt.Fprintf(stderr, "tellproof-verify: %s: %v\n", files[0], err)
 		return 2
 	}
 	fmt.Fprintln(stdout, files[0])
@@ -376,7 +376,7 @@ func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stder
 	for _, f := range files[1:] {
 		env, err := load(f)
 		if err != nil {
-			fmt.Fprintf(stderr, "witnessmark-verify: %s: %v\n", f, err)
+			fmt.Fprintf(stderr, "tellproof-verify: %s: %v\n", f, err)
 			return 2
 		}
 		d := pack.Digest(env)
@@ -405,7 +405,7 @@ func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stder
 
 // runCI verifies a CI evidence statement against the gates it must show.
 func runCI(args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet("witnessmark-verify ci", flag.ContinueOnError)
+	fs := flag.NewFlagSet("tellproof-verify ci", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	pubFile := fs.String("pub", "", "the signer's Ed25519 public key (PEM)")
 	unsigned := fs.Bool("unsigned", false, "accept a bare statement (verify its GitHub attestation separately)")
@@ -414,18 +414,18 @@ func runCI(args []string, stdout, stderr io.Writer) int {
 	canary := fs.String("canary", "", "gates whose canary must have been caught, comma-separated")
 	asJSON := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil || fs.NArg() != 1 || *commit == "" || (*pubFile == "" && !*unsigned) {
-		fmt.Fprintf(stderr, "witnessmark-verify: ci needs --pub (or --unsigned), --commit and one statement file\n\n%s", usage)
+		fmt.Fprintf(stderr, "tellproof-verify: ci needs --pub (or --unsigned), --commit and one statement file\n\n%s", usage)
 		return 2
 	}
 	b, err := os.ReadFile(fs.Arg(0))
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
+		fmt.Fprintf(stderr, "tellproof-verify: %v\n", err)
 		return 2
 	}
 	var pub []byte
 	if *pubFile != "" {
 		if pub, err = os.ReadFile(*pubFile); err != nil {
-			fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
+			fmt.Fprintf(stderr, "tellproof-verify: %v\n", err)
 			return 2
 		}
 	}
@@ -440,7 +440,7 @@ func runCI(args []string, stdout, stderr io.Writer) int {
 	}
 	code, err := cievidence.VerifyAndReport(stdout, b, pub, *unsigned, cievidence.Requirements{Commit: *commit, Required: list(*require), Canaries: list(*canary)}, *asJSON)
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
+		fmt.Fprintf(stderr, "tellproof-verify: %v\n", err)
 	}
 	return code
 }

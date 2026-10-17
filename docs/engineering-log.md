@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-17 · P7-4 · Witnessmark becomes Tellproof
+
+**Built.** The founders asked to proceed with the release. Before pushing anything public I checked the domains again with RDAP and NS records instead of A records, and found WitnessMark, a governance and assurance advisory at witnessmark.co, and every witnessmark domain registered. I stopped before the public push, release and package names, and the founders chose a new name from a vetted shortlist (D-059). Then: PRs #53 to #58 merged (merge commits, so the stacked branches kept their hashes); `PUBLISH_PACKAGES` set to false and the `NPM_TOKEN` secret deleted on the public repository; a second rename, `witnessmark` to `tellproof` in 196 files, without aliases because Witnessmark never shipped; the SDK package directory moved; fixtures and screenshots regenerated; the name explained as a tell.
+
+**Problems.** My first name check (D-056) was wrong: it looked for DNS A records and a company of the exact name, so it missed registrations with only NS records and a company styled WitnessMark. The shortlist this time was checked four ways: RDAP plus NS for .com, .ai, .dev and .io, PyPI and npm, a live-site check of each taken .com, and web searches for companies. AssayMark looked best on domains and was dropped for a security-assessment platform of that name.
+
+**Verified.** `make check` with the database and `make oss-check` pass after the rename; no `witnessmark` remains outside history; the dashboard renders as Tellproof.
+
 ## 2026-10-17 · P7-3 · Coding-agent evidence
 
 **Built.** `internal/cievidence` (gate records, JUnit counting, agent-trailer detection, remote-URL sanitising, patched worktrees, the in-toto statement, Ed25519 DSSE signing, verification and its report), `witnessmark-agent ci run | canary | attest | verify | keygen` (`cmd/agent/ci.go`), `witnessmark-verify ci`, the policy's `ci` section and schema, `.witnessmark-ci/` ignored, docs (README section, use case, policy field, CLI reference, troubleshooting; architecture §3.2; changelog; agent docs page). Choices in D-058.

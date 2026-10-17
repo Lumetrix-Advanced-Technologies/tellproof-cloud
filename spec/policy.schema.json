@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/witnessmark/main/spec/policy.schema.json",
-  "title": "Witnessmark policy (witnessmark.policy.json)",
-  "description": "What an AI system is meant to be: the models and regions it may use, and the change, incident and evaluation registers its evidence objectives compare telemetry with. Read by witnessmark-agent check, policy init and aibom (D-055).",
+  "$id": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/tellproof/main/spec/policy.schema.json",
+  "title": "Tellproof policy (tellproof.policy.json)",
+  "description": "What an AI system is meant to be: the models and regions it may use, and the change, incident and evaluation registers its evidence objectives compare telemetry with. Read by tellproof-agent check, policy init and aibom (D-055).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -182,7 +182,7 @@
       "required": [
         "required_gates"
       ],
-      "description": "What `witnessmark-agent ci verify` requires of every commit (D-058).",
+      "description": "What `tellproof-agent ci verify` requires of every commit (D-058).",
       "properties": {
         "required_gates": {
           "type": "array",

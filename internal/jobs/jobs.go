@@ -1,6 +1,6 @@
 // Package jobs is the control plane's work queue (docs/architecture.md §4.1):
 // rows in the global jobs table, claimed with FOR UPDATE SKIP LOCKED so any
-// number of `witnessmark-server work` processes share it without running a job
+// number of `tellproof-server work` processes share it without running a job
 // twice, retried with backoff, and pruned.
 //
 // A job is claimed in a short transaction (locked_at, attempts + 1) and run
@@ -22,7 +22,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store"
 )
 
 // Kinds the jobs table accepts (its CHECK constraint).

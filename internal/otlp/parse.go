@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batch"
 )
 
 // Kind classifies a span for the objectives.

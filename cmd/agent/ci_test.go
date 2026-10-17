@@ -31,7 +31,7 @@ func gitRepo(t *testing.T) string {
 	run("init", "-q", "-b", "main")
 	run("remote", "add", "origin", "https://x-access-token:ghs_SECRET@github.com/acme/app.git")
 	_ = os.WriteFile(filepath.Join(dir, "app.txt"), []byte("status: good\n"), 0o644)
-	_ = os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(".witnessmark-ci/\n*.pem\n*.pem.pub\nreport.xml\nci.json\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(".tellproof-ci/\n*.pem\n*.pem.pub\nreport.xml\nci.json\n"), 0o644)
 	run("add", ".")
 	run("commit", "-q", "-m", "app\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>")
 	_ = os.WriteFile(filepath.Join(dir, "break.patch"), []byte("--- a/app.txt\n+++ b/app.txt\n@@ -1 +1 @@\n-status: good\n+status: broken\n"), 0o644)
@@ -90,7 +90,7 @@ func TestCIEvidenceEndToEnd(t *testing.T) {
 	}
 
 	pol := `{"ai_system": "app", "ci": {"required_gates": ["lint", "tests"], "canary_gates": ["lint"]}}`
-	_ = os.WriteFile("witnessmark.policy.json", []byte(pol), 0o644)
+	_ = os.WriteFile("tellproof.policy.json", []byte(pol), 0o644)
 	code, out, errs := agentCmd(t, env, "ci", "verify", "--pub", "ci.pem.pub", "ci.json")
 	if code != 0 || !strings.Contains(out, "signature verified") || !strings.Contains(out, "3 tests, 1 skipped") || !strings.Contains(out, "claude 1") {
 		t.Fatalf("verify: %d %s %s", code, out, errs)
@@ -131,7 +131,7 @@ func TestCIEvidenceEndToEnd(t *testing.T) {
 	if code != 0 || json.Unmarshal([]byte(out), &res) != nil || res.Signed || !res.OK {
 		t.Errorf("unsigned verify: %d %s", code, out)
 	}
-	if pb, err := os.ReadFile("predicate.json"); err != nil || !bytes.Contains(pb, []byte(`"ci_schema": "witnessmark-ci/v0.1"`)) {
+	if pb, err := os.ReadFile("predicate.json"); err != nil || !bytes.Contains(pb, []byte(`"ci_schema": "tellproof-ci/v0.1"`)) {
 		t.Errorf("predicate: %v %s", err, pb)
 	}
 	bare, _ := os.ReadFile("bare.json")

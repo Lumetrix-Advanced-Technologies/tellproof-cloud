@@ -10,7 +10,7 @@ import * as esm from '../lib/index.mjs';
 import { FIXTURE, Capture, exportLines } from './scenario.mjs';
 
 const require = createRequire(import.meta.url);
-const witnessmark = require('../lib/index.cjs');
+const tellproof = require('../lib/index.cjs');
 const core = require('../lib/core.cjs');
 const otlp = require('../lib/otlp.cjs');
 const { Exporter } = require('../lib/export.cjs');
@@ -35,16 +35,16 @@ test('the committed fixture is current', () => {
 });
 
 test('import and require share one SDK instance', () => {
-  assert.equal(esm.init, witnessmark.init);
-  assert.equal(esm.default, witnessmark);
+  assert.equal(esm.init, tellproof.init);
+  assert.equal(esm.default, tellproof);
 });
 
 test('scopes stamp spans and nest', async () => {
   const spans = await spansOf(() =>
-    witnessmark.agentRun('helper', () =>
-      witnessmark.prompt('reply', 7, () =>
-        witnessmark.personalData({ redacted: true }, () =>
-          witnessmark.llmCall({ provider: 'openai', model: 'gpt-4.1', region: 'eu-west-1' }, (c) => {
+    tellproof.agentRun('helper', () =>
+      tellproof.prompt('reply', 7, () =>
+        tellproof.personalData({ redacted: true }, () =>
+          tellproof.llmCall({ provider: 'openai', model: 'gpt-4.1', region: 'eu-west-1' }, (c) => {
             c.usage(10, 3);
             c.responseModel = 'gpt-4.1-2026-04-14';
           }),
@@ -53,10 +53,10 @@ test('scopes stamp spans and nest', async () => {
     ),
   );
   const [llm, run] = spans;
-  assert.equal(attrs(llm)['witnessmark.prompt.version'], '7');
+  assert.equal(attrs(llm)['tellproof.prompt.version'], '7');
   assert.equal(attrs(llm)['gen_ai.agent.name'], 'helper');
   assert.equal(attrs(llm)['gen_ai.response.model'], 'gpt-4.1-2026-04-14');
-  assert.equal(attrs(llm)['witnessmark.redaction.applied'], true);
+  assert.equal(attrs(llm)['tellproof.redaction.applied'], true);
   assert.equal(llm.parent, run.spanId);
   assert.equal(llm.traceId, run.traceId);
   assert.equal(attrs(run)['gen_ai.operation.name'], 'invoke_agent');
@@ -64,41 +64,41 @@ test('scopes stamp spans and nest', async () => {
 
 test('spans outside scopes get their own traces', async () => {
   const spans = await spansOf(() => {
-    for (let i = 0; i < 3; i++) witnessmark.llmCall({ provider: 'openai', model: 'm' }, () => {});
+    for (let i = 0; i < 3; i++) tellproof.llmCall({ provider: 'openai', model: 'm' }, () => {});
   });
   assert.equal(new Set(spans.map((s) => s.traceId)).size, 3);
 });
 
 test('a guardrail decided after the call', async () => {
   const spans = await spansOf(() =>
-    witnessmark.guardrail((g) => {
-      witnessmark.llmCall({ provider: 'openai', model: 'm' }, () => {});
+    tellproof.guardrail((g) => {
+      tellproof.llmCall({ provider: 'openai', model: 'm' }, () => {});
       assert.equal(core.currentClient().stats.spans, 0, 'the call waits for the decision');
       g.flag();
     }),
   );
-  assert.equal(attrs(spans[0])['witnessmark.guardrail.decision'], 'flag');
+  assert.equal(attrs(spans[0])['tellproof.guardrail.decision'], 'flag');
 });
 
 test('an inner guardrail decision wins and an outer one fills the rest', async () => {
   const spans = await spansOf(() =>
-    witnessmark.guardrail('allow', () => {
-      witnessmark.guardrail('block', () => witnessmark.llmCall({ provider: 'openai', model: 'inner' }, () => {}));
-      witnessmark.guardrail(() => witnessmark.llmCall({ provider: 'openai', model: 'undecided' }, () => {}));
+    tellproof.guardrail('allow', () => {
+      tellproof.guardrail('block', () => tellproof.llmCall({ provider: 'openai', model: 'inner' }, () => {}));
+      tellproof.guardrail(() => tellproof.llmCall({ provider: 'openai', model: 'undecided' }, () => {}));
     }),
   );
-  const got = Object.fromEntries(spans.map((s) => [attrs(s)['gen_ai.request.model'], attrs(s)['witnessmark.guardrail.decision']]));
+  const got = Object.fromEntries(spans.map((s) => [attrs(s)['gen_ai.request.model'], attrs(s)['tellproof.guardrail.decision']]));
   assert.deepEqual(got, { inner: 'block', undecided: 'allow' });
 });
 
 test('a block without a call is one blocked call', async () => {
   const spans = await spansOf(() => {
-    witnessmark.guardrail({ decision: 'block', provider: 'anthropic', model: 'claude-haiku-4-5' }, () => {});
-    witnessmark.guardrail('allow', () => {}); // allowed, nothing called: nothing to record
+    tellproof.guardrail({ decision: 'block', provider: 'anthropic', model: 'claude-haiku-4-5' }, () => {});
+    tellproof.guardrail('allow', () => {}); // allowed, nothing called: nothing to record
   });
   assert.equal(spans.length, 1);
   const a = attrs(spans[0]);
-  assert.deepEqual([a['gen_ai.provider.name'], a['gen_ai.request.model'], a['witnessmark.guardrail.decision']], [
+  assert.deepEqual([a['gen_ai.provider.name'], a['gen_ai.request.model'], a['tellproof.guardrail.decision']], [
     'anthropic',
     'claude-haiku-4-5',
     'block',
@@ -108,10 +108,10 @@ test('a block without a call is one blocked call', async () => {
 test('an invalid decision is ignored, not thrown', async () => {
   let errors;
   const spans = await spansOf(() => {
-    witnessmark.guardrail('maybe', () => witnessmark.llmCall({ provider: 'openai', model: 'm' }, () => {}));
+    tellproof.guardrail('maybe', () => tellproof.llmCall({ provider: 'openai', model: 'm' }, () => {}));
     errors = core.currentClient().stats.instrumentationErrors;
   });
-  assert.ok(!('witnessmark.guardrail.decision' in attrs(spans[0])));
+  assert.ok(!('tellproof.guardrail.decision' in attrs(spans[0])));
   assert.equal(errors, 1);
 });
 
@@ -120,7 +120,7 @@ test('tool errors and approval; the app error passes through', async () => {
   const spans = await spansOf(() => {
     assert.throws(
       () =>
-        witnessmark.tool('refund', { highImpact: true }, (t) => {
+        tellproof.tool('refund', { highImpact: true }, (t) => {
           t.approved = true;
           throw boom;
         }),
@@ -128,20 +128,20 @@ test('tool errors and approval; the app error passes through', async () => {
     );
   });
   assert.equal(spans[0].error, true);
-  assert.deepEqual([attrs(spans[0])['witnessmark.tool.high_impact'], attrs(spans[0])['witnessmark.tool.approved']], [true, true]);
+  assert.deepEqual([attrs(spans[0])['tellproof.tool.high_impact'], attrs(spans[0])['tellproof.tool.approved']], [true, true]);
 });
 
 test('async scopes end when their promise settles and keep the value', async () => {
   const spans = await spansOf(async () => {
-    const v = await witnessmark.agentRun('async-agent', async () => {
+    const v = await tellproof.agentRun('async-agent', async () => {
       await new Promise((r) => setTimeout(r, 5));
-      await witnessmark.llmCall({ provider: 'openai', model: 'm' }, async () => {
+      await tellproof.llmCall({ provider: 'openai', model: 'm' }, async () => {
         await new Promise((r) => setImmediate(r));
       });
       return 42;
     });
     assert.equal(v, 42);
-    await assert.rejects(witnessmark.tool('t', async () => Promise.reject(new RangeError('r'))), RangeError);
+    await assert.rejects(tellproof.tool('t', async () => Promise.reject(new RangeError('r'))), RangeError);
   });
   assert.deepEqual(spans.map((s) => s.name), ['chat', 'invoke_agent', 'execute_tool']);
   assert.equal(spans[0].traceId, spans[1].traceId);
@@ -152,28 +152,28 @@ test('concurrent requests keep their own context', async () => {
   const spans = await spansOf(() =>
     Promise.all(
       [0, 1, 2].map((n) =>
-        witnessmark.prompt('p', n, async () => {
+        tellproof.prompt('p', n, async () => {
           await new Promise((r) => setTimeout(r, 10 * (3 - n)));
-          witnessmark.llmCall({ provider: 'openai', model: 'm' }, () => {});
+          tellproof.llmCall({ provider: 'openai', model: 'm' }, () => {});
         }),
       ),
     ),
   );
-  assert.deepEqual(spans.map((s) => attrs(s)['witnessmark.prompt.version']).sort(), ['0', '1', '2']);
+  assert.deepEqual(spans.map((s) => attrs(s)['tellproof.prompt.version']).sort(), ['0', '1', '2']);
   assert.equal(new Set(spans.map((s) => s.traceId)).size, 3);
 });
 
 test('values are short names only', async () => {
   const spans = await spansOf(() =>
-    witnessmark.prompt('x'.repeat(1000), { not: 'a version' }, () => witnessmark.llmCall({ provider: 'openai', model: 'm' }, () => {})),
+    tellproof.prompt('x'.repeat(1000), { not: 'a version' }, () => tellproof.llmCall({ provider: 'openai', model: 'm' }, () => {})),
   );
-  assert.equal(attrs(spans[0])['witnessmark.prompt.name'].length, core.MAX_VALUE);
-  assert.ok(!('witnessmark.prompt.version' in attrs(spans[0])));
+  assert.equal(attrs(spans[0])['tellproof.prompt.name'].length, core.MAX_VALUE);
+  assert.ok(!('tellproof.prompt.version' in attrs(spans[0])));
 });
 
 test('usage ignores bad counts', async () => {
   const spans = await spansOf(() =>
-    witnessmark.llmCall({ provider: 'openai', model: 'm' }, (c) => {
+    tellproof.llmCall({ provider: 'openai', model: 'm' }, (c) => {
       c.usage(-1, '12');
       c.usage(1.5, true);
     }),
@@ -186,31 +186,31 @@ test('disabled is a no-op that still runs the app', () => {
   const old = core.currentClient();
   core.setClient(new core.Client());
   try {
-    const r = witnessmark.agentRun('a', () =>
-      witnessmark.guardrail('block', (g) =>
-        witnessmark.tool('t', (t) => {
+    const r = tellproof.agentRun('a', () =>
+      tellproof.guardrail('block', (g) =>
+        tellproof.tool('t', (t) => {
           t.approved = true;
           g.allow();
-          witnessmark.escalation();
+          tellproof.escalation();
           return 'ran';
         }),
       ),
     );
     assert.equal(r, 'ran');
-    assert.equal(witnessmark.isEnabled(), false);
-    assert.equal(witnessmark.trace('not a function'), undefined); // misuse never throws
+    assert.equal(tellproof.isEnabled(), false);
+    assert.equal(tellproof.trace('not a function'), undefined); // misuse never throws
   } finally {
     core.setClient(old);
   }
 });
 
-test('init respects WITNESSMARK_DISABLED', () => {
-  process.env.WITNESSMARK_DISABLED = '1';
+test('init respects TELLPROOF_DISABLED', () => {
+  process.env.TELLPROOF_DISABLED = '1';
   try {
-    assert.equal(witnessmark.init({ transport: () => {} }), false);
-    assert.equal(witnessmark.isEnabled(), false);
+    assert.equal(tellproof.init({ transport: () => {} }), false);
+    assert.equal(tellproof.isEnabled(), false);
   } finally {
-    delete process.env.WITNESSMARK_DISABLED;
+    delete process.env.TELLPROOF_DISABLED;
   }
 });
 
@@ -230,19 +230,19 @@ test('random text never reaches an export', async () => {
       for (let j = 0; j < 24; j++) marker += chars[Math.floor(rnd() * chars.length)];
       markers.push(marker);
       const act = (message, note) =>
-        witnessmark.tool('t', { highImpact: rnd() < 0.5 }, () => {
+        tellproof.tool('t', { highImpact: rnd() < 0.5 }, () => {
           if (rnd() < 0.3) throw new Error(message);
           return message + note;
         });
       try {
-        await witnessmark.agentRun('fuzz', () =>
-          witnessmark.guardrail(async (g) => {
-            await witnessmark.llmCall({ provider: 'openai', model: 'm' }, async (c) => {
+        await tellproof.agentRun('fuzz', () =>
+          tellproof.guardrail(async (g) => {
+            await tellproof.llmCall({ provider: 'openai', model: 'm' }, async (c) => {
               c.usage(marker.length, 1);
               act(marker, marker);
             });
             g.decision = ['allow', 'block', 'flag', marker][Math.floor(rnd() * 4)];
-            witnessmark.escalation();
+            tellproof.escalation();
           }),
         );
       } catch {}
@@ -305,14 +305,14 @@ test('init sends OTLP JSON to the agent URL', async () => {
   });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
   try {
-    assert.equal(witnessmark.init({ agentUrl: `http://127.0.0.1:${srv.address().port}/`, service: 'e2e', instrument: false }), true);
-    assert.equal(witnessmark.init(), true); // idempotent
-    witnessmark.llmCall({ provider: 'openai', model: 'gpt-4.1-mini' }, (c) => c.usage(5, 1));
-    assert.equal(await witnessmark.flush(5000), true);
-    const st = witnessmark.stats();
+    assert.equal(tellproof.init({ agentUrl: `http://127.0.0.1:${srv.address().port}/`, service: 'e2e', instrument: false }), true);
+    assert.equal(tellproof.init(), true); // idempotent
+    tellproof.llmCall({ provider: 'openai', model: 'gpt-4.1-mini' }, (c) => c.usage(5, 1));
+    assert.equal(await tellproof.flush(5000), true);
+    const st = tellproof.stats();
     assert.deepEqual([st.exported, st.dropped], [1, 0]);
   } finally {
-    await witnessmark.shutdown();
+    await tellproof.shutdown();
     srv.close();
   }
   const [path, ctype, body] = received[0];
@@ -323,7 +323,7 @@ test('init sends OTLP JSON to the agent URL', async () => {
     { key: 'service.name', value: { stringValue: 'e2e' } },
   );
   assert.equal(rs.scopeSpans[0].spans.length, 1);
-  assert.equal(witnessmark.isEnabled(), false);
+  assert.equal(tellproof.isEnabled(), false);
 });
 
 test('a script that awaits flush() is not cut short by the unref\'d timers', () => {
@@ -342,16 +342,16 @@ test('a script that awaits flush() is not cut short by the unref\'d timers', () 
 // Guardrail canaries (D-057): only the kind and the result leave the probe.
 test('canary probes are spec/canaries.json', () => {
   const spec = JSON.parse(readFileSync(new URL('../../../spec/canaries.json', import.meta.url), 'utf8'));
-  assert.deepEqual({ ...witnessmark.PROBES }, Object.fromEntries(spec.probes.map((p) => [p.kind, p.text])));
-  assert.equal(esm.runCanaries, witnessmark.runCanaries);
+  assert.deepEqual({ ...tellproof.PROBES }, Object.fromEntries(spec.probes.map((p) => [p.kind, p.text])));
+  assert.equal(esm.runCanaries, tellproof.runCanaries);
 });
 
 test('runCanaries records the kind and the result only', async () => {
   const seen = [];
   let got;
   const spans = await spansOf(() =>
-    witnessmark.personalData(async () => {
-      got = await witnessmark.runCanaries(async (text) => {
+    tellproof.personalData(async () => {
+      got = await tellproof.runCanaries(async (text) => {
         seen.push(text);
         if (text.includes('AKIA')) throw new Error('guardrail crashed'); // counts as missed
         return text.includes('instructions') ? 'block' : text.includes('4111') ? true : 'allow';
@@ -359,29 +359,29 @@ test('runCanaries records the kind and the result only', async () => {
     }),
   );
   assert.deepEqual(got, { prompt_injection: true, jailbreak: false, pii: true, secret: false });
-  assert.deepEqual(seen, Object.values(witnessmark.PROBES));
+  assert.deepEqual(seen, Object.values(tellproof.PROBES));
   assert.equal(spans.length, 4);
   for (const s of spans) {
-    assert.deepEqual(Object.keys(attrs(s)).sort(), ['witnessmark.canary.caught', 'witnessmark.canary.kind']);
+    assert.deepEqual(Object.keys(attrs(s)).sort(), ['tellproof.canary.caught', 'tellproof.canary.kind']);
     assert.equal(s.parent, null);
   }
   assert.equal(new Set(spans.map((s) => s.traceId)).size, 4);
   const dumped = JSON.stringify(spans, (k, v) => (typeof v === 'bigint' ? String(v) : v));
-  for (const text of Object.values(witnessmark.PROBES)) assert.ok(!dumped.includes(text.slice(0, 20)));
+  for (const text of Object.values(tellproof.PROBES)) assert.ok(!dumped.includes(text.slice(0, 20)));
 });
 
 test('canary() and kinds', async () => {
   let got;
   const spans = await spansOf(async () => {
-    witnessmark.canary('Prompt_Injection', true);
-    witnessmark.canary('custom-check_2', 'allow');
-    witnessmark.canary('has space', true);
-    witnessmark.canary(null, true);
-    got = await witnessmark.runCanaries(() => true, { kinds: ['pii', 'unknown'] });
+    tellproof.canary('Prompt_Injection', true);
+    tellproof.canary('custom-check_2', 'allow');
+    tellproof.canary('has space', true);
+    tellproof.canary(null, true);
+    got = await tellproof.runCanaries(() => true, { kinds: ['pii', 'unknown'] });
   });
   assert.deepEqual(got, { pii: true });
   assert.deepEqual(
-    spans.map((s) => [attrs(s)['witnessmark.canary.kind'], attrs(s)['witnessmark.canary.caught']]),
+    spans.map((s) => [attrs(s)['tellproof.canary.kind'], attrs(s)['tellproof.canary.caught']]),
     [['prompt_injection', true], ['custom-check_2', false], ['pii', true]],
   );
 });
@@ -391,14 +391,14 @@ test('canaries do not call the guardrail when the SDK is off; schedules unref an
   const old = core.currentClient();
   core.setClient(new core.Client());
   try {
-    assert.deepEqual(await witnessmark.runCanaries((t) => calls.push(t)), {});
+    assert.deepEqual(await tellproof.runCanaries((t) => calls.push(t)), {});
   } finally {
     core.setClient(old);
   }
   assert.deepEqual(calls, []);
   let ran = 0;
   const spans = await spansOf(async () => {
-    const s = witnessmark.scheduleCanaries(() => { ran++; return true; }, { every: 0, kinds: ['pii'] });
+    const s = tellproof.scheduleCanaries(() => { ran++; return true; }, { every: 0, kinds: ['pii'] });
     assert.equal(s.every, 60_000);
     await new Promise((r) => setTimeout(r, 20));
     s.stop();

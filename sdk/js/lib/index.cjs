@@ -1,15 +1,15 @@
 'use strict';
-// Witnessmark SDK: one line to send evidence telemetry to the local Witnessmark agent.
+// Tellproof SDK: one line to send evidence telemetry to the local Tellproof agent.
 //
-//   const witnessmark = require('witnessmark');   // or: import * as witnessmark from 'witnessmark'
-//   witnessmark.init();
+//   const tellproof = require('tellproof');   // or: import * as tellproof from 'tellproof'
+//   tellproof.init();
 //
 // Spans go as OTLP JSON to the agent (http://127.0.0.1:4318, or
-// WITNESSMARK_AGENT_URL). They carry provider, model, region, token counts,
+// TELLPROOF_AGENT_URL). They carry provider, model, region, token counts,
 // operation, timing, error status and the helper attributes; never prompts,
 // completions, function arguments or error messages. No dependencies; never
 // blocks a request (a full buffer drops spans and counts them) and never throws
-// into the app. WITNESSMARK_DISABLED=1 turns it off.
+// into the app. TELLPROOF_DISABLED=1 turns it off.
 
 const path = require('node:path');
 const core = require('./core.cjs');
@@ -22,9 +22,9 @@ const DEFAULT_AGENT_URL = 'http://127.0.0.1:4318';
 let exitHook = false;
 let instrumented = [];
 
-// WITNESSMARK_<name>, else PLUMBLINE_<name> from before the rename (D-056).
+// TELLPROOF_<name>, else PLUMBLINE_<name> from before the rename (D-056).
 function env(name) {
-  return process.env['WITNESSMARK_' + name] || process.env['PLUMBLINE_' + name] || '';
+  return process.env['TELLPROOF_' + name] || process.env['PLUMBLINE_' + name] || '';
 }
 
 function resource(service, environment) {
@@ -32,7 +32,7 @@ function resource(service, environment) {
   if (!name) name = `unknown_service:${path.basename(process.argv[1] || process.argv0 || 'node')}`;
   const r = {
     'service.name': String(name).slice(0, core.MAX_VALUE),
-    'telemetry.sdk.name': 'witnessmark',
+    'telemetry.sdk.name': 'tellproof',
     'telemetry.sdk.language': 'nodejs',
     'telemetry.sdk.version': VERSION,
   };
@@ -70,7 +70,7 @@ function init(opts = {}) {
     }
     if (!exitHook) {
       // Flush once when the event loop drains. Short-lived scripts and serverless
-      // handlers should await witnessmark.flush() themselves.
+      // handlers should await tellproof.flush() themselves.
       exitHook = true;
       process.once('beforeExit', () => {
         flush().catch(() => {});
@@ -118,7 +118,7 @@ async function ready() {
 
 // Instrument client libraries the SDK cannot find on its own (bundled apps,
 // strict package managers): pass what you import, for example
-// witnessmark.instrument({ openai: OpenAI, anthropic: Anthropic, bedrock: await import('@aws-sdk/client-bedrock-runtime') }).
+// tellproof.instrument({ openai: OpenAI, anthropic: Anthropic, bedrock: await import('@aws-sdk/client-bedrock-runtime') }).
 function instrument(libs) {
   try {
     const list = require('./instrument.cjs').instrument(libs || {});

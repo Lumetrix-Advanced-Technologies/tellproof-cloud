@@ -18,10 +18,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batchsign"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batch"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batchsign"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/enrol"
 )
 
 var sample = filepath.Join("..", "..", "concierge", "testdata", "otlp-sample.jsonl")
@@ -41,10 +41,10 @@ func TestExampleConfigLoads(t *testing.T) {
 	if err != nil {
 		t.Fatalf("agent.example.json: %v", err)
 	}
-	if c.OTLPListen != "127.0.0.1:4318" || c.Aggregation.GraceMinutes != 5 || c.SaltSecretEnv != "WITNESSMARK_SALT_SECRET" {
+	if c.OTLPListen != "127.0.0.1:4318" || c.Aggregation.GraceMinutes != 5 || c.SaltSecretEnv != "TELLPROOF_SALT_SECRET" {
 		t.Errorf("config = %+v", c)
 	}
-	c, err = LoadConfig(filepath.Join("..", "..", "agent.example.json"), env("WITNESSMARK_SERVER", "https://override.example", "WITNESSMARK_DATA_DIR", "/tmp/x"))
+	c, err = LoadConfig(filepath.Join("..", "..", "agent.example.json"), env("TELLPROOF_SERVER", "https://override.example", "TELLPROOF_DATA_DIR", "/tmp/x"))
 	if err != nil || c.Server != "https://override.example" || c.DataDir != "/tmp/x" {
 		t.Errorf("env overrides: %+v %v", c, err)
 	}
@@ -61,7 +61,7 @@ func TestConfigRefusals(t *testing.T) {
 	}
 	for name, c := range map[string]struct{ json, want string }{
 		"unknown field":       {`{"server":"https://x","admin_key":"sk-oops"}`, "unknown field"},
-		"plain http server":   {`{"server":"http://witnessmark.example"}`, "https"},
+		"plain http server":   {`{"server":"http://tellproof.example"}`, "https"},
 		"listen on all hosts": {`{"otlp_listen":"0.0.0.0:4318"}`, "loopback"},
 		"grace out of range":  {`{"aggregation":{"grace_minutes":90}}`, "grace_minutes"},
 		"trailing data":       {`{} {}`, "unexpected data"},
@@ -83,13 +83,13 @@ func TestConfigRefusals(t *testing.T) {
 func TestEnabledSourcesNeedTheirKeys(t *testing.T) {
 	c, _ := LoadConfig("", env())
 	c.Usage.OpenAI.Enabled, c.Usage.OpenAI.AdminKeyEnv = true, "OPENAI_ADMIN_KEY"
-	_, err := New(c, Options{DryRun: true, Log: quiet(), Getenv: env("WITNESSMARK_SALT_SECRET", "a-salt-secret-0123456")})
+	_, err := New(c, Options{DryRun: true, Log: quiet(), Getenv: env("TELLPROOF_SALT_SECRET", "a-salt-secret-0123456")})
 	if err == nil || !strings.Contains(err.Error(), "OPENAI_ADMIN_KEY is not set") {
 		t.Errorf("err = %v", err)
 	}
 	c, _ = LoadConfig("", env())
 	c.Usage.Bedrock.Enabled = true
-	if _, err := New(c, Options{DryRun: true, Log: quiet(), Getenv: env("WITNESSMARK_SALT_SECRET", "a-salt-secret-0123456")}); err == nil || !strings.Contains(err.Error(), "-tags bedrock") {
+	if _, err := New(c, Options{DryRun: true, Log: quiet(), Getenv: env("TELLPROOF_SALT_SECRET", "a-salt-secret-0123456")}); err == nil || !strings.Contains(err.Error(), "-tags bedrock") {
 		t.Errorf("bedrock in a default build: %v", err)
 	}
 	c, _ = LoadConfig("", env())
@@ -107,7 +107,7 @@ func TestDryRunPrintsAndSendsNothing(t *testing.T) {
 	c.Server = srv.URL
 	c.DataDir = filepath.Join(t.TempDir(), "never-created")
 	var out bytes.Buffer
-	a, err := New(c, Options{DryRun: true, Out: &out, Log: quiet(), Getenv: env("WITNESSMARK_SALT_SECRET", "a-salt-secret-0123456")})
+	a, err := New(c, Options{DryRun: true, Out: &out, Log: quiet(), Getenv: env("TELLPROOF_SALT_SECRET", "a-salt-secret-0123456")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func (s *ingest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // rewrite sends requests for the OpenAI API to a test server; everything else
-// (the Witnessmark server) goes where it was addressed.
+// (the Tellproof server) goes where it was addressed.
 type rewrite struct{ to *url.URL }
 
 func (rw rewrite) RoundTrip(r *http.Request) (*http.Response, error) {
@@ -241,7 +241,7 @@ func TestEndToEndReceiveTickDeliver(t *testing.T) {
 	c.Usage.OpenAI.Enabled, c.Usage.OpenAI.AdminKeyEnv = true, "OPENAI_ADMIN_KEY"
 	clock := time.Date(2026, 9, 1, 1, 30, 0, 0, time.UTC)
 	a, err := New(c, Options{Log: quiet(), Now: func() time.Time { return clock }, HTTP: &http.Client{Transport: rewrite{ou}},
-		Getenv: env("WITNESSMARK_SALT_SECRET", "a-salt-secret-0123456", "OPENAI_ADMIN_KEY", "sk-admin-test")})
+		Getenv: env("TELLPROOF_SALT_SECRET", "a-salt-secret-0123456", "OPENAI_ADMIN_KEY", "sk-admin-test")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ func TestEarlyFirstBatch(t *testing.T) {
 	c, _ := LoadConfig("", env())
 	c.Server, c.DataDir = srv.URL, dir
 	clock := time.Date(2026, 9, 1, 10, 5, 0, 0, time.UTC)
-	a, err := New(c, Options{Log: quiet(), Now: func() time.Time { return clock }, HTTP: srv.Client(), Getenv: env("WITNESSMARK_SALT_SECRET", "a-salt-secret-0123456")})
+	a, err := New(c, Options{Log: quiet(), Now: func() time.Time { return clock }, HTTP: srv.Client(), Getenv: env("TELLPROOF_SALT_SECRET", "a-salt-secret-0123456")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,15 +349,15 @@ func TestDefaultDataDirKeepsTheLegacyDirectory(t *testing.T) {
 	wd, _ := os.Getwd()
 	defer os.Chdir(wd)
 	_ = os.Chdir(t.TempDir())
-	if got := DefaultDataDir(); got != "./.witnessmark-agent" {
+	if got := DefaultDataDir(); got != "./.tellproof-agent" {
 		t.Errorf("fresh: %s", got)
 	}
 	_ = os.Mkdir(".plumbline-agent", 0o700)
 	if got := DefaultDataDir(); got != "./.plumbline-agent" {
 		t.Errorf("legacy only: %s", got)
 	}
-	_ = os.Mkdir(".witnessmark-agent", 0o700)
-	if got := DefaultDataDir(); got != "./.witnessmark-agent" {
+	_ = os.Mkdir(".tellproof-agent", 0o700)
+	if got := DefaultDataDir(); got != "./.tellproof-agent" {
 		t.Errorf("both: %s", got)
 	}
 }

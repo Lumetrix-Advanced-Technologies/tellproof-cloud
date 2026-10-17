@@ -17,11 +17,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/server"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/server"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store/storetest"
 )
 
-// Acceptance (S-5): on a clean machine, `witnessmark-agent connect <token>` plus
+// Acceptance (S-5): on a clean machine, `tellproof-agent connect <token>` plus
 // the one-line SDK init gets a sample app's calls into a batch the server
 // accepts, within seconds of the first call (here first_batch_seconds is 1;
 // the default, 60, keeps it within the five minutes).
@@ -60,7 +60,7 @@ func TestConnectAndASampleAppReachTheServer(t *testing.T) {
 	cfg := filepath.Join(t.TempDir(), "agent.json")
 	_ = os.WriteFile(cfg, []byte(`{"otlp_listen": "`+listen+`", "aggregation": {"grace_minutes": 5, "first_batch_seconds": 1}}`), 0o600)
 	getenv := func(k string) string {
-		return map[string]string{"WITNESSMARK_SERVER": api.URL, "WITNESSMARK_DATA_DIR": dataDir}[k]
+		return map[string]string{"TELLPROOF_SERVER": api.URL, "TELLPROOF_DATA_DIR": dataDir}[k]
 	}
 
 	start := func(token string) (context.CancelFunc, chan int, *lockedBuffer) {
@@ -87,12 +87,12 @@ func TestConnectAndASampleAppReachTheServer(t *testing.T) {
 
 	// The sample app: one line to init the SDK, then a model call.
 	began := time.Now()
-	app := `import witnessmark
-witnessmark.init(agent_url="http://` + listen + `", service="sample-app")
-with witnessmark.prompt("triage", "1"), witnessmark.llm_call("openai", "gpt-4.1-mini") as c:
+	app := `import tellproof
+tellproof.init(agent_url="http://` + listen + `", service="sample-app")
+with tellproof.prompt("triage", "1"), tellproof.llm_call("openai", "gpt-4.1-mini") as c:
     c.usage(120, 30)
-assert witnessmark.flush(5)
-print(witnessmark.stats())`
+assert tellproof.flush(5)
+print(tellproof.stats())`
 	cmd := exec.Command(py, "-c", app)
 	cmd.Env = append(os.Environ(), "PYTHONPATH="+filepath.Join("..", "..", "sdk", "python", "src"))
 	if b, err := cmd.CombinedOutput(); err != nil || !strings.Contains(string(b), "'exported': 1") {
@@ -131,12 +131,12 @@ print(witnessmark.stats())`
 
 func TestConnectUsage(t *testing.T) {
 	var out bytes.Buffer
-	if code := run(context.Background(), []string{"connect"}, func(string) string { return "" }, &out, &out); code != 2 || !strings.Contains(out.String(), "WITNESSMARK_SERVER") {
+	if code := run(context.Background(), []string{"connect"}, func(string) string { return "" }, &out, &out); code != 2 || !strings.Contains(out.String(), "TELLPROOF_SERVER") {
 		t.Errorf("no server: %d %s", code, out.String())
 	}
 	out.Reset()
 	e := func(k string) string {
-		return map[string]string{"WITNESSMARK_SERVER": "https://x.example", "WITNESSMARK_DATA_DIR": t.TempDir()}[k]
+		return map[string]string{"TELLPROOF_SERVER": "https://x.example", "TELLPROOF_DATA_DIR": t.TempDir()}[k]
 	}
 	if code := run(context.Background(), []string{"connect"}, e, &out, &out); code != 2 || !strings.Contains(out.String(), "token") {
 		t.Errorf("no token: %d %s", code, out.String())

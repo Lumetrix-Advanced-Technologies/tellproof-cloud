@@ -24,20 +24,20 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/agent"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/auth"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/issue"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/keys"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/kmssign"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/secretbox"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/server"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/webapp"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/agent"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/auth"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/issue"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/keys"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/kmssign"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/pack"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/secretbox"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/server"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/webapp"
 )
 
 const userA, userB = "20000000-0000-0000-0000-00000000000a", "20000000-0000-0000-0000-00000000000b"
@@ -217,7 +217,7 @@ func TestNewPartnerToFirstPackAndShare(t *testing.T) {
 	// 3. Enrolment token, shown once; the real agent enrols with it and delivers the sample.
 	r = rg.post(userA, sys+"/enrolment-tokens", nil)
 	token := secret(t, r.body, "Enrolment token")
-	if !strings.Contains(r.body, "connect "+token) || !strings.Contains(r.body, "-e WITNESSMARK_SERVER="+rg.srv.URL) || !strings.Contains(r.body, "witnessmark.init()") {
+	if !strings.Contains(r.body, "connect "+token) || !strings.Contains(r.body, "-e TELLPROOF_SERVER="+rg.srv.URL) || !strings.Contains(r.body, "tellproof.init()") {
 		t.Errorf("the install snippet is missing")
 	}
 	dir := filepath.Join(t.TempDir(), "agent")
@@ -227,7 +227,7 @@ func TestNewPartnerToFirstPackAndShare(t *testing.T) {
 	cfg, _ := agent.LoadConfig("", func(string) string { return "" })
 	cfg.Server, cfg.DataDir = rg.srv.URL, dir
 	ag, err := agent.New(cfg, agent.Options{Log: quiet(), HTTP: rg.srv.Client(), Getenv: func(k string) string {
-		return map[string]string{"WITNESSMARK_SALT_SECRET": "a-salt-secret-0123456"}[k]
+		return map[string]string{"TELLPROOF_SALT_SECRET": "a-salt-secret-0123456"}[k]
 	}})
 	if err != nil {
 		t.Fatal(err)

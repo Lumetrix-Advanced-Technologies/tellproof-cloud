@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/aggregate"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batchsign"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/commitment"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localreport"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/otlp"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/queue"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/aggregate"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batchsign"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/commitment"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/otlp"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/queue"
 )
 
 // sampleLog writes the concierge's OTLP sample as a local evidence log.
@@ -56,7 +56,7 @@ func cli(args ...string) (int, string) {
 // Acceptance (D-055): declare from the log, check it in CI, export an AI-BOM.
 func TestPolicyInitCheckAndAIBOM(t *testing.T) {
 	data := sampleLog(t)
-	pol := filepath.Join(t.TempDir(), "witnessmark.policy.json")
+	pol := filepath.Join(t.TempDir(), "tellproof.policy.json")
 
 	code, out := cli("policy", "init", "--policy", pol, "--data-dir", data, "--name", "Claims Triage Agent", "--timezone", "UTC")
 	if code != 0 || !strings.Contains(out, "3 models and 2 regions") || !strings.Contains(out, "2 model or prompt change(s)") {
@@ -80,7 +80,7 @@ func TestPolicyInitCheckAndAIBOM(t *testing.T) {
 	if code != 1 || !strings.Contains(out, "✓ PASS       EO-LIN-01") || !strings.Contains(out, "missing change:") {
 		t.Fatalf("check: %d %s", code, out)
 	}
-	if x, err := os.ReadFile(junit); err != nil || !bytes.Contains(x, []byte(`<testsuite name="witnessmark: Claims Triage Agent`)) {
+	if x, err := os.ReadFile(junit); err != nil || !bytes.Contains(x, []byte(`<testsuite name="tellproof: Claims Triage Agent`)) {
 		t.Errorf("junit: %v", err)
 	}
 	code, out = cli("check", "--policy", pol, "--data-dir", data, "--since", "2026-09-01", "--until", "2026-09-01", "--json")

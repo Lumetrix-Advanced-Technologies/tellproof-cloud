@@ -1,4 +1,4 @@
-// Package secretbox seals the credentials vendors give Witnessmark for their own
+// Package secretbox seals the credentials vendors give Tellproof for their own
 // accounts elsewhere (D-049): AES-256-GCM under a 32-byte server key
 // (INTEGRATION_KEY), with additional data that binds each sealed value to the
 // row and tenant it belongs to, so a value copied to another row or tenant

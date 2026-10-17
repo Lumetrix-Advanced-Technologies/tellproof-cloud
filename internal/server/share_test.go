@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/share"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/pack"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/share"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store"
 )
 
 const memberA = "10000000-0000-0000-0000-00000000000a"
@@ -235,7 +235,7 @@ func TestShareCreateRules(t *testing.T) {
 
 func TestUAFamily(t *testing.T) {
 	for ua, want := range map[string]string{
-		"": "unknown", "curl/8.5.0": "curl", "witnessmark-verify/v0.1": "witnessmark-verify",
+		"": "unknown", "curl/8.5.0": "curl", "tellproof-verify/v0.1": "tellproof-verify",
 		"Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/141.0 Safari/537.36 Edg/141.0": "edge",
 		"Mozilla/5.0 (Macintosh) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15":             "safari",
 		"Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0":                "firefox",

@@ -1,8 +1,8 @@
 .env.local
 .env*.local
 .dev/
-.witnessmark-agent/
-.witnessmark-ci/
+.tellproof-agent/
+.tellproof-ci/
 /bin/
 *.test
 coverage.out

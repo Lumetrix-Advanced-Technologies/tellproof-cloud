@@ -17,11 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/policy"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batch"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/policy"
 )
 
-// BOM is the CycloneDX document (the subset of 1.6 that Witnessmark fills in).
+// BOM is the CycloneDX document (the subset of 1.6 that Tellproof fills in).
 type BOM struct {
 	BOMFormat    string       `json:"bomFormat"`
 	SpecVersion  string       `json:"specVersion"`
@@ -92,7 +92,7 @@ type Options struct {
 	Since, Until time.Time      // limit the windows used; zero: no limit
 	AgentID      string
 	LastDigest   string // the latest verified batch, so the BOM names the evidence it came from
-	Version      string // witnessmark-agent's version
+	Version      string // tellproof-agent's version
 	Now          func() time.Time
 }
 
@@ -182,21 +182,21 @@ func Build(bs []batch.Batch, o Options) BOM {
 			sys.Supplier = &Entity{Name: o.Policy.Organisation}
 		}
 		if o.Policy.Environment != "" {
-			sys.Properties = append(sys.Properties, Property{"witnessmark:environment", o.Policy.Environment})
+			sys.Properties = append(sys.Properties, Property{"tellproof:environment", o.Policy.Environment})
 		}
 	}
 	bom := BOM{BOMFormat: "CycloneDX", SpecVersion: "1.6", SerialNumber: "urn:uuid:" + uuid(), Version: 1,
 		Metadata: Metadata{Timestamp: now().UTC().Format(time.RFC3339),
-			Tools: Tools{Components: []Component{{Type: "application", Name: "witnessmark-agent", Version: o.Version, Group: "lumetrix",
-				ExtRefs: []ExtRef{{Type: "vcs", URL: "https://github.com/Lumetrix-Advanced-Technologies/witnessmark"}}}}},
+			Tools: Tools{Components: []Component{{Type: "application", Name: "tellproof-agent", Version: o.Version, Group: "lumetrix",
+				ExtRefs: []ExtRef{{Type: "vcs", URL: "https://github.com/Lumetrix-Advanced-Technologies/tellproof"}}}}},
 			Component: sys},
 		Components: []Component{}, Dependencies: []Dependency{}}
-	props := []Property{{"witnessmark:evidence:agent_id", o.AgentID}, {"witnessmark:evidence:batches", strconv.Itoa(len(bs))}}
+	props := []Property{{"tellproof:evidence:agent_id", o.AgentID}, {"tellproof:evidence:batches", strconv.Itoa(len(bs))}}
 	if o.LastDigest != "" {
-		props = append(props, Property{"witnessmark:evidence:last_batch_digest", o.LastDigest})
+		props = append(props, Property{"tellproof:evidence:last_batch_digest", o.LastDigest})
 	}
 	if from != "" {
-		props = append(props, Property{"witnessmark:evidence:from", from}, Property{"witnessmark:evidence:to", to})
+		props = append(props, Property{"tellproof:evidence:from", from}, Property{"tellproof:evidence:to", to})
 	}
 	bom.Metadata.Properties = props
 	dep := Dependency{Ref: "ai-system", DependsOn: []string{}}
@@ -205,24 +205,24 @@ func Build(bs []batch.Batch, o Options) BOM {
 		c := Component{Type: "machine-learning-model", BOMRef: ref, Name: k.model, Publisher: k.provider, Supplier: &Entity{Name: k.provider}}
 		u, observed := seen[k]
 		role, isDeclared := declared[k]
-		c.Properties = append(c.Properties, Property{"witnessmark:provider", k.provider}, Property{"witnessmark:observed", strconv.FormatBool(observed)})
+		c.Properties = append(c.Properties, Property{"tellproof:provider", k.provider}, Property{"tellproof:observed", strconv.FormatBool(observed)})
 		if o.Policy != nil {
-			c.Properties = append(c.Properties, Property{"witnessmark:declared", strconv.FormatBool(isDeclared)})
+			c.Properties = append(c.Properties, Property{"tellproof:declared", strconv.FormatBool(isDeclared)})
 		}
 		if role != "" {
-			c.Properties = append(c.Properties, Property{"witnessmark:role", role})
+			c.Properties = append(c.Properties, Property{"tellproof:role", role})
 			c.ModelCard = &ModelCard{Considerations: &Considerations{UseCases: []string{role}}}
 		}
 		if observed {
 			c.Properties = append(c.Properties,
-				Property{"witnessmark:regions", join(u.regions)},
-				Property{"witnessmark:calls", strconv.FormatInt(u.calls, 10)},
-				Property{"witnessmark:input_tokens", strconv.FormatInt(u.in, 10)},
-				Property{"witnessmark:output_tokens", strconv.FormatInt(u.out, 10)},
-				Property{"witnessmark:first_seen", u.first},
-				Property{"witnessmark:last_seen", u.last})
+				Property{"tellproof:regions", join(u.regions)},
+				Property{"tellproof:calls", strconv.FormatInt(u.calls, 10)},
+				Property{"tellproof:input_tokens", strconv.FormatInt(u.in, 10)},
+				Property{"tellproof:output_tokens", strconv.FormatInt(u.out, 10)},
+				Property{"tellproof:first_seen", u.first},
+				Property{"tellproof:last_seen", u.last})
 			if len(u.prompts) > 0 {
-				c.Properties = append(c.Properties, Property{"witnessmark:prompt_versions", join(u.prompts)})
+				c.Properties = append(c.Properties, Property{"tellproof:prompt_versions", join(u.prompts)})
 			}
 		}
 		bom.Components = append(bom.Components, c)

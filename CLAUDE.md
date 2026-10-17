@@ -1,6 +1,6 @@
-# Witnessmark
+# Tellproof
 
-Witnessmark (by Lumetrix) turns an AI product's runtime telemetry into signed evidence packs that a bank, insurer or auditor can verify without trusting us. Two programs, two SDKs and one rule: zero-dependency **SDKs** (Python, TypeScript) let an app integrate with one line, `witnessmark.init()`, and stream spans without content to an open-source **evidence agent** that runs in the customer's environment and sends only signed aggregates; a **control plane** (one Go binary) evaluates evidence objectives, signs packs with AWS KMS and serves a public **verify page**. Raw prompts, completions and trace IDs never leave the customer.
+Tellproof (by Lumetrix) turns an AI product's runtime telemetry into signed evidence packs that a bank, insurer or auditor can verify without trusting us. Two programs, two SDKs and one rule: zero-dependency **SDKs** (Python, TypeScript) let an app integrate with one line, `tellproof.init()`, and stream spans without content to an open-source **evidence agent** that runs in the customer's environment and sends only signed aggregates; a **control plane** (one Go binary) evaluates evidence objectives, signs packs with AWS KMS and serves a public **verify page**. Raw prompts, completions and trace IDs never leave the customer.
 
 ## Read before any task
 
@@ -29,7 +29,7 @@ make check          # gofmt check, go vet, staticcheck, govulncheck, all tests, 
 make test           # go test ./... -race
 make vectors        # cross-implementation vector suite (Go + node --test on web/verify/verify.js)
 make db             # start local Postgres 16 (docker compose) and apply migrations
-make test-db        # Go tests that need Postgres (CI sets WITNESSMARK_TEST_DATABASE_URL and runs them in make test)
+make test-db        # Go tests that need Postgres (CI sets TELLPROOF_TEST_DATABASE_URL and runs them in make test)
 make run-server     # go run ./cmd/server serve   (env from .env.local)
 make run-worker     # go run ./cmd/server work
 make agent-dry      # go run ./cmd/agent --config agent.example.json --dry-run --replay concierge/testdata/otlp-sample.jsonl
@@ -51,4 +51,4 @@ python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/*
 
 ## Brand
 
-UI copy and styling follow the Witnessmark brand system (tokens in `web/brand.css`, rules in `docs/code-standards.md` § UI). Status is never colour alone: always an icon and a word.
+UI copy and styling follow the Tellproof brand system (tokens in `web/brand.css`, rules in `docs/code-standards.md` § UI). Status is never colour alone: always an icon and a word.

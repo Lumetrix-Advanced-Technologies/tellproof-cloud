@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/kmssign"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/kmssign"
 )
 
 // Row is one signing key.
@@ -122,7 +122,7 @@ func CheckSigner(ctx context.Context, q pgx.Tx, kid string, pub *ecdsa.PublicKey
 	var exp, revoked *time.Time
 	err := q.QueryRow(ctx, `SELECT public_jwk, nbf, exp, revoked_at FROM signing_keys WHERE kid = $1`, kid).Scan(&raw, &nbf, &exp, &revoked)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("%w: %s is not registered (witnessmark-server keys add)", ErrCannotSign, kid)
+		return fmt.Errorf("%w: %s is not registered (tellproof-server keys add)", ErrCannotSign, kid)
 	}
 	if err != nil {
 		return err

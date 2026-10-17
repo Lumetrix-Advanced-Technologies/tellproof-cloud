@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batch"
 )
 
 var root = filepath.Join("..", "..")

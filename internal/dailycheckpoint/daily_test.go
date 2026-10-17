@@ -23,13 +23,13 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/checkpoint"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/keys"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/kmssign"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/checkpoint"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/keys"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/kmssign"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/pack"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store/storetest"
 )
 
 // fakeGitHub is the contents and commits API over an in-memory repository.
@@ -242,7 +242,7 @@ func TestDailyCheckpointsAndTheProofScript(t *testing.T) {
 		t.Errorf("a second run: %v", again)
 	}
 
-	// The script: witnessmark-verify checkpoint proves pack 2 is in day 1's published checkpoint and pack 3 is not.
+	// The script: tellproof-verify checkpoint proves pack 2 is in day 1's published checkpoint and pack 3 is not.
 	dir := t.TempDir()
 	day1 := filepath.Join(dir, "01.json")
 	day3 := filepath.Join(dir, "03.json")

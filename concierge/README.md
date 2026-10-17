@@ -5,8 +5,8 @@ Used in weeks 1–6 to hand-build packs for design partners while we test whethe
 - `verify.py`: offline verifier for one or more packs, oldest first. Checks signature, subject digest, chain and the disclosed trace's Merkle proof.
   `python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/*.dsse.json`
 - `evidencepack.py ingest` (C-1): OTLP JSON dumps (one export per line, or one document) or Langfuse exports (JSON array or CSV) to hourly aggregates in the batch `metrics` shape, plus a leaves file of salted Merkle leaves (one hex hash per line) for the pack commitment. Content is never read; trace IDs leave only as salted leaves.
-  `WITNESSMARK_SALT_SECRET=... python3 concierge/evidencepack.py ingest --source otlp --out aggregates.json --leaves leaves.txt export.jsonl`
-  Attribute names for PII, guardrails, prompt versions, tool approval and escalation default to `witnessmark.*` (see `ingest.DEFAULT_ATTRIBUTES` and D-020); pass `--attributes partner.json` to map a partner's own names or change the anomaly thresholds.
+  `TELLPROOF_SALT_SECRET=... python3 concierge/evidencepack.py ingest --source otlp --out aggregates.json --leaves leaves.txt export.jsonl`
+  Attribute names for PII, guardrails, prompt versions, tool approval and escalation default to `tellproof.*` (see `ingest.DEFAULT_ATTRIBUTES` and D-020); pass `--attributes partner.json` to map a partner's own names or change the anomaly thresholds.
 - `evidencepack.py evaluate` (C-2): aggregates plus provider usage CSVs and the change, incident and eval registers to the eleven objectives (`evaluation.json`), with coverage, lineage and limitations ready for the pack. Semantics in D-021.
   `python3 concierge/evidencepack.py evaluate --system system.json --aggregates aggregates.json --usage usage.csv --changes changes.csv --incidents incidents.csv --evals evals.csv --out evaluation.json`
   Formats: see `testdata/partner-month/` (a hand-calculated month) and D-021. Usage CSV: `provider,model,region,start,end,input_tokens,output_tokens,requests`, provider IDs as in telemetry.

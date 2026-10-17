@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/cievidence"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/cievidence"
 )
 
 func vec(name string) string { return filepath.Join("..", "..", "spec", "vectors", name) }
@@ -216,7 +216,7 @@ func normJSON(t *testing.T, v any) string {
 
 func TestVersion(t *testing.T) {
 	code, out, _ := runCLI(t, "--version")
-	if code != 0 || out != "witnessmark-verify v0.1.0-test\n" {
+	if code != 0 || out != "tellproof-verify v0.1.0-test\n" {
 		t.Errorf("--version = exit %d, %q", code, out)
 	}
 }
@@ -349,7 +349,7 @@ func TestChainBreaksAfterAFileThatIsNotAPack(t *testing.T) {
 	}
 }
 
-// witnessmark-verify ci checks a CI evidence statement (D-058).
+// tellproof-verify ci checks a CI evidence statement (D-058).
 func TestVerifyCI(t *testing.T) {
 	dir := t.TempDir()
 	privPEM, pubPEM, _ := cievidence.NewKey()
