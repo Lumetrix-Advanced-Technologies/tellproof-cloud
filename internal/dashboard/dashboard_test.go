@@ -121,7 +121,7 @@ func TestCheckAPI(t *testing.T) {
 	h = Handler(Options{DataDir: dir, PolicyPath: pol})
 	api = CheckAPI{}
 	_ = json.NewDecoder(get(t, h, "GET", "/api/check?range=all", "localhost").Body).Decode(&api)
-	if !api.Available || api.Report == nil || len(api.Report.Objectives) != 10 || api.Report.Period.Start != "2026-09-01" {
+	if !api.Available || api.Report == nil || len(api.Report.Objectives) != 11 || api.Report.Period.Start != "2026-09-01" {
 		t.Fatalf("with a policy: %+v", api)
 	}
 	// Nothing declared: lineage and residency fail.

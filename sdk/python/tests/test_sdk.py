@@ -338,3 +338,80 @@ class AgentEndToEndTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CanaryTest(unittest.TestCase):
+    """Guardrail canaries (D-057): only the kind and the result leave the probe."""
+
+    def test_probes_are_the_spec(self):
+        with open(os.path.join(HERE, "..", "..", "..", "spec", "canaries.json")) as f:
+            spec = json.load(f)
+        self.assertEqual(witnessmark.PROBES, {p["kind"]: p["text"] for p in spec["probes"]})
+
+    def test_run_records_kind_and_result_only(self):
+        seen = []
+
+        def check(text):
+            seen.append(text)
+            if "AKIA" in text:
+                raise RuntimeError("guardrail crashed")  # counts as missed
+            return "block" if "instructions" in text else "pii" in text and "4111" in text
+
+        with Capturing() as spans:
+            with witnessmark.personal_data():  # an app scope must not leak into canaries
+                got = witnessmark.run_canaries(check)
+        self.assertEqual(got, {"prompt_injection": True, "jailbreak": False, "pii": False, "secret": False})
+        self.assertEqual(seen, list(witnessmark.PROBES.values()))
+        self.assertEqual(len(spans), 4)
+        for s in spans:
+            self.assertEqual(set(attrs(s)), {"witnessmark.canary.kind", "witnessmark.canary.caught"})
+            self.assertIsNone(s["parent"])
+        self.assertEqual(len({s["trace_id"] for s in spans}), 4)
+        dumped = json.dumps(spans)
+        for text in witnessmark.PROBES.values():
+            self.assertNotIn(text[:20], dumped)
+
+    def test_canary_and_kinds(self):
+        with Capturing() as spans:
+            witnessmark.canary("Prompt_Injection", True)
+            witnessmark.canary("custom-check_2", "allow")
+            witnessmark.canary("has space", True)  # refused, counted as an SDK error
+            witnessmark.canary(None, True)
+            got = witnessmark.run_canaries(lambda t: True, kinds=["pii", "unknown"])
+        self.assertEqual(got, {"pii": True})
+        self.assertEqual([(attrs(s)["witnessmark.canary.kind"], attrs(s)["witnessmark.canary.caught"]) for s in spans],
+                         [("prompt_injection", True), ("custom-check_2", False), ("pii", True)])
+
+    def test_async_and_disabled(self):
+        async def check(text):
+            return True
+
+        with Capturing() as spans:
+            got = asyncio.run(witnessmark.arun_canaries(check, kinds=["secret"]))
+            missed = witnessmark.run_canaries(check, kinds=["secret"])  # sync runner, async check: missed
+        self.assertEqual((got, missed), ({"secret": True}, {"secret": False}))
+        self.assertEqual(len(spans), 2)
+        calls = []
+        old = _core.current_client()
+        _core.set_client(_core.Client())  # off: the guardrail is not called at all
+        try:
+            self.assertEqual(witnessmark.run_canaries(lambda t: calls.append(t)), {})
+        finally:
+            _core.set_client(old)
+        self.assertEqual(calls, [])
+
+    def test_schedule(self):
+        ran = threading.Event()
+
+        def check(text):
+            ran.set()
+            return True
+
+        with Capturing() as spans:
+            s = witnessmark.schedule_canaries(check, every=0, kinds=["pii"])
+            self.assertTrue(ran.wait(2))
+            s.stop()
+            s._thread.join(2)
+        self.assertFalse(s._thread.is_alive())
+        self.assertEqual(s._every, 60.0)
+        self.assertGreaterEqual(len(spans), 1)

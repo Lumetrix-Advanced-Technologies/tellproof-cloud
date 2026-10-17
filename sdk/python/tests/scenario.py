@@ -98,6 +98,12 @@ def run(clock: Clock) -> None:
         with witnessmark.llm_call("anthropic", "claude-sonnet-4-5", region="ap-southeast-2") as c:
             c.usage(input_tokens=900, output_tokens=60)
 
+    # 6. Guardrail canaries (D-057): the guardrail catches the injection probe
+    #    and one of two personal-data probes.
+    witnessmark.canary("prompt_injection", "block")
+    witnessmark.canary("pii", True)
+    witnessmark.canary("pii", "allow")
+
 
 def export_lines() -> list[str]:
     clock = Clock("2026-09-01T10:15:00")

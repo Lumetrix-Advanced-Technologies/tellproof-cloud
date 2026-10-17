@@ -3,7 +3,7 @@
 // lock, so concurrent requests for a system form one unbroken chain:
 //
 //  1. load the system's declarations and the period's batches and registers;
-//  2. evaluate the ten objectives and store the evaluation;
+//  2. evaluate the eleven objectives and store the evaluation;
 //  3. build the predicate: chain fields from the system's latest pack, the
 //     period root over the batches' window roots (D-027), batch digests;
 //  4. JCS the statement, sign it (KMS by digest, D-006) and verify it

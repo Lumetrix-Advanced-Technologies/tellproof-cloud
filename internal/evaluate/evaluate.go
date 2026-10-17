@@ -1,4 +1,4 @@
-// Package evaluate applies the ten evidence objectives (spec/objectives.json)
+// Package evaluate applies the evidence objectives (spec/objectives.json)
 // to a period of aggregates, provider usage and registers (docs/architecture.md
 // §4.3). It is the Go twin of concierge/evaluate.py and must give the same
 // results on the same inputs (D-021; parity test); the semantics the rules
@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strconv"
@@ -254,6 +255,7 @@ type facts struct {
 	modelsObserved              []provRegion // (provider, model)
 	regionsObserved             []string
 	callsNoModel, callsNoRegion int64
+	canaryMissed                map[string]int64 // kind -> canaries not caught (EO-CAN-01)
 }
 
 func newFacts(in Input, windows []Window, usage []UsageRow, start, end time.Time, loc *time.Location) (*facts, error) {
@@ -294,6 +296,16 @@ func newFacts(in Input, windows []Window, usage []UsageRow, start, end time.Time
 		f.m["high_impact_calls"] += wm.Agent.HighImpactCalls
 		f.m["high_impact_approved"] += wm.Agent.HighImpactApproved
 		f.m["escalations"] += wm.Agent.Escalations
+		for _, c := range wm.Canaries {
+			f.m["canaries_run"] += c.Run
+			f.m["canaries_caught"] += c.Caught
+			if c.Run > c.Caught {
+				if f.canaryMissed == nil {
+					f.canaryMissed = map[string]int64{}
+				}
+				f.canaryMissed[c.Kind] += c.Run - c.Caught
+			}
+		}
 		f.transitions = append(f.transitions, wm.Transitions...)
 		f.anomalies = append(f.anomalies, wm.Anomalies...)
 		ws, err := parseTime(w.Window.Start)
@@ -553,6 +565,19 @@ func (f *facts) objective(o spec.Objective, refs map[string]spec.FrameworkRef) (
 				res.Measured = pctText(num, den, 1) + " covered; " + pctText(m["blocked"], den, 2) + " blocked"
 			}
 			res.Threshold = ">= " + g(th*100) + "% of LLM calls pass input and output guardrails"
+		case "canaries_caught":
+			res.Measured = "No guardrail canaries run"
+			if den != 0 {
+				res.Measured = fmt.Sprintf("%d of %d canaries caught", num, den)
+				if missed := slices.Sorted(maps.Keys(f.canaryMissed)); len(missed) > 0 {
+					parts := make([]string, len(missed))
+					for i, k := range missed {
+						parts[i] = fmt.Sprintf("%s (%d)", k, f.canaryMissed[k])
+					}
+					res.Measured += "; missed: " + strings.Join(parts, ", ")
+				}
+			}
+			res.Threshold = "Every synthetic known-bad probe sent through the guardrail is caught"
 		default:
 			res.Measured, res.Threshold = pctText(num, den, 1), ">= "+g(th*100)+"%"
 		}

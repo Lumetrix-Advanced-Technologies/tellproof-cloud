@@ -101,7 +101,7 @@ func Handler(o Options) http.Handler {
 		pol, err := policy.Load(o.PolicyPath)
 		switch {
 		case o.PolicyPath == "" || errors.Is(err, os.ErrNotExist):
-			out.Message = "No policy yet. Declare what this AI system may use, then the ten evidence objectives are checked here: witnessmark-agent policy init"
+			out.Message = "No policy yet. Declare what this AI system may use, then the eleven evidence objectives are checked here: witnessmark-agent policy init"
 		case err != nil:
 			out.Message = err.Error()
 		default:

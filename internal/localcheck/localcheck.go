@@ -1,5 +1,5 @@
-// Package localcheck evaluates the local evidence log against the ten
-// evidence objectives (D-055): the log is verified first (signatures, chain,
+// Package localcheck evaluates the local evidence log against the evidence
+// objectives (D-055): the log is verified first (signatures, chain,
 // nothing missing), then the verified batches and the policy's registers go
 // through the same evaluator that issues hosted packs. The result is a
 // self-assessment, signed by nobody; a pack is the same evaluation signed by
@@ -59,37 +59,9 @@ var ErrNoData = errors.New("localcheck: the local evidence log has no batches ye
 
 // Run verifies the log and evaluates it.
 func Run(o Options) (*Report, error) {
-	now := time.Now
-	if o.Now != nil {
-		now = o.Now
-	}
-	sum, batches, err := localreport.ReadBatches(o.DataDir, localreport.Range{})
-	if err != nil {
-		return nil, err
-	}
-	r := &Report{AISystem: o.Policy.AISystem, Environment: o.Policy.Environment, Timezone: o.Policy.Timezone,
-		Log: LogStatus{AgentID: sum.AgentID, Verified: sum.Verified, Batches: sum.Batches, LastDigest: sum.LastHash, Problem: sum.Problem}}
-	if !sum.Verified {
-		return r, fmt.Errorf("%w: %s", ErrUnverified, sum.Problem)
-	}
-	if len(batches) == 0 {
-		return r, ErrNoData
-	}
-	loc, _ := time.LoadLocation(o.Policy.Timezone)
-	if r.Period, err = period(o, batches, loc, now()); err != nil {
-		return r, err
-	}
-	windows, usage, evals, err := evaluate.FromBatches(batches)
+	r, in, err := prepare(o)
 	if err != nil {
 		return r, err
-	}
-	in := evaluate.Input{System: o.Policy.System(r.Period.Start, r.Period.End), Windows: windows, Usage: usage,
-		Changes: o.Policy.Changes, Incidents: o.Policy.Incidents, Evals: append(evals, o.Policy.Evals...)}
-	if in.Changes == nil {
-		in.Changes = []evaluate.Change{}
-	}
-	if in.Incidents == nil {
-		in.Incidents = []evaluate.Incident{}
 	}
 	ev, err := evaluate.Evaluate(in)
 	if err != nil {
@@ -101,6 +73,45 @@ func Run(o Options) (*Report, error) {
 		r.Summary[o.Status]++
 	}
 	return r, nil
+}
+
+// prepare verifies the log and builds the evaluator's input from the
+// verified batches and the policy.
+func prepare(o Options) (*Report, evaluate.Input, error) {
+	now := time.Now
+	if o.Now != nil {
+		now = o.Now
+	}
+	var in evaluate.Input
+	sum, batches, err := localreport.ReadBatches(o.DataDir, localreport.Range{})
+	if err != nil {
+		return nil, in, err
+	}
+	r := &Report{AISystem: o.Policy.AISystem, Environment: o.Policy.Environment, Timezone: o.Policy.Timezone,
+		Log: LogStatus{AgentID: sum.AgentID, Verified: sum.Verified, Batches: sum.Batches, LastDigest: sum.LastHash, Problem: sum.Problem}}
+	if !sum.Verified {
+		return r, in, fmt.Errorf("%w: %s", ErrUnverified, sum.Problem)
+	}
+	if len(batches) == 0 {
+		return r, in, ErrNoData
+	}
+	loc, _ := time.LoadLocation(o.Policy.Timezone)
+	if r.Period, err = period(o, batches, loc, now()); err != nil {
+		return r, in, err
+	}
+	windows, usage, evals, err := evaluate.FromBatches(batches)
+	if err != nil {
+		return r, in, err
+	}
+	in = evaluate.Input{System: o.Policy.System(r.Period.Start, r.Period.End), Windows: windows, Usage: usage,
+		Changes: o.Policy.Changes, Incidents: o.Policy.Incidents, Evals: append(evals, o.Policy.Evals...)}
+	if in.Changes == nil {
+		in.Changes = []evaluate.Change{}
+	}
+	if in.Incidents == nil {
+		in.Incidents = []evaluate.Incident{}
+	}
+	return r, in, nil
 }
 
 // period is the requested one, or the last 30 local days that have data, up to today.

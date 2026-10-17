@@ -78,6 +78,18 @@ app.post('/claims/:id/triage', (req, res) =>
 
 Names and versions are capped at 128 characters; anything that is not a string or an integer is ignored. Calls inside a `guardrail` scope are held until it ends, so a decision made after the call still applies.
 
+## Guardrail canaries
+
+Show that your guardrail catches something, not only that it ran. The SDK passes synthetic, known-bad probes (prompt injection, jailbreak, made-up personal data, a documented example AWS key) to your own guardrail check and records only the kind and whether it was caught (EO-CAN-01):
+
+```js
+witnessmark.scheduleCanaries(async (text) => (await myGuardrail.scan(text)).blocked, { every: 3_600_000 }); // now, then hourly
+await witnessmark.runCanaries(check);   // once: { prompt_injection: true, ... }
+witnessmark.canary('toxicity', true);   // a canary you run with your own probe
+```
+
+The check (sync or async) returns `true`, `'block'` or `'flag'` when it would stop the text; anything else, or a throw, counts as missed. Pass probes to the guardrail only, never to the model. The probes never leave the process (`witnessmark.PROBES`); the timer is unref'd, and with the SDK off the check is never called.
+
 ## Already on OpenTelemetry?
 
 Point an OTLP/HTTP **JSON** exporter at the agent (`http://127.0.0.1:4318/v1/traces`) and set the `witnessmark.*` attributes yourself (`spec/semconv-map.json`). Do not run both for the same calls, or they are counted twice.

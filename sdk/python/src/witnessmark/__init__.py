@@ -19,13 +19,15 @@ import sys
 import threading
 
 from . import _core, _instrument, _otlp
+from ._canary import PROBES, arun_canaries, canary, run_canaries, schedule_canaries
 from ._core import (Guardrail, agent_run, escalation, guardrail, llm_call, personal_data, prompt, tool,
                     trace)
 from ._export import Exporter, Transport, http_transport
 
 __version__ = "0.1.0"
 __all__ = ["init", "shutdown", "flush", "stats", "is_enabled", "trace", "prompt", "guardrail", "Guardrail",
-           "personal_data", "tool", "escalation", "agent_run", "llm_call", "__version__"]
+           "personal_data", "tool", "escalation", "agent_run", "llm_call", "canary", "run_canaries", "arun_canaries",
+           "schedule_canaries", "PROBES", "__version__"]
 
 DEFAULT_AGENT_URL = "http://127.0.0.1:4318"
 _lock = threading.Lock()

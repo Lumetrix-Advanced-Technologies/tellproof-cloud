@@ -65,6 +65,7 @@ type Summary struct {
 	LateSpans      int64                   `json:"late_spans"`
 	Traces         int64                   `json:"traces_committed"`
 	Usage          []batch.Usage           `json:"provider_usage"`
+	Canaries       []batch.Canary          `json:"canaries"` // summed by kind (D-057)
 
 	// Series is one point per window in range, oldest first, with the
 	// additive batches of a window summed (for the dashboard's charts).
@@ -87,6 +88,8 @@ type Point struct {
 	ToolErrors     int64   `json:"tool_errors"`
 	Traces         int64   `json:"traces_committed"`
 	LateSpans      int64   `json:"late_spans"`
+	CanariesRun    int64   `json:"canaries_run"`
+	CanariesCaught int64   `json:"canaries_caught"`
 }
 
 // BatchRow is one batch of the chain.
@@ -206,10 +209,11 @@ type accumulator struct {
 	usage    map[[3]string]*batch.Usage
 	evals    map[batch.Eval]bool
 	versions map[batch.ObservedVersion]bool
+	canaries map[string]*batch.Canary
 }
 
 func newAccumulator() *accumulator {
-	return &accumulator{points: map[string]*Point{}, models: map[[3]string]*Model{}, usage: map[[3]string]*batch.Usage{}, evals: map[batch.Eval]bool{}, versions: map[batch.ObservedVersion]bool{}}
+	return &accumulator{points: map[string]*Point{}, models: map[[3]string]*Model{}, usage: map[[3]string]*batch.Usage{}, evals: map[batch.Eval]bool{}, versions: map[batch.ObservedVersion]bool{}, canaries: map[string]*batch.Canary{}}
 }
 
 // add sums one batch. Windows are additive (D-032): an hour sent early and
@@ -236,6 +240,15 @@ func (a *accumulator) add(s *Summary, b *batch.Batch) {
 	p.ToolCalls += m.Agent.ToolCalls
 	p.ToolErrors += m.Agent.ToolErrors
 	p.Traces += b.Commit.Leaves
+	for _, c := range m.Canaries {
+		p.CanariesRun += c.Run
+		p.CanariesCaught += c.Caught
+		if a.canaries[c.Kind] == nil {
+			a.canaries[c.Kind] = &batch.Canary{Kind: c.Kind}
+		}
+		a.canaries[c.Kind].Run += c.Run
+		a.canaries[c.Kind].Caught += c.Caught
+	}
 	p.LateSpans += m.LateSpans
 	for _, t := range m.Tokens {
 		found := false
@@ -317,6 +330,11 @@ func (a *accumulator) finish(s *Summary) {
 	for e := range a.evals {
 		s.Evals = append(s.Evals, e)
 	}
+	s.Canaries = []batch.Canary{}
+	for _, c := range a.canaries {
+		s.Canaries = append(s.Canaries, *c)
+	}
+	sort.Slice(s.Canaries, func(i, j int) bool { return s.Canaries[i].Kind < s.Canaries[j].Kind })
 	sort.Slice(s.Evals, func(i, j int) bool { return s.Evals[i].RanAt < s.Evals[j].RanAt })
 	for v := range a.versions {
 		s.Versions = append(s.Versions, v)
@@ -383,6 +401,7 @@ func WriteText(w io.Writer, s *Summary) error {
 		p("")
 		p("Guardrails      %d of %d model calls had a guardrail decision (%s); %d blocked", s.GuardedCalls, s.LLMCalls, pct(s.GuardedCalls, s.LLMCalls), s.Blocked)
 		p("Personal data   %d of %d spans with personal data were redacted (%s)", s.PIIRedacted, s.PIISpans, pct(s.PIIRedacted, s.PIISpans))
+		p("Canaries        %s", canaryLine(s.Canaries))
 		p("Content         %d spans arrived with message content; the agent dropped it", s.ContentDropped)
 		p("Agents          %d runs, %d tool calls (%d failed), %d high-impact calls (%d approved), %d escalations",
 			s.Agent.Runs, s.Agent.ToolCalls, s.Agent.ToolErrors, s.Agent.HighImpactCalls, s.Agent.HighImpactApproved, s.Agent.Escalations)
@@ -417,4 +436,25 @@ func WriteText(w io.Writer, s *Summary) error {
 	p("verify, request early access: %s", EarlyAccess)
 	_, err := io.WriteString(w, b.String())
 	return err
+}
+
+// canaryLine sums the guardrail canaries and names the kinds that were missed.
+func canaryLine(cs []batch.Canary) string {
+	var run, caught int64
+	var missed []string
+	for _, c := range cs {
+		run += c.Run
+		caught += c.Caught
+		if c.Run > c.Caught {
+			missed = append(missed, fmt.Sprintf("%s (%d)", c.Kind, c.Run-c.Caught))
+		}
+	}
+	if run == 0 {
+		return "none run: the SDK's schedule_canaries (scheduleCanaries) sends known-bad probes through your guardrail"
+	}
+	line := fmt.Sprintf("%d of %d known-bad probes caught by the guardrail (%s)", caught, run, pct(caught, run))
+	if len(missed) > 0 {
+		line += "; missed: " + strings.Join(missed, ", ")
+	}
+	return line
 }

@@ -87,7 +87,7 @@ func TestPolicyInitCheckAndAIBOM(t *testing.T) {
 	var rep struct {
 		Objectives []struct{ ID, Status string } `json:"objectives"`
 	}
-	if code != 1 || json.Unmarshal([]byte(out), &rep) != nil || len(rep.Objectives) != 10 {
+	if code != 1 || json.Unmarshal([]byte(out), &rep) != nil || len(rep.Objectives) != 11 {
 		t.Errorf("check --json: %d %s", code, out)
 	}
 

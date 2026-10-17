@@ -48,6 +48,7 @@ HAND = {
     "EO-INC-01": ("fail", "2 incident(s); 1 anomaly window(s) without an incident acknowledged within 60 min"),
     "EO-AGT-01": ("attention", "1.16% tool errors; 2.6% of runs escalated; 35 of 35 high-impact calls approved"),
     "EO-RES-01": ("fail", "Calls in undeclared region(s): us-east-1"),
+    "EO-CAN-01": ("attention", "No guardrail canaries run"),
 }
 
 
@@ -58,7 +59,7 @@ class EvaluateTest(unittest.TestCase):
         cls.by_id = {o["id"]: o for o in cls.ev["objectives"]}
 
     def test_objectives_match_the_hand_calculation(self):
-        self.assertEqual(list(self.by_id), list(HAND))  # all ten, in spec order
+        self.assertEqual(list(self.by_id), list(HAND))  # all eleven, in spec order
         for oid, (status, measured) in HAND.items():
             with self.subTest(oid):
                 self.assertEqual((self.by_id[oid]["status"], self.by_id[oid]["measured"]), (status, measured))
@@ -175,7 +176,7 @@ class EvaluateTest(unittest.TestCase):
                                 "--incidents", str(M / "incidents.csv"), "--evals", str(M / "evals.csv"), "--out", str(out)],
                                capture_output=True, text=True, env=os.environ)
             self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertIn("3 pass, 3 attention, 4 fail", r.stderr)
+            self.assertIn("3 pass, 4 attention, 4 fail", r.stderr)
             self.assertEqual(json.loads(out.read_text())["objectives"], self.ev["objectives"])
 
     def test_inputs_are_fingerprinted(self):
@@ -200,5 +201,5 @@ class ReadmeWalkthroughTest(unittest.TestCase):
             D = ROOT / "concierge/testdata/demo"
             ev = evaluate.evaluate(str(D / "system.json"), [str(p)], [str(D / "usage.csv")], str(D / "changes.csv"))
         counts = [sum(o["status"] == s for o in ev["objectives"]) for s in ("pass", "attention", "fail")]
-        self.assertEqual(counts, [4, 1, 5])
+        self.assertEqual(counts, [4, 2, 5])  # EO-CAN-01: the sample has no canaries
         self.assertEqual(ev["coverage"]["total_pct"], 99.3)

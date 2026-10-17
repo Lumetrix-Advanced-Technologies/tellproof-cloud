@@ -4,7 +4,7 @@
 
 **Witnessmark** is a product of **Lumetrix**. It gives AI-native software companies evidence about how their AI behaves in production that their enterprise buyers, insurers and auditors can check for themselves.
 
-The output is a **pack**: a signed JSON document (in-toto Statement in a DSSE envelope) that reports ten evidence objectives for one AI system over one period, such as trace coverage, PII redaction coverage, guardrail coverage and eval freshness. Each pack links to the previous one by digest, so a missing or edited month is visible. A verifier opens a share link and the browser checks the signature, the digest, the chain and a disclosed trace's Merkle proof, with no account and no trust in us.
+The output is a **pack**: a signed JSON document (in-toto Statement in a DSSE envelope) that reports eleven evidence objectives for one AI system over one period, such as trace coverage, PII redaction coverage, guardrail coverage and eval freshness. Each pack links to the previous one by digest, so a missing or edited month is visible. A verifier opens a share link and the browser checks the signature, the digest, the chain and a disclosed trace's Merkle proof, with no account and no trust in us.
 
 ## Who it is for
 
@@ -21,7 +21,7 @@ Enterprise buyers and APRA-regulated institutions now ask AI vendors for continu
 
 ## MVP scope
 
-The eleven features in `build-plan.md` Phases 3–6: evidence agent (OTLP JSON and Langfuse inputs), provider usage reconciliation (OpenAI, Anthropic, Bedrock), signed batches, evaluator with five rule kinds and ten objectives, KMS-signed and chained packs, daily public checkpoint, share links with view log, print-ready verify page, Vanta private integration, open-source Go verifier, and a five-screen web app.
+The eleven features in `build-plan.md` Phases 3–6: evidence agent (OTLP JSON and Langfuse inputs), provider usage reconciliation (OpenAI, Anthropic, Bedrock), signed batches, evaluator with five rule kinds and eleven objectives, KMS-signed and chained packs, daily public checkpoint, share links with view log, print-ready verify page, Vanta private integration, open-source Go verifier, and a five-screen web app.
 
 ## Non-goals for the MVP
 

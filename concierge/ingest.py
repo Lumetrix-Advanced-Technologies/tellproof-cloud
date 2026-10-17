@@ -57,7 +57,7 @@ class Span:
 
     __slots__ = ("trace_id", "start", "kind", "operation", "provider", "model", "region", "input_tokens", "output_tokens",
                  "error", "content_present", "pii", "redacted", "guardrail", "prompt_name", "prompt_version",
-                 "slot", "high_impact", "approved", "escalation")
+                 "slot", "high_impact", "approved", "escalation", "canary_kind", "canary_caught")
 
     def __init__(self, **kw):
         for k in self.__slots__:
@@ -78,6 +78,19 @@ def _classify(operation, attrs) -> str:
     return "other"
 
 
+MAX_CANARY_KINDS = 16  # per window; the rest count as "other" (internal/batch)
+
+
+def canary_kind(v) -> str:
+    """1 to 32 of a-z, 0-9, '_' and '-', else "other" (batch.CanaryKind)."""
+    if not isinstance(v, str):
+        return "other"
+    s = v.lower()
+    if not 0 < len(s) <= 32 or any(not (c.isascii() and (c.islower() or c.isdigit() or c in "_-")) for c in s):
+        return "other"
+    return s
+
+
 def _pick(values: dict, names: list[str]):
     for n in names:
         if n in values and values[n] not in (None, ""):
@@ -95,6 +108,7 @@ def _span_from_values(trace_id, start, operation, values, presence_keys, error, 
     prefixes = tuple(semconv.get("presence_only_prefixes", []))
     content = langfuse_content or any(k in semconv["presence_only"] or (prefixes and k.startswith(prefixes)) for k in presence_keys)
     model = _pick(values, f["response_model"]) or _pick(values, f["request_model"])
+    ck = _pick(values, f["canary_kind"])
     return Span(
         trace_id=trace_id, start=start, kind=kind, operation=str(operation or ""),
         provider=str(_pick(values, f["provider"]) or "unknown"),
@@ -110,6 +124,8 @@ def _span_from_values(trace_id, start, operation, values, presence_keys, error, 
         slot=values.get(attrs["slot"]) or values.get("service.name"),
         high_impact=_truthy(values.get(attrs["high_impact"])), approved=_truthy(values.get(attrs["approved"])),
         escalation=_truthy(values.get(attrs["escalation"])),
+        canary_kind=None if ck is None else canary_kind(ck),
+        canary_caught=_truthy(_pick(values, f["canary_caught"])),
     )
 
 
@@ -334,6 +350,15 @@ def aggregate(spans, attrs, salt_secret: bytes):
             "versions": [{"model": m, "prompt_version": v} for m, v in
                          sorted({(s.model, str(s.prompt_version)) for s in llm if s.model != "unknown" and s.prompt_version not in (None, "")})],
         }
+        canaries = {}
+        for s in hs:
+            if s.canary_kind is not None:
+                k = s.canary_kind if s.canary_kind in canaries or len(canaries) < MAX_CANARY_KINDS else "other"
+                c = canaries.setdefault(k, {"kind": k, "run": 0, "caught": 0})
+                c["run"] += 1
+                c["caught"] += s.canary_caught
+        if canaries:  # only in windows that had canaries, as the agent's batch v0.3 (D-057)
+            metrics["canaries"] = [canaries[k] for k in sorted(canaries)]
         windows.append({"window": {"start": _iso(hour), "end": _iso(end)}, "metrics": metrics, "observed": observed, "commit": commit})
         all_leaves.extend(l.hex() for l in leaves)
     return windows, all_leaves

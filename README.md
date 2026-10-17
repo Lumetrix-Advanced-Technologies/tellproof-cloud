@@ -4,7 +4,7 @@ This is the private repository: the control plane, the web app and everything el
 
 Witnessmark (by Lumetrix) turns an AI product's runtime telemetry into **signed, chained evidence packs** that a bank, insurer or auditor can verify themselves: offline, with no account, and without trusting the vendor or us. Prompts, completions and trace IDs never leave the vendor's environment.
 
-A pack reports ten evidence objectives for one AI system over one period (trace coverage, PII redaction, guardrail coverage, eval freshness and more). Each pack is an in-toto statement in a DSSE envelope, signed with ECDSA P-256 and linked to the previous pack by digest, so an edited pack or a missing month fails verification.
+A pack reports eleven evidence objectives for one AI system over one period (trace coverage, PII redaction, guardrail coverage, eval freshness and more). Each pack is an in-toto statement in a DSSE envelope, signed with ECDSA P-256 and linked to the previous pack by digest, so an edited pack or a missing month fails verification.
 
 ## Status
 
@@ -128,7 +128,7 @@ openssl ecparam -name prime256v1 -genkey -noout | openssl pkcs8 -topk8 -nocrypt 
    python3 $R/concierge/evidencepack.py ingest --source otlp --out aggregates.json --leaves leaves.txt $R/concierge/testdata/otlp-sample.jsonl
    ```
 
-2. **Evaluate**: aggregates plus provider usage and the registers become the ten objectives.
+2. **Evaluate**: aggregates plus provider usage and the registers become the eleven objectives.
 
    ```bash
    D=$R/concierge/testdata/demo
@@ -220,7 +220,7 @@ The normative description is [`docs/architecture.md`](docs/architecture.md) §2.
 | `internal/spec/` | Cross-checks of the spec files |
 | `web/verify/` | Static verify page (`verify.js` is the browser verifier) |
 | `web/brand.css` | Witnessmark brand tokens, light and dark |
-| `spec/` | Schemas, the ten objectives, framework references, OTel name map, test vectors |
+| `spec/` | Schemas, the eleven objectives, framework references, OTel name map, test vectors |
 | `migrations/` | Numbered SQL migrations and their tests |
 | `concierge/` | Python concierge CLI and `verify.py` (frozen after Milestone 1) |
 | `reference/` | The original sample verify page and the reference verifier test |

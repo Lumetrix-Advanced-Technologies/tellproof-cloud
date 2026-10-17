@@ -4,7 +4,7 @@
 
 <section class="panel narrow">
   <h2>Issue a pack</h2>
-  <p class="muted">A pack evaluates the ten evidence objectives over whole days ({{.System.Timezone}}) and is signed and chained to the previous pack.</p>
+  <p class="muted">A pack evaluates the eleven evidence objectives over whole days ({{.System.Timezone}}) and is signed and chained to the previous pack.</p>
   <form class="stack" method="post" action="/systems/{{.System.ID}}/packs">
     <div class="row">
       <div class="field"><label for="start">First day</label><input type="date" id="start" name="period_start" value="{{.Data.DefaultStart}}" required></div>

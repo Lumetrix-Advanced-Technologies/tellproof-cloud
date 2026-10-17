@@ -26,12 +26,17 @@ const governanceUsage = `usage:
   witnessmark-agent policy init [--policy <file>] [--data-dir <dir>] [--name <ai system>] [--timezone <tz>] [--force]
   witnessmark-agent policy validate [--policy <file>]
   witnessmark-agent check [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json] [--junit <file>] [--strict]
+  witnessmark-agent check --self-test [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
   witnessmark-agent aibom [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--out <file>]
 
 The policy file is --policy, else $WITNESSMARK_POLICY, else witnessmark.policy.json in
 the working directory, else in the data directory.
 check exit status: 0 no objective failed (with --strict: none needs attention
 either), 1 one did or the log failed verification, 2 usage or policy error.
+check --self-test adds a violation of each objective to a copy of the evidence
+and requires it to fail, and tampers with a copy of the log and requires
+verification to refuse it; exit 1 if an objective cannot fail, is vacuous (a
+register leaves no room for a violation) or tampering goes unnoticed.
 `
 
 // isGovernance reports whether args start a governance command.
@@ -59,6 +64,7 @@ func governance(args []string, getenv func(string) string, stdout, stderr io.Wri
 	asJSON := fs.Bool("json", false, "check: print JSON")
 	junit := fs.String("junit", "", "check: also write JUnit XML to this file")
 	strict := fs.Bool("strict", false, "check: attention fails too")
+	selfTest := fs.Bool("self-test", false, "check: test that each objective can fail and that tampering is detected")
 	name := fs.String("name", "", "policy init: the AI system's name")
 	tz := fs.String("timezone", "", "policy init: IANA time zone (default $TZ, else UTC)")
 	force := fs.Bool("force", false, "policy init: replace an existing policy file")
@@ -95,6 +101,13 @@ func governance(args []string, getenv func(string) string, stdout, stderr io.Wri
 		if err != nil {
 			fmt.Fprintf(stderr, "%v\n(create one with: witnessmark-agent policy init)\n", err)
 			return 2
+		}
+		if *selfTest {
+			if *junit != "" || *strict {
+				fmt.Fprint(stderr, governanceUsage)
+				return 2
+			}
+			return checkSelfTest(localcheck.Options{DataDir: *dataDir, Policy: pol, Since: *since, Until: *until}, *asJSON, stdout, stderr)
 		}
 		r, err := localcheck.Run(localcheck.Options{DataDir: *dataDir, Policy: pol, Since: *since, Until: *until})
 		switch {
@@ -189,6 +202,31 @@ func governance(args []string, getenv func(string) string, stdout, stderr io.Wri
 // policyInit writes a policy declaring what the log has seen, for a person to
 // review. It never fills the registers: a change or incident is something a
 // person records, not something the agent can attest for them.
+func checkSelfTest(o localcheck.Options, asJSON bool, stdout, stderr io.Writer) int {
+	r, err := localcheck.SelfTest(o)
+	switch {
+	case errors.Is(err, localcheck.ErrUnverified):
+		fmt.Fprintf(stderr, "witnessmark-agent: %v. Nothing was tested.\n", err)
+		return 1
+	case err != nil:
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	if asJSON {
+		err = localcheck.WriteSelfTestJSON(stdout, r)
+	} else {
+		err = localcheck.WriteSelfTestText(stdout, r)
+	}
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if r.Failed() {
+		return 1
+	}
+	return 0
+}
+
 func policyInit(path, dataDir, name, tz string, force bool, getenv func(string) string, stdout, stderr io.Writer) int {
 	if _, err := os.Stat(path); err == nil && !force {
 		fmt.Fprintf(stderr, "witnessmark-agent: %s exists; edit it, or pass --force to replace it\n", path)

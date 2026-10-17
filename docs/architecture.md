@@ -62,7 +62,7 @@ Predicate fields (schema: `spec/pack.schema.json`): `pack_schema`, `pack_id`, `s
 - Leaf: `sha256(0x00 || salt16 || utf8(trace_id))`. Node: `sha256(0x01 || left || right)`. An odd node at the end of a level is carried up unchanged (not duplicated).
 - Proof: list of `{side: "L"|"R", hash: hex}` from leaf to root; levels where the node was carried up contribute no entry.
 
-### 2.5 Agent batch payload (schema: `spec/batch.schema.json`, v0.2; v0.1 kept as `spec/batch-v0.1.schema.json`)
+### 2.5 Agent batch payload (schema: `spec/batch.schema.json`, v0.2, or `spec/batch-v0.3.schema.json` for a window with canaries; v0.1 kept as `spec/batch-v0.1.schema.json`)
 
 ```json
 {"schema": "plumbline-batch/v0.2", "agent_id": "agt_…", "seq": 1842, "prev": "sha256:<hex of previous batch payload> | null",
@@ -73,11 +73,13 @@ Predicate fields (schema: `spec/pack.schema.json`): `pack_schema`, `pack_id`, `s
  "commit": {"root": "<hex>", "leaves": 402}}
 ```
 
+v0.3 (D-057) is v0.2 plus `metrics.canaries`, `[{"kind": "pii", "run": 4, "caught": 4}]`, at most 16 kinds per window (the rest count as `other`). The agent writes v0.3 only for a window that has canaries, so every other window is byte-for-byte a v0.2 payload; a v0.2 batch with canaries, or a v0.3 batch without, is refused.
+
 ## 3. One-line SDKs (`sdk/python`, `sdk/js`) and the evidence agent
 
 ### 3.0 SDKs (D-025)
 
-`pip install witnessmark` / `npm install witnessmark`, then one line: `witnessmark.init()`. The SDK patches the LLM clients the app uses (OpenAI, Anthropic, AWS Bedrock Runtime; sync, async, streaming) and records one span per call with provider, model, region, token usage, operation, duration and error status. Helpers add what no client knows: `prompt(name, version)`, `guardrail(decision)`, `personal_data(redacted)`, `tool(name, high_impact, approved)`, `escalation()`, `agent_run(name)` (attribute names from D-020). Spans go as OTLP JSON to the agent (`http://127.0.0.1:4318/v1/traces`, or `WITNESSMARK_AGENT_URL`) from a bounded background queue that drops rather than blocks. No message content is ever read. No runtime dependencies. Apps already on OpenTelemetry can skip the SDK and point an OTLP JSON exporter at the agent. Scope, guardrail and exporter semantics: D-033; every SDK's export of the shared scenario (`sdk/testdata/`) must aggregate identically in the agent.
+`pip install witnessmark` / `npm install witnessmark`, then one line: `witnessmark.init()`. The SDK patches the LLM clients the app uses (OpenAI, Anthropic, AWS Bedrock Runtime; sync, async, streaming) and records one span per call with provider, model, region, token usage, operation, duration and error status. Helpers add what no client knows: `prompt(name, version)`, `guardrail(decision)`, `personal_data(redacted)`, `tool(name, high_impact, approved)`, `escalation()`, `agent_run(name)` (attribute names from D-020). Guardrail canaries (D-057): `run_canaries(check)` / `schedule_canaries(check, every)` pass the synthetic probes of `spec/canaries.json` to the app's own guardrail check and record one span per probe with only `witnessmark.canary.kind` and `witnessmark.canary.caught`, in its own trace; `canary(kind, caught)` records one the app ran itself. Spans go as OTLP JSON to the agent (`http://127.0.0.1:4318/v1/traces`, or `WITNESSMARK_AGENT_URL`) from a bounded background queue that drops rather than blocks. No message content is ever read. No runtime dependencies. Apps already on OpenTelemetry can skip the SDK and point an OTLP JSON exporter at the agent. Scope, guardrail and exporter semantics: D-033; every SDK's export of the shared scenario (`sdk/testdata/`) must aggregate identically in the agent.
 
 ## 3.1 Evidence agent (`cmd/agent`)
 
@@ -126,6 +128,8 @@ Objectives are embedded from `spec/objectives.json`, hashed (`objective_set_hash
 | `all_declared` | observed, declared | every observed item is in the declared list |
 
 Each objective also has `attention_band` (how close to the threshold reads as `attention` rather than `fail`). Results store measured values and the digests of every batch used.
+
+`witnessmark-agent check --self-test` (D-057) re-runs this evaluator on the real input plus, per objective, the least synthetic evidence that should fail it, and reports each objective as falsifiable, vacuous (a register leaves no room for a violation), unfailable or untested; it also tampers with a temporary copy of the local log and requires verification to refuse it. A test requires a mutation for every objective in `spec/objectives.json`.
 
 ### 4.4 Pack issue and signing
 

@@ -103,6 +103,12 @@ export function run(clock) {
       witnessmark.llmCall({ provider: 'anthropic', model: 'claude-sonnet-4-5', region: 'ap-southeast-2' }, (c) => c.usage(900, 60)),
     ),
   );
+
+  // 6. Guardrail canaries (D-057): the guardrail catches the injection probe
+  //    and one of two personal-data probes.
+  witnessmark.canary('prompt_injection', 'block');
+  witnessmark.canary('pii', true);
+  witnessmark.canary('pii', 'allow');
 }
 
 export function exportLines() {
