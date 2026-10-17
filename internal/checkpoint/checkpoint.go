@@ -19,10 +19,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jcs"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/merkle"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jcs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/merkle"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
 )
 
 const (

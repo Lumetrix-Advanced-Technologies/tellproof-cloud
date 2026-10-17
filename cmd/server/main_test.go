@@ -19,9 +19,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
-	"github.com/lumetrix-advanced-technologies/plumbline/migrations"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/witnessmark/migrations"
 )
 
 func env(kv ...string) func(string) string {
@@ -40,7 +40,7 @@ func TestUsage(t *testing.T) {
 		}
 	}
 	var out bytes.Buffer
-	if run(context.Background(), []string{"version"}, env(), &out, &out) != 0 || !strings.HasPrefix(out.String(), "plumbline-server ") {
+	if run(context.Background(), []string{"version"}, env(), &out, &out) != 0 || !strings.HasPrefix(out.String(), "witnessmark-server ") {
 		t.Errorf("version: %q", out.String())
 	}
 }

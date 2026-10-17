@@ -12,16 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/aggregate"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/aibom"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batchsign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/commitment"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/evaluate"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/localreport"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/otlp"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/policy"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/queue"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/aggregate"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/aibom"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batchsign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/commitment"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/evaluate"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/otlp"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/policy"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/queue"
 )
 
 // writeLog writes the concierge's OTLP sample (two hours on 1 Sep 2026: three
@@ -210,16 +210,16 @@ func TestAIBOMFromTheLog(t *testing.T) {
 	}
 	for _, c := range b.Components {
 		p := props(c)
-		if c.Type != "machine-learning-model" || c.Publisher == "" || p["plumbline:declared"] != "true" {
+		if c.Type != "machine-learning-model" || c.Publisher == "" || p["witnessmark:declared"] != "true" {
 			t.Errorf("component %+v", c)
 		}
 		switch c.Name {
 		case "claude-opus-4-1":
-			if p["plumbline:observed"] != "false" || c.ModelCard == nil || c.ModelCard.Considerations.UseCases[0] != "fallback" {
+			if p["witnessmark:observed"] != "false" || c.ModelCard == nil || c.ModelCard.Considerations.UseCases[0] != "fallback" {
 				t.Errorf("declared, never seen: %+v", c)
 			}
 		case "anthropic.claude-sonnet-4-5":
-			if p["plumbline:observed"] != "true" || p["plumbline:regions"] != "ap-southeast-2" || p["plumbline:calls"] == "0" || p["plumbline:first_seen"] == "" {
+			if p["witnessmark:observed"] != "true" || p["witnessmark:regions"] != "ap-southeast-2" || p["witnessmark:calls"] == "0" || p["witnessmark:first_seen"] == "" {
 				t.Errorf("observed: %v", p)
 			}
 		}

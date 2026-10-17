@@ -15,13 +15,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/aggregate"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batch"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batchsign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/commitment"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/localreport"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/queue"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/aggregate"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batchsign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/commitment"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/queue"
 )
 
 type model struct {

@@ -189,8 +189,8 @@ func UAFamily(ua string) string {
 		return "safari"
 	case strings.HasPrefix(u, "curl/"):
 		return "curl"
-	case strings.HasPrefix(u, "plumbline-verify"):
-		return "plumbline-verify"
+	case strings.HasPrefix(u, "witnessmark-verify"):
+		return "witnessmark-verify"
 	}
 	return "other"
 }

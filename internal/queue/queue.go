@@ -18,8 +18,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batchsign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batchsign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
 )
 
 const (

@@ -6,7 +6,7 @@ for presence only, and every other attribute is ignored unless it is one of the
 mapped names below. Trace IDs leave only as salted Merkle leaves.
 
 Attribute names beyond spec/semconv-map.json (PII, guardrails, prompt versions,
-tool approval, escalation) are Plumbline concierge defaults; override them per
+tool approval, escalation) are Witnessmark concierge defaults; override them per
 design partner with --attributes (D-020).
 """
 import datetime as dt
@@ -21,16 +21,16 @@ SPEC = Path(__file__).resolve().parent.parent / "spec"
 SCHEMA = "plumbline-concierge-aggregates/v0.1"
 
 DEFAULT_ATTRIBUTES = {
-    "pii_marker": "plumbline.data_class",  # span carries personal data when the value is in pii_values
+    "pii_marker": "witnessmark.data_class",  # span carries personal data when the value is in pii_values
     "pii_values": ["personal"],
-    "redacted": "plumbline.redaction.applied",  # true when a redaction processor ran
-    "guardrail_decision": "plumbline.guardrail.decision",  # allow | block | flag, on the LLM call span
-    "prompt_name": "plumbline.prompt.name",
-    "prompt_version": "plumbline.prompt.version",
+    "redacted": "witnessmark.redaction.applied",  # true when a redaction processor ran
+    "guardrail_decision": "witnessmark.guardrail.decision",  # allow | block | flag, on the LLM call span
+    "prompt_name": "witnessmark.prompt.name",
+    "prompt_version": "witnessmark.prompt.version",
     "slot": "gen_ai.agent.name",  # model transitions are tracked per slot (falls back to service.name)
-    "high_impact": "plumbline.tool.high_impact",
-    "approved": "plumbline.tool.approved",
-    "escalation": "plumbline.escalation",
+    "high_impact": "witnessmark.tool.high_impact",
+    "approved": "witnessmark.tool.approved",
+    "escalation": "witnessmark.escalation",
     "llm_operations": ["chat", "text_completion", "generate_content", "embeddings", "completion", "embedding"],
     "anomaly": {"min_calls": 20, "error_rate": 0.05, "guardrail_block_rate": 0.03},
 }
@@ -87,6 +87,9 @@ def _pick(values: dict, names: list[str]):
 
 def _span_from_values(trace_id, start, operation, values, presence_keys, error, semconv, attrs, langfuse_content=False):
     """values: only the attribute values we are allowed to read (already filtered)."""
+    # The witnessmark.* attributes, or the plumbline.* names they replaced (D-056).
+    for k in [k for k in values if k.startswith("plumbline.")]:
+        values.setdefault("witnessmark." + k[len("plumbline."):], values[k])
     f = semconv["fields"]
     kind = _classify(operation, attrs)
     prefixes = tuple(semconv.get("presence_only_prefixes", []))
@@ -340,7 +343,7 @@ def ingest(kind: str, paths: list[str], salt_secret: bytes, attributes_path: str
     if kind not in ("otlp", "langfuse"):
         raise ValueError("source must be otlp or langfuse")
     if not salt_secret:
-        raise ValueError("a salt secret is required (PLUMBLINE_SALT_SECRET)")
+        raise ValueError("a salt secret is required (WITNESSMARK_SALT_SECRET)")
     semconv = load_semconv()
     attrs = load_attributes(attributes_path)
     files = [Path(p) for p in paths]

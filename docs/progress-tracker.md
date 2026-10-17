@@ -56,6 +56,9 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P6-5 | Local dashboard | done | 2026-10-16 | `run --local` serves a dashboard on 127.0.0.1:4319 from the verified log: tiles, calls per model, coverage and tokens over time, models table, timeline, evidence chain; plain HTML/SVG, loopback-only, strict CSP (D-053) |
 | P6-6 | Agent from pip and npm | done | 2026-10-16 | `pip install plumbline-agent`, `npx plumbline-agent`: platform wheels and npm packages around the release binary, no install scripts; built and attested in the release, published once the founders set up PyPI and npm (D-054) |
 | P6-7 | Governance as code | done | 2026-10-17 | `plumbline.policy.json` (schema, `policy init`/`validate`), `check` with the pack evaluator (now open source) and JUnit/JSON, the dashboard's Evidence objectives panel, `aibom` (CycloneDX 1.6), a GitHub Action (D-055) |
+| P7-1 | Rename to Witnessmark | done | 2026-10-17 | Every name, package and page is Witnessmark with a new mark; v0.2 names (env, attributes, policy file, data dir) still read, v0.2 SDK exports kept as fixtures; wire formats, key bindings and DB names frozen. Repos, domains and package publishing wait on the founders (D-056) |
+| P7-2 | Falsifiable evidence | not started | | Guardrail canaries, `check --self-test` |
+| P7-3 | Coding-agent evidence | not started | | `witnessmark-agent ci`: gate evidence per commit, in-toto, `ci verify` |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
@@ -63,6 +66,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-17 · P7-1 · PR pending · Plumbline is now Witnessmark, and nothing set up under the old name breaks.
 - 2026-10-17 · P6-7 · PR pending · Teams can declare an AI system in a policy file and check its evidence against the ten objectives locally and in CI, with the same evaluator as signed packs.
 - 2026-10-16 · P6-6 · PR pending · The agent installs with pip or npx and runs with one command.
 - 2026-10-16 · P6-5 · PR pending · Local mode has a dashboard that shows what an AI system did, hour by hour, from its signed log.

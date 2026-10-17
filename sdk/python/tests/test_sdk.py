@@ -14,9 +14,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "src"))
 sys.path.insert(0, HERE)
 
-import plumbline  # noqa: E402
-from plumbline import _core, _otlp  # noqa: E402
-from plumbline._export import Exporter, http_transport  # noqa: E402
+import witnessmark  # noqa: E402
+from witnessmark import _core, _otlp  # noqa: E402
+from witnessmark._export import Exporter, http_transport  # noqa: E402
 import scenario  # noqa: E402
 
 
@@ -48,15 +48,15 @@ class FixtureTest(unittest.TestCase):
 class HelperTest(unittest.TestCase):
     def test_scopes_stamp_spans_and_nest(self):
         with Capturing() as spans:
-            with plumbline.agent_run("helper"), plumbline.prompt("reply", 7), plumbline.personal_data(redacted=True):
-                with plumbline.llm_call("openai", "gpt-4.1", region="eu-west-1") as c:
+            with witnessmark.agent_run("helper"), witnessmark.prompt("reply", 7), witnessmark.personal_data(redacted=True):
+                with witnessmark.llm_call("openai", "gpt-4.1", region="eu-west-1") as c:
                     c.usage(input_tokens=10, output_tokens=3)
                     c.response_model = "gpt-4.1-2026-04-14"
         llm, run = spans
-        self.assertEqual(attrs(llm)["plumbline.prompt.version"], "7")
+        self.assertEqual(attrs(llm)["witnessmark.prompt.version"], "7")
         self.assertEqual(attrs(llm)["gen_ai.agent.name"], "helper")
         self.assertEqual(attrs(llm)["gen_ai.response.model"], "gpt-4.1-2026-04-14")
-        self.assertIs(attrs(llm)["plumbline.redaction.applied"], True)
+        self.assertIs(attrs(llm)["witnessmark.redaction.applied"], True)
         self.assertEqual(llm["parent"], run["span_id"])
         self.assertEqual(llm["trace_id"], run["trace_id"])
         self.assertEqual(attrs(run)["gen_ai.operation.name"], "invoke_agent")
@@ -64,69 +64,69 @@ class HelperTest(unittest.TestCase):
     def test_spans_outside_scopes_get_their_own_traces(self):
         with Capturing() as spans:
             for _ in range(3):
-                with plumbline.llm_call("openai", "m"):
+                with witnessmark.llm_call("openai", "m"):
                     pass
         self.assertEqual(len({s["trace_id"] for s in spans}), 3)
 
     def test_guardrail_decided_after_the_call(self):
         with Capturing() as spans:
-            with plumbline.guardrail() as g:
-                with plumbline.llm_call("openai", "m"):
+            with witnessmark.guardrail() as g:
+                with witnessmark.llm_call("openai", "m"):
                     pass
                 self.assertEqual(spans, [], "the call must wait for the decision")
                 g.flag()
-        self.assertEqual(attrs(spans[0])["plumbline.guardrail.decision"], "flag")
+        self.assertEqual(attrs(spans[0])["witnessmark.guardrail.decision"], "flag")
 
     def test_guardrail_inner_decision_wins_and_outer_fills_the_rest(self):
         with Capturing() as spans:
-            with plumbline.guardrail("allow"):
-                with plumbline.guardrail("block"):
-                    with plumbline.llm_call("openai", "inner"):
+            with witnessmark.guardrail("allow"):
+                with witnessmark.guardrail("block"):
+                    with witnessmark.llm_call("openai", "inner"):
                         pass
-                with plumbline.guardrail():
-                    with plumbline.llm_call("openai", "undecided"):
+                with witnessmark.guardrail():
+                    with witnessmark.llm_call("openai", "undecided"):
                         pass
-        got = {attrs(s)["gen_ai.request.model"]: attrs(s)["plumbline.guardrail.decision"] for s in spans}
+        got = {attrs(s)["gen_ai.request.model"]: attrs(s)["witnessmark.guardrail.decision"] for s in spans}
         self.assertEqual(got, {"inner": "block", "undecided": "allow"})
 
     def test_block_without_a_call_is_one_blocked_call(self):
         with Capturing() as spans:
-            with plumbline.guardrail("block", provider="anthropic", model="claude-haiku-4-5"):
+            with witnessmark.guardrail("block", provider="anthropic", model="claude-haiku-4-5"):
                 pass
-            with plumbline.guardrail("allow"):  # allowed but nothing called: nothing to record
+            with witnessmark.guardrail("allow"):  # allowed but nothing called: nothing to record
                 pass
         self.assertEqual(len(spans), 1)
         a = attrs(spans[0])
-        self.assertEqual((a["gen_ai.provider.name"], a["gen_ai.request.model"], a["plumbline.guardrail.decision"]),
+        self.assertEqual((a["gen_ai.provider.name"], a["gen_ai.request.model"], a["witnessmark.guardrail.decision"]),
                          ("anthropic", "claude-haiku-4-5", "block"))
 
     def test_invalid_decision_is_ignored_not_raised(self):
         with Capturing() as spans:
-            with plumbline.guardrail("maybe"):
-                with plumbline.llm_call("openai", "m"):
+            with witnessmark.guardrail("maybe"):
+                with witnessmark.llm_call("openai", "m"):
                     pass
             errors = _core.current_client().stats.instrumentation_errors
-        self.assertNotIn("plumbline.guardrail.decision", attrs(spans[0]))
+        self.assertNotIn("witnessmark.guardrail.decision", attrs(spans[0]))
         self.assertEqual(errors, 1)
 
     def test_tool_errors_and_approval(self):
         with Capturing() as spans:
             with self.assertRaises(KeyError):
-                with plumbline.tool("refund", high_impact=True) as t:
+                with witnessmark.tool("refund", high_impact=True) as t:
                     t.approved = True
                     raise KeyError("x")
         s = spans[0]
         self.assertTrue(s["error"])
-        self.assertEqual((attrs(s)["plumbline.tool.high_impact"], attrs(s)["plumbline.tool.approved"]), (True, True))
+        self.assertEqual((attrs(s)["witnessmark.tool.high_impact"], attrs(s)["witnessmark.tool.approved"]), (True, True))
 
     def test_decorators_sync_and_async_get_a_fresh_scope_per_call(self):
-        @plumbline.tool("lookup")
+        @witnessmark.tool("lookup")
         def lookup(x):
             return x * 2
 
-        @plumbline.agent_run("async-agent")
+        @witnessmark.agent_run("async-agent")
         async def run(x):
-            with plumbline.llm_call("openai", "m"):
+            with witnessmark.llm_call("openai", "m"):
                 await asyncio.sleep(0)
             return x
 
@@ -140,9 +140,9 @@ class HelperTest(unittest.TestCase):
 
     def test_concurrent_tasks_keep_their_own_context(self):
         async def one(n):
-            with plumbline.prompt("p", n):
+            with witnessmark.prompt("p", n):
                 await asyncio.sleep(0.01 * (3 - n))
-                with plumbline.llm_call("openai", "m"):
+                with witnessmark.llm_call("openai", "m"):
                     pass
 
         async def main():
@@ -150,20 +150,20 @@ class HelperTest(unittest.TestCase):
 
         with Capturing() as spans:
             asyncio.run(main())
-        self.assertEqual(sorted(attrs(s)["plumbline.prompt.version"] for s in spans), ["0", "1", "2"])
+        self.assertEqual(sorted(attrs(s)["witnessmark.prompt.version"] for s in spans), ["0", "1", "2"])
 
     def test_values_are_short_names_only(self):
         with Capturing() as spans:
-            with plumbline.prompt("x" * 1000, {"not": "a version"}):
-                with plumbline.llm_call("openai", "m"):
+            with witnessmark.prompt("x" * 1000, {"not": "a version"}):
+                with witnessmark.llm_call("openai", "m"):
                     pass
         a = attrs(spans[0])
-        self.assertEqual(len(a["plumbline.prompt.name"]), _core.MAX_VALUE)
-        self.assertNotIn("plumbline.prompt.version", a)
+        self.assertEqual(len(a["witnessmark.prompt.name"]), _core.MAX_VALUE)
+        self.assertNotIn("witnessmark.prompt.version", a)
 
     def test_usage_ignores_bad_counts(self):
         with Capturing() as spans:
-            with plumbline.llm_call("openai", "m") as c:
+            with witnessmark.llm_call("openai", "m") as c:
                 c.usage(input_tokens=-1, output_tokens="12")
                 c.usage(input_tokens=True)
         self.assertNotIn("gen_ai.usage.input_tokens", attrs(spans[0]))
@@ -173,21 +173,21 @@ class HelperTest(unittest.TestCase):
         old = _core.current_client()
         _core.set_client(_core.Client())
         try:
-            with plumbline.agent_run("a"), plumbline.guardrail("block") as g, plumbline.tool("t") as t:
+            with witnessmark.agent_run("a"), witnessmark.guardrail("block") as g, witnessmark.tool("t") as t:
                 t.approved = True
                 g.allow()
-                plumbline.escalation()
-            self.assertFalse(plumbline.is_enabled())
+                witnessmark.escalation()
+            self.assertFalse(witnessmark.is_enabled())
         finally:
             _core.set_client(old)
 
-    def test_init_respects_plumbline_disabled(self):
-        os.environ["PLUMBLINE_DISABLED"] = "1"
+    def test_init_respects_witnessmark_disabled(self):
+        os.environ["WITNESSMARK_DISABLED"] = "1"
         try:
-            self.assertFalse(plumbline.init(transport=lambda b: None))
-            self.assertFalse(plumbline.is_enabled())
+            self.assertFalse(witnessmark.init(transport=lambda b: None))
+            self.assertFalse(witnessmark.is_enabled())
         finally:
-            del os.environ["PLUMBLINE_DISABLED"]
+            del os.environ["WITNESSMARK_DISABLED"]
 
 
 class NoContentTest(unittest.TestCase):
@@ -205,19 +205,19 @@ class NoContentTest(unittest.TestCase):
                 marker = "SECRET" + "".join(rng.choices(string.ascii_letters + string.digits + " \"'\\\n{}", k=24))
                 markers.append(marker)
 
-                @plumbline.tool("t", high_impact=rng.random() < 0.5)
+                @witnessmark.tool("t", high_impact=rng.random() < 0.5)
                 def act(message, *, note):
                     if rng.random() < 0.3:
                         raise ValueError(message)
                     return message + note
 
                 try:
-                    with plumbline.agent_run("fuzz"), plumbline.guardrail() as g:
-                        with plumbline.llm_call("openai", "m") as c:
+                    with witnessmark.agent_run("fuzz"), witnessmark.guardrail() as g:
+                        with witnessmark.llm_call("openai", "m") as c:
                             c.usage(input_tokens=len(marker), output_tokens=1)
                             act(marker, note=marker)
                         g.decision = rng.choice(["allow", "block", "flag", marker])
-                        plumbline.escalation()
+                        witnessmark.escalation()
                 except ValueError:
                     pass
             self.assertTrue(exp.flush(5))
@@ -316,14 +316,14 @@ class AgentEndToEndTest(unittest.TestCase):
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         os.environ["HTTP_PROXY"] = "http://127.0.0.1:9"  # must be ignored
         try:
-            self.assertTrue(plumbline.init(f"http://127.0.0.1:{srv.server_port}", service="e2e"))
-            self.assertTrue(plumbline.init())  # idempotent
-            with plumbline.llm_call("openai", "gpt-4.1-mini") as c:
+            self.assertTrue(witnessmark.init(f"http://127.0.0.1:{srv.server_port}", service="e2e"))
+            self.assertTrue(witnessmark.init())  # idempotent
+            with witnessmark.llm_call("openai", "gpt-4.1-mini") as c:
                 c.usage(5, 1)
-            self.assertTrue(plumbline.flush(5))
-            st = plumbline.stats()
+            self.assertTrue(witnessmark.flush(5))
+            st = witnessmark.stats()
         finally:
-            plumbline.shutdown()
+            witnessmark.shutdown()
             del os.environ["HTTP_PROXY"]
             srv.shutdown()
             srv.server_close()
@@ -333,7 +333,7 @@ class AgentEndToEndTest(unittest.TestCase):
         self.assertIn({"key": "service.name", "value": {"stringValue": "e2e"}}, rs["resource"]["attributes"])
         self.assertEqual(len(rs["scopeSpans"][0]["spans"]), 1)
         self.assertEqual((st["exported"], st["dropped"]), (1, 0))
-        self.assertFalse(plumbline.is_enabled())
+        self.assertFalse(witnessmark.is_enabled())
 
 
 if __name__ == "__main__":

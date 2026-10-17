@@ -1,13 +1,13 @@
-// Types for plumbline-sdk. The package is plain JavaScript; there is no build step.
+// Types for witnessmark. The package is plain JavaScript; there is no build step.
 
 export declare const VERSION: string;
 
 export type Decision = 'allow' | 'block' | 'flag';
 
 export interface InitOptions {
-  /** Agent base URL. Default PLUMBLINE_AGENT_URL, else http://127.0.0.1:4318. */
+  /** Agent base URL. Default WITNESSMARK_AGENT_URL, else http://127.0.0.1:4318. */
   agentUrl?: string;
-  /** service.name. Default PLUMBLINE_SERVICE or OTEL_SERVICE_NAME. */
+  /** service.name. Default WITNESSMARK_SERVICE or OTEL_SERVICE_NAME. */
   service?: string;
   environment?: string;
   /** Instrument the installed LLM clients (default true). */

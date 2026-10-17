@@ -16,8 +16,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jcs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jcs"
 )
 
 func vectorPath(name string) string {

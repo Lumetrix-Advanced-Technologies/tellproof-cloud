@@ -24,18 +24,18 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/agent"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/aggregate"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batch"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batchsign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/otlp"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/agent"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/aggregate"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batchsign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/keys"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/kmssign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/otlp"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
 )
 
 const (
@@ -328,7 +328,7 @@ func TestAgentEndToEnd(t *testing.T) {
 	}
 	cfg.Server, cfg.DataDir = f.srv.URL, dir
 	a, err := agent.New(cfg, agent.Options{Log: quiet(), HTTP: f.srv.Client(),
-		Getenv: func(k string) string { return map[string]string{"PLUMBLINE_SALT_SECRET": "a-salt-secret-0123456"}[k] }})
+		Getenv: func(k string) string { return map[string]string{"WITNESSMARK_SALT_SECRET": "a-salt-secret-0123456"}[k] }})
 	if err != nil {
 		t.Fatal(err)
 	}

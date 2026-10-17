@@ -1,22 +1,22 @@
-# plumbline-sdk (Node.js and TypeScript)
+# witnessmark (Node.js and TypeScript)
 
-One line to send evidence telemetry from an AI product to the local Plumbline evidence agent.
+One line to send evidence telemetry from an AI product to the local Witnessmark evidence agent.
 
 ```bash
-npm install plumbline-sdk
+npm install witnessmark
 ```
 
 ```js
-import * as plumbline from 'plumbline-sdk'; // or: const plumbline = require('plumbline-sdk')
-plumbline.init();
+import * as witnessmark from 'witnessmark'; // or: const witnessmark = require('witnessmark')
+witnessmark.init();
 ```
 
-The SDK records one span per model call with provider, model, region, token counts, operation, timing and error status, and sends it as OTLP JSON to the agent on `http://127.0.0.1:4318` (or `PLUMBLINE_AGENT_URL`). The agent aggregates per hour and signs the aggregates: it keeps them in a local evidence log (`plumbline-agent local`) or sends them to Plumbline (`plumbline-agent connect`). **The SDK never reads prompts, completions, function arguments, return values or error messages.**
+The SDK records one span per model call with provider, model, region, token counts, operation, timing and error status, and sends it as OTLP JSON to the agent on `http://127.0.0.1:4318` (or `WITNESSMARK_AGENT_URL`). The agent aggregates per hour and signs the aggregates: it keeps them in a local evidence log (`witnessmark-agent local`) or sends them to Witnessmark (`witnessmark-agent connect`). **The SDK never reads prompts, completions, function arguments, return values or error messages.**
 
 - No dependencies: Node 18+ built-ins only (`fetch`, `AsyncLocalStorage`). Plain JavaScript with TypeScript types; no build step. `import` and `require` share one instance.
-- Never slows or breaks the app: spans go to a bounded buffer; when it is full they are dropped and counted (`plumbline.stats()`). SDK errors are swallowed and counted. Its timers never keep the process alive.
-- `PLUMBLINE_DISABLED=1` turns it off. `init()` is safe to call more than once.
-- Buffered spans are flushed when the event loop drains. In serverless handlers and short scripts, `await plumbline.flush()` before returning.
+- Never slows or breaks the app: spans go to a bounded buffer; when it is full they are dropped and counted (`witnessmark.stats()`). SDK errors are swallowed and counted. Its timers never keep the process alive.
+- `WITNESSMARK_DISABLED=1` turns it off. `init()` is safe to call more than once.
+- Buffered spans are flushed when the event loop drains. In serverless handlers and short scripts, `await witnessmark.flush()` before returning.
 
 ## Automatic instrumentation
 
@@ -30,12 +30,12 @@ The SDK records one span per model call with provider, model, region, token coun
 
 Per call it reads the request's model and stream flag, and from the response only the model, the usage block, the stop reason and Bedrock's token-count headers. Input tokens follow what the provider bills (Anthropic: uncached + cache writes + cache reads; Bedrock: `inputTokens`, as CloudWatch counts them). You get the library's own objects back: `withResponse()` still works and streams are the same objects.
 
-- **ES modules**: the CommonJS copies are instrumented inside `init()`, the ES module copies a moment later. If a module calls a model straight after `init()`, `await plumbline.ready()` first.
-- **Bundled apps or strict package managers** where the SDK cannot find the libraries: `plumbline.instrument({ openai: OpenAI, anthropic: Anthropic, bedrock: await import('@aws-sdk/client-bedrock-runtime') })`.
+- **ES modules**: the CommonJS copies are instrumented inside `init()`, the ES module copies a moment later. If a module calls a model straight after `init()`, `await witnessmark.ready()` first.
+- **Bundled apps or strict package managers** where the SDK cannot find the libraries: `witnessmark.instrument({ openai: OpenAI, anthropic: Anthropic, bedrock: await import('@aws-sdk/client-bedrock-runtime') })`.
 - **Streams** are recorded once, when they end, error, or are left early (`break`). A stream dropped half-read is recorded after it is garbage-collected. Streams split with `tee()` or `toReadableStream()` are counted without tokens.
-- **OpenAI streamed chat completions** report usage only if asked. `plumbline.init({ streamUsage: true })` asks for it (`stream_options.include_usage`) when the app has not set `stream_options`; the stream then ends with one extra chunk with no `choices`. The app's own request object is never changed.
+- **OpenAI streamed chat completions** report usage only if asked. `witnessmark.init({ streamUsage: true })` asks for it (`stream_options.include_usage`) when the app has not set `stream_options`; the stream then ends with one extra chunk with no `choices`. The app's own request object is never changed.
 - **Bedrock guardrails**: a Converse call with `guardrailConfig` is a guarded call, `block` when the stop reason is `guardrail_intervened`, else `allow`. `InvokeModelWithResponseStream` reports token counts only inside the streamed body, which the SDK never reads, so those calls are counted without tokens. Callback-style `send(command, callback)` is not instrumented.
-- `plumbline.init({ instrument: false })` turns automatic instrumentation off; the helpers still work.
+- `witnessmark.init({ instrument: false })` turns automatic instrumentation off; the helpers still work.
 
 ## What the helpers record
 
@@ -54,15 +54,15 @@ Each helper runs a function inside a scope and returns whatever it returns (a pr
 
 ```js
 app.post('/claims/:id/triage', (req, res) =>
-  plumbline.trace(() =>
-    plumbline.prompt('claims-triage', '14', () =>
-      plumbline.personalData({ redacted: true }, () =>
-        plumbline.guardrail(async (g) => {
+  witnessmark.trace(() =>
+    witnessmark.prompt('claims-triage', '14', () =>
+      witnessmark.personalData({ redacted: true }, () =>
+        witnessmark.guardrail(async (g) => {
           if (!inputPolicyOk(req.body)) {
             g.block(); // recorded as one blocked call; the model was never called
             return res.status(422).end();
           }
-          const r = await plumbline.llmCall({ provider: 'openai', model: 'gpt-4.1-mini' }, async (c) => {
+          const r = await witnessmark.llmCall({ provider: 'openai', model: 'gpt-4.1-mini' }, async (c) => {
             const r = await callModel(req.body);
             c.usage(r.usage.prompt_tokens, r.usage.completion_tokens);
             return r;
@@ -80,7 +80,7 @@ Names and versions are capped at 128 characters; anything that is not a string o
 
 ## Already on OpenTelemetry?
 
-Point an OTLP/HTTP **JSON** exporter at the agent (`http://127.0.0.1:4318/v1/traces`) and set the `plumbline.*` attributes yourself (`spec/semconv-map.json`). Do not run both for the same calls, or they are counted twice.
+Point an OTLP/HTTP **JSON** exporter at the agent (`http://127.0.0.1:4318/v1/traces`) and set the `witnessmark.*` attributes yourself (`spec/semconv-map.json`). Do not run both for the same calls, or they are counted twice.
 
 ## Development
 

@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/secretbox"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/share"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/secretbox"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/share"
 )
 
 // Config is integrations.config for kind 'vanta'. It holds nothing secret.

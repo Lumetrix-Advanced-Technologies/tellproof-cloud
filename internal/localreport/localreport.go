@@ -16,10 +16,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batch"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batchsign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/queue"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batchsign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/queue"
 )
 
 // Dir is the local evidence log inside the data directory: signed, chained
@@ -335,7 +335,7 @@ func (a *accumulator) finish(s *Summary) {
 }
 
 // EarlyAccess is where the report points people for independently signed packs.
-const EarlyAccess = "https://github.com/lumetrix-advanced-technologies/plumbline/issues/new?template=early-access.yml"
+const EarlyAccess = "https://github.com/lumetrix-advanced-technologies/witnessmark/issues/new?template=early-access.yml"
 
 func pct(n, d int64) string {
 	if d == 0 {
@@ -358,7 +358,7 @@ func WriteJSON(w io.Writer, s *Summary) error {
 func WriteText(w io.Writer, s *Summary) error {
 	var b strings.Builder
 	p := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
-	p("Plumbline local evidence log, agent %s", s.AgentID)
+	p("Witnessmark local evidence log, agent %s", s.AgentID)
 	if s.Verified {
 		p("  Verified: %d batches, signed by this agent's key and chained from batch 1 to %d.", s.Batches, s.LastSeq)
 		if s.LastHash != "" {
@@ -412,7 +412,7 @@ func WriteText(w io.Writer, s *Summary) error {
 	}
 	p("")
 	p("This log is signed by your own agent's key: it shows the record has not changed since")
-	p("it was written, relative to %s. For packs evaluated against Plumbline's evidence", enrol.PublicKeyFile)
+	p("it was written, relative to %s. For packs evaluated against Witnessmark's evidence", enrol.PublicKeyFile)
 	p("objectives and signed by an independent issuer, which a bank, insurer or auditor can")
 	p("verify, request early access: %s", EarlyAccess)
 	_, err := io.WriteString(w, b.String())

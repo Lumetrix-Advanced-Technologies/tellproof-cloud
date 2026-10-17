@@ -1,8 +1,8 @@
-// Package policy reads plumbline.policy.json (D-055): what an AI system is
+// Package policy reads witnessmark.policy.json (D-055): what an AI system is
 // meant to be, written down where its code lives. It declares the models and
 // regions the system may use, and keeps the registers the evidence
 // objectives compare the telemetry with: material changes, incidents and
-// evaluation runs recorded outside the telemetry. `plumbline-agent check`
+// evaluation runs recorded outside the telemetry. `witnessmark-agent check`
 // evaluates the local evidence log against it with the same evaluator that
 // issues hosted packs.
 package policy
@@ -19,17 +19,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batch"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/evaluate"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/evaluate"
 )
 
 // DefaultFile is where `check` and `policy init` look by default.
-const DefaultFile = "plumbline.policy.json"
+const DefaultFile = "witnessmark.policy.json"
+
+// LegacyFile is the name before the rename to Witnessmark (D-056); it is
+// still read when DefaultFile is absent.
+const LegacyFile = "plumbline.policy.json"
 
 // SchemaURL is the policy's published JSON Schema, for editors.
-const SchemaURL = "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/plumbline/main/spec/policy.schema.json"
+const SchemaURL = "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/witnessmark/main/spec/policy.schema.json"
 
-// Policy is plumbline.policy.json.
+// Policy is witnessmark.policy.json.
 type Policy struct {
 	Schema          string                   `json:"$schema,omitempty"`
 	Organisation    string                   `json:"organisation"`
@@ -49,19 +53,21 @@ var (
 	refRE  = regexp.MustCompile(`^[A-Za-z0-9._-]{1,40}$`)
 )
 
-// Find is where the policy is: $PLUMBLINE_POLICY, else plumbline.policy.json
+// Find is where the policy is: $WITNESSMARK_POLICY, else witnessmark.policy.json
 // in the working directory, else in the data directory (where a container
-// keeps it), else plumbline.policy.json in the working directory (to create).
+// keeps it), else witnessmark.policy.json in the working directory (to create).
 func Find(getenv func(string) string, dataDir string) string {
-	if p := getenv("PLUMBLINE_POLICY"); p != "" {
+	if p := getenv("WITNESSMARK_POLICY"); p != "" {
 		return p
 	}
-	if _, err := os.Stat(DefaultFile); err == nil {
-		return DefaultFile
-	}
-	if dataDir != "" {
-		if p := filepath.Join(dataDir, DefaultFile); fileExists(p) {
-			return p
+	for _, name := range []string{DefaultFile, LegacyFile} {
+		if fileExists(name) {
+			return name
+		}
+		if dataDir != "" {
+			if p := filepath.Join(dataDir, name); fileExists(p) {
+				return p
+			}
 		}
 	}
 	return DefaultFile

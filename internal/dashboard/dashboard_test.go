@@ -13,13 +13,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/aggregate"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batchsign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/commitment"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/localreport"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/otlp"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/queue"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/aggregate"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batchsign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/commitment"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/otlp"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/queue"
 )
 
 func get(t *testing.T, h http.Handler, method, target, host string) *http.Response {
@@ -62,7 +62,7 @@ func TestRefusesOtherHostsAndWrites(t *testing.T) {
 			t.Errorf("host %q: %d", host, r.StatusCode)
 		}
 	}
-	for _, host := range []string{"localhost", "127.0.0.1:4319", "[::1]:4319", "plumbline.localhost:4319"} {
+	for _, host := range []string{"localhost", "127.0.0.1:4319", "[::1]:4319", "witnessmark.localhost:4319"} {
 		if r := get(t, h, "GET", "/api/log", host); r.StatusCode != 200 {
 			t.Errorf("host %q: %d", host, r.StatusCode)
 		}

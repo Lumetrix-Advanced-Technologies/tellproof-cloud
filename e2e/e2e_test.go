@@ -6,7 +6,7 @@
 // evaluates the period and issues a signed pack; a share link opens the
 // verify page in headless Chrome, which verifies the pack in the browser.
 //
-//	PLUMBLINE_TEST_DATABASE_URL=... go test -tags e2e ./e2e/ -v
+//	WITNESSMARK_TEST_DATABASE_URL=... go test -tags e2e ./e2e/ -v
 package e2e
 
 import (
@@ -31,16 +31,16 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/agent"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/issue"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/server"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/share"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/agent"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/issue"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/keys"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/kmssign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/server"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/share"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
 )
 
 const (
@@ -133,7 +133,7 @@ func TestEndToEnd(t *testing.T) {
 	cfg.Server, cfg.DataDir, cfg.OTLPListen = srv.URL, dir, listen
 	ag, err := agent.New(cfg, agent.Options{Log: quiet(), HTTP: srv.Client(), TickEvery: time.Second,
 		Getenv: func(k string) string {
-			return map[string]string{"PLUMBLINE_SALT_SECRET": "e2e-salt-secret-0123456789"}[k]
+			return map[string]string{"WITNESSMARK_SALT_SECRET": "e2e-salt-secret-0123456789"}[k]
 		}})
 	if err != nil {
 		t.Fatal(err)
@@ -150,7 +150,7 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	// The two sample apps.
-	env := append(os.Environ(), "PLUMBLINE_AGENT_URL=http://"+listen, "SAMPLE_CALLS="+itoa(calls), "PYTHONPATH="+filepath.Join(root, "sdk", "python", "src"))
+	env := append(os.Environ(), "WITNESSMARK_AGENT_URL=http://"+listen, "SAMPLE_CALLS="+itoa(calls), "PYTHONPATH="+filepath.Join(root, "sdk", "python", "src"))
 	for _, app := range [][]string{{py, filepath.Join(root, "examples", "python-app", "app.py")}, {node, filepath.Join(root, "examples", "node-app", "app.mjs")}} {
 		cmd := exec.Command(app[0], app[1])
 		cmd.Env = env

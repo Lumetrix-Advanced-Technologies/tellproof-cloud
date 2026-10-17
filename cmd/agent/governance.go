@@ -1,6 +1,6 @@
 package main
 
-// Governance as code (D-055): `policy init` writes plumbline.policy.json from
+// Governance as code (D-055): `policy init` writes witnessmark.policy.json from
 // what the log has seen, `check` evaluates the local log against the evidence
 // objectives with the hosted packs' evaluator, and `aibom` writes a CycloneDX
 // AI bill of materials.
@@ -14,21 +14,21 @@ import (
 	"sort"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/agent"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/aibom"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/evaluate"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/localcheck"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/localreport"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/policy"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/agent"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/aibom"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/evaluate"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localcheck"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/policy"
 )
 
 const governanceUsage = `usage:
-  plumbline-agent policy init [--policy <file>] [--data-dir <dir>] [--name <ai system>] [--timezone <tz>] [--force]
-  plumbline-agent policy validate [--policy <file>]
-  plumbline-agent check [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json] [--junit <file>] [--strict]
-  plumbline-agent aibom [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--out <file>]
+  witnessmark-agent policy init [--policy <file>] [--data-dir <dir>] [--name <ai system>] [--timezone <tz>] [--force]
+  witnessmark-agent policy validate [--policy <file>]
+  witnessmark-agent check [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json] [--junit <file>] [--strict]
+  witnessmark-agent aibom [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--out <file>]
 
-The policy file is --policy, else $PLUMBLINE_POLICY, else plumbline.policy.json in
+The policy file is --policy, else $WITNESSMARK_POLICY, else witnessmark.policy.json in
 the working directory, else in the data directory.
 check exit status: 0 no objective failed (with --strict: none needs attention
 either), 1 one did or the log failed verification, 2 usage or policy error.
@@ -49,7 +49,7 @@ func governance(args []string, getenv func(string) string, stdout, stderr io.Wri
 		}
 		cmd, args = "policy "+args[0], args[1:]
 	}
-	fs := flag.NewFlagSet("plumbline-agent "+cmd, flag.ContinueOnError)
+	fs := flag.NewFlagSet("witnessmark-agent "+cmd, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	configPath := fs.String("config", "", "agent config file (for the data directory)")
 	dataDir := fs.String("data-dir", "", "the data directory (default from the config)")
@@ -93,13 +93,13 @@ func governance(args []string, getenv func(string) string, stdout, stderr io.Wri
 	case "check":
 		pol, err := policy.Load(*policyPath)
 		if err != nil {
-			fmt.Fprintf(stderr, "%v\n(create one with: plumbline-agent policy init)\n", err)
+			fmt.Fprintf(stderr, "%v\n(create one with: witnessmark-agent policy init)\n", err)
 			return 2
 		}
 		r, err := localcheck.Run(localcheck.Options{DataDir: *dataDir, Policy: pol, Since: *since, Until: *until})
 		switch {
 		case errors.Is(err, localcheck.ErrUnverified):
-			fmt.Fprintf(stderr, "plumbline-agent: %v. Nothing was evaluated.\n", err)
+			fmt.Fprintf(stderr, "witnessmark-agent: %v. Nothing was evaluated.\n", err)
 			return 1
 		case err != nil:
 			fmt.Fprintln(stderr, err)
@@ -141,7 +141,7 @@ func governance(args []string, getenv func(string) string, stdout, stderr io.Wri
 			return 2
 		}
 		if !sum.Verified {
-			fmt.Fprintf(stderr, "plumbline-agent: the local evidence log failed verification: %s. No AI-BOM written.\n", sum.Problem)
+			fmt.Fprintf(stderr, "witnessmark-agent: the local evidence log failed verification: %s. No AI-BOM written.\n", sum.Problem)
 			return 1
 		}
 		o := aibom.Options{Policy: pol, AgentID: sum.AgentID, LastDigest: sum.LastHash, Version: version}
@@ -159,7 +159,7 @@ func governance(args []string, getenv func(string) string, stdout, stderr io.Wri
 			}
 			t, err := time.ParseInLocation("2006-01-02", d.in, loc)
 			if err != nil {
-				fmt.Fprintf(stderr, "plumbline-agent: %q is not a date (YYYY-MM-DD)\n", d.in)
+				fmt.Fprintf(stderr, "witnessmark-agent: %q is not a date (YYYY-MM-DD)\n", d.in)
 				return 2
 			}
 			*d.out = t.AddDate(0, 0, d.add)
@@ -191,7 +191,7 @@ func governance(args []string, getenv func(string) string, stdout, stderr io.Wri
 // person records, not something the agent can attest for them.
 func policyInit(path, dataDir, name, tz string, force bool, getenv func(string) string, stdout, stderr io.Writer) int {
 	if _, err := os.Stat(path); err == nil && !force {
-		fmt.Fprintf(stderr, "plumbline-agent: %s exists; edit it, or pass --force to replace it\n", path)
+		fmt.Fprintf(stderr, "witnessmark-agent: %s exists; edit it, or pass --force to replace it\n", path)
 		return 2
 	}
 	if tz == "" {
@@ -209,9 +209,9 @@ func policyInit(path, dataDir, name, tz string, force bool, getenv func(string) 
 	sum, bs, err := localreport.ReadBatches(dataDir, localreport.Range{})
 	switch {
 	case err != nil:
-		fmt.Fprintf(stdout, "No local evidence log in %s yet: writing an empty policy. Run `plumbline-agent policy init --force` once the agent has seen traffic, or declare models and regions by hand.\n", dataDir)
+		fmt.Fprintf(stdout, "No local evidence log in %s yet: writing an empty policy. Run `witnessmark-agent policy init --force` once the agent has seen traffic, or declare models and regions by hand.\n", dataDir)
 	case !sum.Verified:
-		fmt.Fprintf(stderr, "plumbline-agent: the local evidence log failed verification: %s\n", sum.Problem)
+		fmt.Fprintf(stderr, "witnessmark-agent: the local evidence log failed verification: %s\n", sum.Problem)
 		return 1
 	}
 	models := map[evaluate.DeclaredModel]bool{}
@@ -244,8 +244,8 @@ func policyInit(path, dataDir, name, tz string, force bool, getenv func(string) 
 	fmt.Fprintf(stdout, "Wrote %s: %d models and %d regions as seen in the log.\n", path, len(p.DeclaredModels), len(p.DeclaredRegions))
 	fmt.Fprintln(stdout, "Review it before you rely on it: a declaration says what the system may use, so remove anything that should not be there.")
 	if transitions > 0 {
-		fmt.Fprintf(stdout, "The log shows %d model or prompt change(s); record each one you approve under \"changes\" (plumbline-agent check lists any that are missing).\n", transitions)
+		fmt.Fprintf(stdout, "The log shows %d model or prompt change(s); record each one you approve under \"changes\" (witnessmark-agent check lists any that are missing).\n", transitions)
 	}
-	fmt.Fprintln(stdout, "Then: plumbline-agent check")
+	fmt.Fprintln(stdout, "Then: witnessmark-agent check")
 	return 0
 }

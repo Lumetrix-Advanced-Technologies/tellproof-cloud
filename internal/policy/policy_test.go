@@ -8,7 +8,7 @@ import (
 )
 
 const good = `{
-  "$schema": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/plumbline/main/spec/policy.schema.json",
+  "$schema": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/witnessmark/main/spec/policy.schema.json",
   "organisation": "Kestrel", "ai_system": "Claims Triage Agent", "environment": "production", "timezone": "Australia/Sydney",
   "declared_models": [{"provider": "openai", "model": "gpt-4.1-mini", "role": "triage"}],
   "declared_regions": ["us-east-1"],
@@ -66,6 +66,10 @@ func TestFindLooksInOrder(t *testing.T) {
 	if got := Find(getenv, data); got != DefaultFile {
 		t.Errorf("nothing anywhere: %s", got)
 	}
+	_ = os.WriteFile(LegacyFile, []byte(good), 0o644)
+	if got := Find(getenv, data); got != LegacyFile {
+		t.Errorf("the name before the rename: %s", got)
+	}
 	_ = os.WriteFile(filepath.Join(data, DefaultFile), []byte(good), 0o644)
 	if got := Find(getenv, data); got != filepath.Join(data, DefaultFile) {
 		t.Errorf("in the data directory: %s", got)
@@ -74,8 +78,8 @@ func TestFindLooksInOrder(t *testing.T) {
 	if got := Find(getenv, data); got != DefaultFile {
 		t.Errorf("the working directory comes first: %s", got)
 	}
-	env["PLUMBLINE_POLICY"] = "/etc/plumbline.json"
-	if got := Find(getenv, data); got != "/etc/plumbline.json" {
+	env["WITNESSMARK_POLICY"] = "/etc/witnessmark.json"
+	if got := Find(getenv, data); got != "/etc/witnessmark.json" {
 		t.Errorf("the environment comes first: %s", got)
 	}
 	// Write then Load round-trips.

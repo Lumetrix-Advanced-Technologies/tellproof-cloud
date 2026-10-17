@@ -19,7 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
 )
 
 // Signer is a pack signer: a dsse.Signer whose public key and key IDs are known.

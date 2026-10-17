@@ -160,7 +160,7 @@ class SignTest(unittest.TestCase):
             keyf.chmod(0o600)
             (d / "evaluation.json").write_text(json.dumps(self.ev))
             (d / "leaves.txt").write_text("\n".join(leaves()) + "\n")
-            env = {**os.environ, "PLUMBLINE_SALT_SECRET": SECRET.decode()}
+            env = {**os.environ, "WITNESSMARK_SALT_SECRET": SECRET.decode()}
             base = [sys.executable, str(ROOT / "concierge/evidencepack.py"), "sign", "--evaluation", str(d / "evaluation.json"),
                     "--leaves", str(d / "leaves.txt"), "--kid", "cli-key", "--key", str(keyf)]
             r1 = subprocess.run(base + ["--pack-id", "WRN-RS-0001", "--disclose", "tr-7", "--out", str(d / "1.json"), "--jwks-out", str(d / "jwks.json")],

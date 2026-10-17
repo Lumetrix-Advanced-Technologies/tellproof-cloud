@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
 )
 
 const maxEnrolBody = 16 << 10

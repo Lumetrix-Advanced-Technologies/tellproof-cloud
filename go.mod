@@ -1,4 +1,4 @@
-module github.com/lumetrix-advanced-technologies/plumbline
+module github.com/lumetrix-advanced-technologies/witnessmark
 
 go 1.26.0
 

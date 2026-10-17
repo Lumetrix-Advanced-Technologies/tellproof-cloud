@@ -194,7 +194,7 @@ class CLITest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             out, leaves = Path(d) / "agg.json", Path(d) / "leaves.txt"
             r = self.run_cli("ingest", "--source", "otlp", "--out", str(out), "--leaves", str(leaves), *OTLP,
-                             env={"PLUMBLINE_SALT_SECRET": SECRET.decode()})
+                             env={"WITNESSMARK_SALT_SECRET": SECRET.decode()})
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn("2 hourly windows, 240 traces committed", r.stderr)
             self.assertEqual(json.loads(out.read_text())["windows"], ingest.ingest("otlp", OTLP, SECRET)[0]["windows"])
@@ -207,16 +207,16 @@ class CLITest(unittest.TestCase):
             s.write_text("x")
             s.chmod(0o644)
             r = self.run_cli("ingest", "--source", "otlp", "--out", str(Path(d) / "a"), "--leaves", str(Path(d) / "l"),
-                             "--salt-secret-file", str(s), *OTLP, env={"PLUMBLINE_SALT_SECRET": ""})
+                             "--salt-secret-file", str(s), *OTLP, env={"WITNESSMARK_SALT_SECRET": ""})
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("chmod 600", r.stderr)
 
     def test_no_secret(self):
         with tempfile.TemporaryDirectory() as d:
             r = self.run_cli("ingest", "--source", "otlp", "--out", str(Path(d) / "a"), "--leaves", str(Path(d) / "l"), *OTLP,
-                             env={"PLUMBLINE_SALT_SECRET": ""})
+                             env={"WITNESSMARK_SALT_SECRET": ""})
             self.assertNotEqual(r.returncode, 0)
-            self.assertIn("PLUMBLINE_SALT_SECRET", r.stderr)
+            self.assertIn("WITNESSMARK_SALT_SECRET", r.stderr)
 
 
 if __name__ == "__main__":

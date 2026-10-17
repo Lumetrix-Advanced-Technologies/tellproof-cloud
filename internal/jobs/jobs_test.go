@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
 )
 
 type db struct {

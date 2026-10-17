@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
 )
 
 func digests(n int) []string {

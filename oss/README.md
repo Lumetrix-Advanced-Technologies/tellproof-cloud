@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
-    <img src="docs/logo-light.svg" alt="Plumbline" width="400">
+    <img src="docs/logo-light.svg" alt="Witnessmark" width="400">
   </picture>
 </p>
 
@@ -13,11 +13,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Lumetrix-Advanced-Technologies/plumbline/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Lumetrix-Advanced-Technologies/plumbline/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://pypi.org/project/plumbline-agent/"><img alt="PyPI: plumbline-agent" src="https://img.shields.io/pypi/v/plumbline-agent?label=pip%20install%20plumbline-agent&color=1f56c9"></a>
-  <a href="https://www.npmjs.com/package/plumbline-agent"><img alt="npm: plumbline-agent" src="https://img.shields.io/npm/v/plumbline-agent?label=npx%20plumbline-agent&color=1f56c9"></a>
-  <a href="https://pypi.org/project/plumbline-sdk/"><img alt="PyPI: plumbline-sdk" src="https://img.shields.io/pypi/v/plumbline-sdk?label=plumbline-sdk%20(python)&color=1e6b43"></a>
-  <a href="https://www.npmjs.com/package/plumbline-sdk"><img alt="npm: plumbline-sdk" src="https://img.shields.io/npm/v/plumbline-sdk?label=plumbline-sdk%20(node)&color=1e6b43"></a>
+  <a href="https://github.com/Lumetrix-Advanced-Technologies/witnessmark/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Lumetrix-Advanced-Technologies/witnessmark/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://pypi.org/project/witnessmark-agent/"><img alt="PyPI: witnessmark-agent" src="https://img.shields.io/pypi/v/witnessmark-agent?label=pip%20install%20witnessmark-agent&color=1f56c9"></a>
+  <a href="https://www.npmjs.com/package/witnessmark-agent"><img alt="npm: witnessmark-agent" src="https://img.shields.io/npm/v/witnessmark-agent?label=npx%20witnessmark-agent&color=1f56c9"></a>
+  <a href="https://pypi.org/project/witnessmark/"><img alt="PyPI: witnessmark" src="https://img.shields.io/pypi/v/witnessmark?label=witnessmark%20(python)&color=1e6b43"></a>
+  <a href="https://www.npmjs.com/package/witnessmark"><img alt="npm: witnessmark" src="https://img.shields.io/npm/v/witnessmark?label=witnessmark%20(node)&color=1e6b43"></a>
   <a href="LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-565d69"></a>
 </p>
 
@@ -39,15 +39,18 @@
 </p>
 
 > [!IMPORTANT]
-> **No content leaves your machine.** The SDKs never read prompts or completions, the agent drops message attributes the moment they arrive, and what it keeps is counts, short names and salted commitments. In local mode nothing is sent anywhere at all; `plumbline-agent run --dry-run` shows exactly what connected mode would send.
+> **No content leaves your machine.** The SDKs never read prompts or completions, the agent drops message attributes the moment they arrive, and what it keeps is counts, short names and salted commitments. In local mode nothing is sent anywhere at all; `witnessmark-agent run --dry-run` shows exactly what connected mode would send.
 
-## Why Plumbline
+> [!NOTE]
+> **Witnessmark was called Plumbline until v0.2.** A witness mark is the paint stripe drawn across a bolt and its base so that anyone can see at a glance whether it has moved; that is what this project does for an AI system. Everything from v0.2 keeps working: `PLUMBLINE_*` variables, `plumbline.*` span attributes, `plumbline.policy.json` and a `.plumbline-agent` data directory are all still read, and batches, packs and keys are unchanged. See [Upgrading from Plumbline](#upgrading-from-plumbline).
+
+## Why Witnessmark
 
 <table>
   <tr>
     <td width="33%" valign="top">
       <h4>🔌 One line, any stack</h4>
-      <p><code>plumbline.init()</code> instruments the OpenAI, Anthropic and Bedrock clients you already use, in Python or Node.js, with no dependencies. Model vendors wrap their serving layer with one helper. OpenTelemetry works too.</p>
+      <p><code>witnessmark.init()</code> instruments the OpenAI, Anthropic and Bedrock clients you already use, in Python or Node.js, with no dependencies. Model vendors wrap their serving layer with one helper. OpenTelemetry works too.</p>
     </td>
     <td width="33%" valign="top">
       <h4>🔏 Tamper-evident by design</h4>
@@ -61,11 +64,11 @@
   <tr>
     <td width="33%" valign="top">
       <h4>📐 Governance as code</h4>
-      <p>Declare models, regions and registers in <code>plumbline.policy.json</code>. <code>plumbline-agent check</code> evaluates the ten evidence objectives and fails CI when one fails. There's a GitHub Action for it.</p>
+      <p>Declare models, regions and registers in <code>witnessmark.policy.json</code>. <code>witnessmark-agent check</code> evaluates the ten evidence objectives and fails CI when one fails. There's a GitHub Action for it.</p>
     </td>
     <td width="33%" valign="top">
       <h4>🧾 An AI bill of materials</h4>
-      <p><code>plumbline-agent aibom</code> writes a CycloneDX 1.6 inventory of every model declared or seen, built from evidence rather than a spreadsheet.</p>
+      <p><code>witnessmark-agent aibom</code> writes a CycloneDX 1.6 inventory of every model declared or seen, built from evidence rather than a spreadsheet.</p>
     </td>
     <td width="33%" valign="top">
       <h4>✅ Verifiable by anyone</h4>
@@ -119,7 +122,7 @@
 
 You call OpenAI, Anthropic, Amazon Bedrock or any OpenAI-compatible API, and your customers' security, risk and procurement teams keep asking the same questions.
 
-| You need to show | What Plumbline records |
+| You need to show | What Witnessmark records |
 | --- | --- |
 | **Which models and providers you use, and where they run** (vendor-risk questionnaires, data-residency clauses) | Calls and tokens per provider, model and region, every hour. Packs check them against the models and regions you declared. |
 | **That guardrails run on every call** | For each model call, whether a guardrail decided on it (allow, block or flag), and how many were blocked. |
@@ -129,8 +132,8 @@ You call OpenAI, Anthropic, Amazon Bedrock or any OpenAI-compatible API, and you
 | **That evaluations are current** | Evaluation runs (suite, model, prompt version, pass rate, time), set against the models and prompt versions that were actually live. |
 | **That an agent's actions are under control** | Agent runs, tool calls and tool errors, high-impact tool calls and how many were approved, hand-offs to a person. |
 | **That nothing was left out** | A Merkle commitment to every trace in every hour, and token totals that can be reconciled with the provider's own billed usage. |
-| **That the system is what you said it is** | A policy file in your repository declares the models and regions it may use and keeps the change, incident and evaluation registers; `plumbline-agent check` evaluates the evidence against the ten evidence objectives and fails CI when one fails. |
-| **An inventory of the AI you actually run** | `plumbline-agent aibom` writes a CycloneDX 1.6 AI bill of materials of every model declared or seen, with regions, volumes and first and last use. |
+| **That the system is what you said it is** | A policy file in your repository declares the models and regions it may use and keeps the change, incident and evaluation registers; `witnessmark-agent check` evaluates the evidence against the ten evidence objectives and fails CI when one fails. |
+| **An inventory of the AI you actually run** | `witnessmark-agent aibom` writes a CycloneDX 1.6 AI bill of materials of every model declared or seen, with regions, volumes and first and last use. |
 | **Operational awareness, privately** | A local dashboard of all of the above, hour by hour, without sending anything to a SaaS. |
 
 ### You are an AI model vendor or inference provider
@@ -139,13 +142,13 @@ You serve your own models (or host others') behind an API. Wrap each inference r
 
 ### You review AI vendors: bank, insurer, auditor, risk or procurement team
 
-A vendor sends you a share link or a pack file. You check it yourself, in your browser or with an offline command, against the issuer's published keys: no account, no trust in the vendor, no trust in Plumbline. Three independent verifiers (Go, browser, Python) must agree on every [published test vector](spec/vectors/README.md), and you can write a fourth. See [Verify a pack](#verify-a-pack).
+A vendor sends you a share link or a pack file. You check it yourself, in your browser or with an offline command, against the issuer's published keys: no account, no trust in the vendor, no trust in Witnessmark. Three independent verifiers (Go, browser, Python) must agree on every [published test vector](spec/vectors/README.md), and you can write a fourth. See [Verify a pack](#verify-a-pack).
 
 ### You run security, platform or GRC for an AI product
 
-- Audit exactly what the agent would send before you allow it: `plumbline-agent run --dry-run` prints every batch, decoded, and sends nothing.
+- Audit exactly what the agent would send before you allow it: `witnessmark-agent run --dry-run` prints every batch, decoded, and sends nothing.
 - Run it with no network egress at all (local mode).
-- Keep governance in code review: `plumbline.policy.json` sits next to the code, `plumbline-agent policy validate` checks it in CI, and `plumbline-agent check` (or the [GitHub Action](#in-ci)) gates releases on the ten evidence objectives.
+- Keep governance in code review: `witnessmark.policy.json` sits next to the code, `witnessmark-agent policy validate` checks it in CI, and `witnessmark-agent check` (or the [GitHub Action](#in-ci)) gates releases on the ten evidence objectives.
 - Map results to framework references by ID (EU AI Act, ISO/IEC 42001, AIUC-1, CSA AICM and more; each objective lists the references it supports), hand auditors an AI-BOM, and, with the hosted service, keep your compliance platform (Vanta) up to date automatically.
 
 ---
@@ -155,23 +158,23 @@ A vendor sends you a share link or a pack file. You check it yourself, in your b
 ```mermaid
 flowchart LR
   subgraph yours["Your environment"]
-    app["Your app or model server<br/>+ plumbline.init()"] -- "OTLP spans<br/>(no content)" --> agent["plumbline-agent"]
+    app["Your app or model server<br/>+ witnessmark.init()"] -- "OTLP spans<br/>(no content)" --> agent["witnessmark-agent"]
     otel["Any OpenTelemetry<br/>exporter"] -. "OTLP JSON" .-> agent
     lf["Langfuse,<br/>provider usage APIs"] -. "read-only pulls" .-> agent
     agent --> log[("Signed local log<br/>+ dashboard :4319")]
   end
-  agent -- "signed hourly batches<br/>(connected mode only)" --> svc["Plumbline service<br/>evaluates · signs packs"]
-  svc -- "share link" --> rev["Reviewer's browser or<br/>plumbline-verify (offline)"]
+  agent -- "signed hourly batches<br/>(connected mode only)" --> svc["Witnessmark service<br/>evaluates · signs packs"]
+  svc -- "share link" --> rev["Reviewer's browser or<br/>witnessmark-verify (offline)"]
   svc -- "daily checkpoint" --> pub[("Public checkpoint log")]
 ```
 
 | Part | What it does |
 | --- | --- |
-| **SDKs** (`plumbline-sdk` for Python and Node.js) | `plumbline.init()` instruments the OpenAI, Anthropic and Bedrock client libraries you already use: one span per model call with provider, model, region, token counts, operation, timing and error status. **They never read message content.** Helpers add the facts no client library knows (prompt version, guardrail decision, redaction, tool approval). |
-| **Agent** (`plumbline-agent`) | Runs next to your app. Receives spans on `127.0.0.1:4318`, drops every message attribute at parse time, aggregates per hour, commits every trace into a salted Merkle tree, and signs each hourly batch with its own Ed25519 key. |
+| **SDKs** (`witnessmark` for Python and Node.js) | `witnessmark.init()` instruments the OpenAI, Anthropic and Bedrock client libraries you already use: one span per model call with provider, model, region, token counts, operation, timing and error status. **They never read message content.** Helpers add the facts no client library knows (prompt version, guardrail decision, redaction, tool approval). |
+| **Agent** (`witnessmark-agent`) | Runs next to your app. Receives spans on `127.0.0.1:4318`, drops every message attribute at parse time, aggregates per hour, commits every trace into a salted Merkle tree, and signs each hourly batch with its own Ed25519 key. |
 | **Local mode** | The agent keeps the signed, chained batches in its data directory and serves a dashboard. Nothing is sent anywhere. |
-| **Connected mode** | The agent sends the same signed batches to the Plumbline service, which evaluates ten evidence objectives and issues signed, chained monthly packs. |
-| **Verifiers** | `plumbline-verify` (offline command), the verify page (in the browser) and `concierge/verify.py` (an independent Python verifier). |
+| **Connected mode** | The agent sends the same signed batches to the Witnessmark service, which evaluates ten evidence objectives and issues signed, chained monthly packs. |
+| **Verifiers** | `witnessmark-verify` (offline command), the verify page (in the browser) and `concierge/verify.py` (an independent Python verifier). |
 
 ---
 
@@ -180,41 +183,41 @@ flowchart LR
 **1. Start the agent in local mode.** Pick whichever you already have:
 
 ```bash
-pip install plumbline-agent && plumbline-agent run --local     # Python 3.8+
-npx plumbline-agent run --local                                # Node.js 18+
-docker run -d --name plumbline-agent -p 127.0.0.1:4318:4318 -p 127.0.0.1:4319:4319 \
-  -v plumbline-agent:/data ghcr.io/lumetrix-advanced-technologies/plumbline-agent:latest run --local
+pip install witnessmark-agent && witnessmark-agent run --local     # Python 3.8+
+npx witnessmark-agent run --local                                # Node.js 18+
+docker run -d --name witnessmark-agent -p 127.0.0.1:4318:4318 -p 127.0.0.1:4319:4319 \
+  -v witnessmark-agent:/data ghcr.io/lumetrix-advanced-technologies/witnessmark-agent:latest run --local
 ```
 
 It prints its agent ID, where it listens, and the dashboard address:
 
 ```
-plumbline-agent v0.2.0 in local mode as agt_local73a55408e4b8f1c62de97a60: listening for spans on 127.0.0.1:4318; signed batches are kept in .plumbline-agent/local and never sent.
+witnessmark-agent v0.2.0 in local mode as agt_local73a55408e4b8f1c62de97a60: listening for spans on 127.0.0.1:4318; signed batches are kept in .witnessmark-agent/local and never sent.
 Dashboard: http://127.0.0.1:4319/
-In a terminal: plumbline-agent report
+In a terminal: witnessmark-agent report
 ```
 
 **2. Add the SDK to your app.**
 
 ```bash
-pip install plumbline-sdk        # Python 3.10+
-npm install plumbline-sdk        # Node.js 18+
+pip install witnessmark        # Python 3.10+
+npm install witnessmark        # Node.js 18+
 ```
 
 ```python
-import plumbline
-plumbline.init()                 # once, at start-up, before your first model call
+import witnessmark
+witnessmark.init()                 # once, at start-up, before your first model call
 ```
 
 ```js
-import * as plumbline from 'plumbline-sdk';
-plumbline.init();
+import * as witnessmark from 'witnessmark';
+witnessmark.init();
 ```
 
 **3. Make a model call, then open http://127.0.0.1:4319.** The first batch appears about a minute after the first call, and every hour after that.
 
 > [!TIP]
-> Next: declare what the system may use and check the evidence against the ten objectives, in two commands: `plumbline-agent policy init`, then `plumbline-agent check`. See [Governance as code](#governance-as-code-policy-check-and-ai-bom). To share signed packs with reviewers, see [the hosted service](#signed-evidence-packs-the-hosted-service-early-access).
+> Next: declare what the system may use and check the evidence against the ten objectives, in two commands: `witnessmark-agent policy init`, then `witnessmark-agent check`. See [Governance as code](#governance-as-code-policy-check-and-ai-bom). To share signed packs with reviewers, see [the hosted service](#signed-evidence-packs-the-hosted-service-early-access).
 
 ---
 
@@ -224,11 +227,11 @@ plumbline.init();
 
 | Method | Command | Notes |
 | --- | --- | --- |
-| **pip** | `pip install plumbline-agent` | Platform wheels for Linux (glibc and musl) x86_64 and aarch64, macOS 12+ x86_64 and arm64, Windows x64 and arm64. Each holds the release's static binary; nothing is compiled or downloaded at install time. `python -m plumbline_agent` works too. |
-| **npm** | `npm install -g plumbline-agent`, or `npx plumbline-agent` | The right platform binary comes as an optional dependency; no install scripts. Don't install with `--omit=optional`. |
-| **Docker** | `ghcr.io/lumetrix-advanced-technologies/plumbline-agent:<version>` | A static binary on distroless, non-root, for linux/amd64 and linux/arm64. Data in `/data`. |
-| **Binary** | [Releases](https://github.com/Lumetrix-Advanced-Technologies/plumbline/releases) | `plumbline-agent-<os>-<arch>`; use `plumbline-agent-bedrock-*` for Amazon Bedrock usage from CloudWatch. |
-| **Source** | `go install github.com/lumetrix-advanced-technologies/plumbline/cmd/agent@latest` | Go 1.26+. Add `-tags bedrock` for the Bedrock usage poller. |
+| **pip** | `pip install witnessmark-agent` | Platform wheels for Linux (glibc and musl) x86_64 and aarch64, macOS 12+ x86_64 and arm64, Windows x64 and arm64. Each holds the release's static binary; nothing is compiled or downloaded at install time. `python -m witnessmark_agent` works too. |
+| **npm** | `npm install -g witnessmark-agent`, or `npx witnessmark-agent` | The right platform binary comes as an optional dependency; no install scripts. Don't install with `--omit=optional`. |
+| **Docker** | `ghcr.io/lumetrix-advanced-technologies/witnessmark-agent:<version>` | A static binary on distroless, non-root, for linux/amd64 and linux/arm64. Data in `/data`. |
+| **Binary** | [Releases](https://github.com/Lumetrix-Advanced-Technologies/witnessmark/releases) | `witnessmark-agent-<os>-<arch>`; use `witnessmark-agent-bedrock-*` for Amazon Bedrock usage from CloudWatch. |
+| **Source** | `go install github.com/lumetrix-advanced-technologies/witnessmark/cmd/agent@latest` | Go 1.26+. Add `-tags bedrock` for the Bedrock usage poller. |
 
 ### Check a download
 
@@ -236,21 +239,21 @@ Every release binary, `SHA256SUMS`, the release notes, the wheels, the npm tarba
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
-gh attestation verify plumbline-agent-linux-amd64 --repo Lumetrix-Advanced-Technologies/plumbline
-gh attestation verify oci://ghcr.io/lumetrix-advanced-technologies/plumbline-agent:v0.2.0 --repo Lumetrix-Advanced-Technologies/plumbline
-npm audit signatures            # in a project that installed plumbline-agent or plumbline-sdk
+gh attestation verify witnessmark-agent-linux-amd64 --repo Lumetrix-Advanced-Technologies/witnessmark
+gh attestation verify oci://ghcr.io/lumetrix-advanced-technologies/witnessmark-agent:v0.2.0 --repo Lumetrix-Advanced-Technologies/witnessmark
+npm audit signatures            # in a project that installed witnessmark-agent or witnessmark
 ```
 
 ### The SDKs
 
 ```bash
-pip install plumbline-sdk        # Python 3.10+, standard library only
-npm install plumbline-sdk        # Node.js 18+, built-ins only; ESM and CommonJS; TypeScript types included
+pip install witnessmark        # Python 3.10+, standard library only
+npm install witnessmark        # Node.js 18+, built-ins only; ESM and CommonJS; TypeScript types included
 ```
 
 ### The verifier
 
-`plumbline-verify-<os>-<arch>` from [Releases](https://github.com/Lumetrix-Advanced-Technologies/plumbline/releases), or `go install github.com/lumetrix-advanced-technologies/plumbline/cmd/verify@latest`.
+`witnessmark-verify-<os>-<arch>` from [Releases](https://github.com/Lumetrix-Advanced-Technologies/witnessmark/releases), or `go install github.com/lumetrix-advanced-technologies/witnessmark/cmd/verify@latest`.
 
 ---
 
@@ -259,43 +262,43 @@ npm install plumbline-sdk        # Node.js 18+, built-ins only; ESM and CommonJS
 ### Python
 
 ```python
-import plumbline
-plumbline.init()
+import witnessmark
+witnessmark.init()
 ```
 
 `init()` takes optional arguments. It is safe to call more than once, and returns whether the SDK is on.
 
 | Argument | Default | Meaning |
 | --- | --- | --- |
-| `agent_url` | `PLUMBLINE_AGENT_URL`, else `http://127.0.0.1:4318` | Where the agent listens. |
-| `service` | `PLUMBLINE_SERVICE`, else `OTEL_SERVICE_NAME` | The service name on every span. |
-| `environment` | `PLUMBLINE_ENVIRONMENT` | The deployment environment, such as `production`. |
+| `agent_url` | `WITNESSMARK_AGENT_URL`, else `http://127.0.0.1:4318` | Where the agent listens. |
+| `service` | `WITNESSMARK_SERVICE`, else `OTEL_SERVICE_NAME` | The service name on every span. |
+| `environment` | `WITNESSMARK_ENVIRONMENT` | The deployment environment, such as `production`. |
 | `instrument` | `True` | Instrument the installed client libraries. `False` leaves only the helpers. |
 | `stream_usage` | `False` | Ask OpenAI for usage on streamed chat completions (`stream_options.include_usage`) when the app has not set `stream_options`. The stream then ends with one extra chunk that has no `choices`. |
 
-Other functions: `plumbline.flush(timeout=2.0)` sends buffered spans now; `plumbline.shutdown()` flushes and stops (it also runs at exit); `plumbline.is_enabled()`; `plumbline.stats()` returns counters (`spans`, `exported`, `dropped`, `export_errors`, `instrumentation_errors`, `instrumented`). `PLUMBLINE_DISABLED=1` turns the SDK off without a code change. It works across threads, `asyncio` tasks and forked workers (gunicorn, uWSGI).
+Other functions: `witnessmark.flush(timeout=2.0)` sends buffered spans now; `witnessmark.shutdown()` flushes and stops (it also runs at exit); `witnessmark.is_enabled()`; `witnessmark.stats()` returns counters (`spans`, `exported`, `dropped`, `export_errors`, `instrumentation_errors`, `instrumented`). `WITNESSMARK_DISABLED=1` turns the SDK off without a code change. It works across threads, `asyncio` tasks and forked workers (gunicorn, uWSGI).
 
 ### Node.js and TypeScript
 
 ```js
-import * as plumbline from 'plumbline-sdk';          // or: const plumbline = require('plumbline-sdk');
-plumbline.init({ service: 'claims-api', environment: 'production' });
+import * as witnessmark from 'witnessmark';          // or: const witnessmark = require('witnessmark');
+witnessmark.init({ service: 'claims-api', environment: 'production' });
 ```
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `agentUrl` | `PLUMBLINE_AGENT_URL`, else `http://127.0.0.1:4318` | Where the agent listens. |
-| `service` | `PLUMBLINE_SERVICE`, else `OTEL_SERVICE_NAME` | The service name on every span. |
-| `environment` | `PLUMBLINE_ENVIRONMENT` | The deployment environment. |
+| `agentUrl` | `WITNESSMARK_AGENT_URL`, else `http://127.0.0.1:4318` | Where the agent listens. |
+| `service` | `WITNESSMARK_SERVICE`, else `OTEL_SERVICE_NAME` | The service name on every span. |
+| `environment` | `WITNESSMARK_ENVIRONMENT` | The deployment environment. |
 | `instrument` | `true` | Instrument the installed client libraries. |
 | `streamUsage` | `false` | As `stream_usage` in Python. |
 
 Other functions:
 
-- `await plumbline.flush()`: call it before a serverless handler or a short script returns.
-- `await plumbline.shutdown()`, `plumbline.isEnabled()`, `plumbline.stats()`.
-- `await plumbline.ready()`: resolves once the ES-module copies of the client libraries are instrumented; await it if a module calls a model straight after `init()`.
-- `plumbline.instrument({ openai: OpenAI, anthropic: Anthropic, bedrock: await import('@aws-sdk/client-bedrock-runtime') })`: for bundled apps, or strict package managers, where the SDK cannot find the libraries itself.
+- `await witnessmark.flush()`: call it before a serverless handler or a short script returns.
+- `await witnessmark.shutdown()`, `witnessmark.isEnabled()`, `witnessmark.stats()`.
+- `await witnessmark.ready()`: resolves once the ES-module copies of the client libraries are instrumented; await it if a module calls a model straight after `init()`.
+- `witnessmark.instrument({ openai: OpenAI, anthropic: Anthropic, bedrock: await import('@aws-sdk/client-bedrock-runtime') })`: for bundled apps, or strict package managers, where the SDK cannot find the libraries itself.
 
 ### What is instrumented automatically
 
@@ -309,24 +312,24 @@ Per call, the SDK reads the request's model and stream flag, and from the respon
 
 ### Record what no client library knows
 
-Plumbline's evidence objectives need a few facts only your code knows. In Python, each helper is a context manager (`with` / `async with`) and a decorator. In Node.js, it is a callback scope that returns whatever the callback returns, and follows `await`, timers and callbacks.
+Witnessmark's evidence objectives need a few facts only your code knows. In Python, each helper is a context manager (`with` / `async with`) and a decorator. In Node.js, it is a callback scope that returns whatever the callback returns, and follows `await`, timers and callbacks.
 
 | Python | Node.js | Records |
 | --- | --- | --- |
-| `plumbline.trace()` | `trace(fn)` | Groups everything inside into one trace, for example one web request. |
-| `plumbline.prompt(name, version)` | `prompt(name, version, fn)` | The prompt (name and version, never its text) used by calls inside. |
-| `plumbline.personal_data(redacted=False)` | `personalData({ redacted }, fn)` | Spans inside handle personal data; `redacted` means it was removed or masked before the model saw it. |
-| `plumbline.guardrail(decision=None)` | `guardrail(decision?, fn)` | The guardrail decision for calls inside: `allow`, `block` or `flag`, set later with `g.allow()`, `g.block()`, `g.flag()`. A block with no call inside counts as one blocked call. |
-| `plumbline.tool(name, high_impact=False, approved=False)` | `tool(name, { highImpact, approved }, fn)` | A tool call; an exception marks it failed. Set `t.approved = True` once a person or policy approves it. |
-| `plumbline.agent_run(name)` | `agentRun(name, fn)` | One agent run; model changes are tracked per agent. |
-| `plumbline.escalation()` | `escalation()` | The request was handed to a person. |
-| `plumbline.llm_call(provider, model, operation="chat", region=None)` | `llmCall({ provider, model, operation, region }, fn)` | A model call the SDK does not instrument; report its usage with `c.usage(input_tokens, output_tokens)`. |
+| `witnessmark.trace()` | `trace(fn)` | Groups everything inside into one trace, for example one web request. |
+| `witnessmark.prompt(name, version)` | `prompt(name, version, fn)` | The prompt (name and version, never its text) used by calls inside. |
+| `witnessmark.personal_data(redacted=False)` | `personalData({ redacted }, fn)` | Spans inside handle personal data; `redacted` means it was removed or masked before the model saw it. |
+| `witnessmark.guardrail(decision=None)` | `guardrail(decision?, fn)` | The guardrail decision for calls inside: `allow`, `block` or `flag`, set later with `g.allow()`, `g.block()`, `g.flag()`. A block with no call inside counts as one blocked call. |
+| `witnessmark.tool(name, high_impact=False, approved=False)` | `tool(name, { highImpact, approved }, fn)` | A tool call; an exception marks it failed. Set `t.approved = True` once a person or policy approves it. |
+| `witnessmark.agent_run(name)` | `agentRun(name, fn)` | One agent run; model changes are tracked per agent. |
+| `witnessmark.escalation()` | `escalation()` | The request was handed to a person. |
+| `witnessmark.llm_call(provider, model, operation="chat", region=None)` | `llmCall({ provider, model, operation, region }, fn)` | A model call the SDK does not instrument; report its usage with `c.usage(input_tokens, output_tokens)`. |
 
 ```python
 @app.post("/claims/{claim_id}/triage")
 def triage(claim_id: str, req: Request):
-    with plumbline.trace(), plumbline.prompt("claims-triage", "14"), plumbline.personal_data(redacted=True):
-        with plumbline.guardrail() as g:
+    with witnessmark.trace(), witnessmark.prompt("claims-triage", "14"), witnessmark.personal_data(redacted=True):
+        with witnessmark.guardrail() as g:
             if not input_policy_ok(req):
                 g.block()                      # one blocked call; the model was never called
                 return refusal()
@@ -334,17 +337,17 @@ def triage(claim_id: str, req: Request):
             g.flag() if needs_review(r) else g.allow()
             return r
 
-@plumbline.tool("issue_refund", high_impact=True)
+@witnessmark.tool("issue_refund", high_impact=True)
 def issue_refund(claim):
     ...
 ```
 
 ```js
 app.post('/claims/:id/triage', (req, res) =>
-  plumbline.trace(() =>
-    plumbline.prompt('claims-triage', '14', () =>
-      plumbline.personalData({ redacted: true }, () =>
-        plumbline.guardrail(async (g) => {
+  witnessmark.trace(() =>
+    witnessmark.prompt('claims-triage', '14', () =>
+      witnessmark.personalData({ redacted: true }, () =>
+        witnessmark.guardrail(async (g) => {
           if (!inputPolicyOk(req.body)) { g.block(); return res.status(422).end(); }
           const r = await openai.chat.completions.create({ model: 'gpt-4.1-mini', messages: redact(req.body.messages) });
           needsReview(r) ? g.flag() : g.allow();
@@ -361,8 +364,8 @@ If you serve models yourself, there is no client library to patch. Wrap each inf
 ```python
 @app.post("/v1/chat/completions")
 def chat(req):
-    with plumbline.trace(), plumbline.llm_call("acme-ai", req.model, region="eu-west-1") as c:
-        with plumbline.guardrail() as g:
+    with witnessmark.trace(), witnessmark.llm_call("acme-ai", req.model, region="eu-west-1") as c:
+        with witnessmark.guardrail() as g:
             out = engine.generate(req)
             g.block() if out.filtered else g.allow()
         c.usage(out.prompt_tokens, out.completion_tokens)
@@ -371,7 +374,7 @@ def chat(req):
 
 ```js
 app.post('/v1/chat/completions', (req, res) =>
-  plumbline.trace(() => plumbline.llmCall({ provider: 'acme-ai', model: req.body.model, region: 'eu-west-1' }, async (c) => {
+  witnessmark.trace(() => witnessmark.llmCall({ provider: 'acme-ai', model: req.body.model, region: 'eu-west-1' }, async (c) => {
     const out = await engine.generate(req.body);
     c.usage(out.promptTokens, out.completionTokens);
     res.json(out);
@@ -380,7 +383,7 @@ app.post('/v1/chat/completions', (req, res) =>
 
 ### Already on OpenTelemetry?
 
-Skip the SDK and point an OTLP/HTTP **JSON** exporter at `http://127.0.0.1:4318/v1/traces`. The agent reads the OpenTelemetry GenAI conventions (old and new attribute names) and a few `plumbline.*` attributes, as listed in [`spec/semconv-map.json`](spec/semconv-map.json).
+Skip the SDK and point an OTLP/HTTP **JSON** exporter at `http://127.0.0.1:4318/v1/traces`. The agent reads the OpenTelemetry GenAI conventions (old and new attribute names) and a few `witnessmark.*` attributes, as listed in [`spec/semconv-map.json`](spec/semconv-map.json).
 
 <details>
 <summary><b>The attributes the agent reads</b></summary>
@@ -393,11 +396,11 @@ Skip the SDK and point an OTLP/HTTP **JSON** exporter at `http://127.0.0.1:4318/
 | Operation | `gen_ai.operation.name`, `llm.request.type` (`chat`, `text_completion`, `generate_content`, `embeddings`); `invoke_agent` and `execute_tool` mark agent runs and tool calls |
 | Region | `cloud.region`, `aws.region` |
 | Agent | `gen_ai.agent.name` |
-| Prompt | `plumbline.prompt.name`, `plumbline.prompt.version` |
-| Personal data | `plumbline.data_class` = `personal`; `plumbline.redaction.applied` |
-| Guardrail | `plumbline.guardrail.decision` (`allow`, `block`, `flag`) |
-| Tools | `plumbline.tool.high_impact`, `plumbline.tool.approved` |
-| Escalation | `plumbline.escalation` |
+| Prompt | `witnessmark.prompt.name`, `witnessmark.prompt.version` |
+| Personal data | `witnessmark.data_class` = `personal`; `witnessmark.redaction.applied` |
+| Guardrail | `witnessmark.guardrail.decision` (`allow`, `block`, `flag`) |
+| Tools | `witnessmark.tool.high_impact`, `witnessmark.tool.approved` |
+| Escalation | `witnessmark.escalation` |
 
 </details>
 
@@ -411,17 +414,17 @@ Message attributes (`gen_ai.input.messages`, `gen_ai.output.messages`, `gen_ai.p
 
 | Command | What it does |
 | --- | --- |
-| `plumbline-agent run --local` | **Local mode.** No account, server or token. Signs batches with its own key, keeps them in `<data-dir>/local`, and serves the dashboard on `127.0.0.1:4319`. Nothing is sent. (`plumbline-agent local` does the same.) |
-| `plumbline-agent connect <token>` | **Connected mode, in one command.** Enrols with a one-time token from the Plumbline app (unless the data directory is already enrolled), keeps a salt secret in the data directory, then runs and sends signed batches to `PLUMBLINE_SERVER`. Running it again later just runs. |
-| `plumbline-agent enrol --config agent.json` | Enrol only, with the token from `--token` or `PLUMBLINE_ENROL_TOKEN`. |
-| `plumbline-agent run --config agent.json` | Run an enrolled agent with a config file (sources, aggregation settings). |
-| `plumbline-agent run --config agent.json --dry-run` | Print every batch it would send, with its payload decoded; send, queue and store nothing. Works before enrolment. |
-| `plumbline-agent run --config agent.json --dry-run --replay export.jsonl` | Feed an OTLP JSON export through the pipeline, print every window and exit: the fastest way to see what Plumbline would make of traces you already have. |
-| `plumbline-agent report` | Verify and summarise the local log in the terminal. |
-| `plumbline-agent check` | Evaluate the local log against the ten evidence objectives and your policy ([governance as code](#governance-as-code-policy-check-and-ai-bom)). |
-| `plumbline-agent aibom` | Write a CycloneDX AI bill of materials from the log. |
-| `plumbline-agent dashboard --data-dir <dir>` | Serve the dashboard on its own for a data directory (a copied log, or one written elsewhere). |
-| `plumbline-agent version` | Print the version. |
+| `witnessmark-agent run --local` | **Local mode.** No account, server or token. Signs batches with its own key, keeps them in `<data-dir>/local`, and serves the dashboard on `127.0.0.1:4319`. Nothing is sent. (`witnessmark-agent local` does the same.) |
+| `witnessmark-agent connect <token>` | **Connected mode, in one command.** Enrols with a one-time token from the Witnessmark app (unless the data directory is already enrolled), keeps a salt secret in the data directory, then runs and sends signed batches to `WITNESSMARK_SERVER`. Running it again later just runs. |
+| `witnessmark-agent enrol --config agent.json` | Enrol only, with the token from `--token` or `WITNESSMARK_ENROL_TOKEN`. |
+| `witnessmark-agent run --config agent.json` | Run an enrolled agent with a config file (sources, aggregation settings). |
+| `witnessmark-agent run --config agent.json --dry-run` | Print every batch it would send, with its payload decoded; send, queue and store nothing. Works before enrolment. |
+| `witnessmark-agent run --config agent.json --dry-run --replay export.jsonl` | Feed an OTLP JSON export through the pipeline, print every window and exit: the fastest way to see what Witnessmark would make of traces you already have. |
+| `witnessmark-agent report` | Verify and summarise the local log in the terminal. |
+| `witnessmark-agent check` | Evaluate the local log against the ten evidence objectives and your policy ([governance as code](#governance-as-code-policy-check-and-ai-bom)). |
+| `witnessmark-agent aibom` | Write a CycloneDX AI bill of materials from the log. |
+| `witnessmark-agent dashboard --data-dir <dir>` | Serve the dashboard on its own for a data directory (a copied log, or one written elsewhere). |
+| `witnessmark-agent version` | Print the version. |
 
 A local-mode data directory and an enrolled one never mix: `connect` refuses a local data directory, and local mode refuses an enrolled one. Local batches stay local; connecting starts a new agent with its own data directory.
 
@@ -433,7 +436,7 @@ Spans are aggregated into hourly windows (UTC). A window closes `grace_minutes` 
 
 ## The dashboard
 
-`plumbline-agent run --local` serves it on **http://127.0.0.1:4319**. It reads the same verified log as `report`, so the two can never disagree.
+`witnessmark-agent run --local` serves it on **http://127.0.0.1:4319**. It reads the same verified log as `report`, so the two can never disagree.
 
 | Panel | Shows |
 | --- | --- |
@@ -448,22 +451,22 @@ Spans are aggregated into hourly windows (UTC). A window closes `grace_minutes` 
 
 Choose a range with the buttons (24 hours, 7 days, 30 days, All); a link can pick one with `#range=7d`. Hover a chart, or focus it and use the arrow keys, for an hour's figures; every chart also has a table view. It refreshes every 30 seconds, follows your system's light or dark theme, and works at phone width.
 
-The agent serves it on loopback only. It answers only GET requests, refuses any request whose Host is not a local name (so a web page cannot read it through DNS rebinding), loads nothing from anywhere else, and stores nothing but your chosen range. Move it with `dashboard_listen` or `PLUMBLINE_DASHBOARD_LISTEN`, or turn it off with `off`. To look at a log somewhere else: `plumbline-agent dashboard --data-dir /path/to/copy --listen 127.0.0.1:4320`.
+The agent serves it on loopback only. It answers only GET requests, refuses any request whose Host is not a local name (so a web page cannot read it through DNS rebinding), loads nothing from anywhere else, and stores nothing but your chosen range. Move it with `dashboard_listen` or `WITNESSMARK_DASHBOARD_LISTEN`, or turn it off with `off`. To look at a log somewhere else: `witnessmark-agent dashboard --data-dir /path/to/copy --listen 127.0.0.1:4320`.
 
 ---
 
 ## Reports in the terminal
 
 ```bash
-plumbline-agent report                                  # the whole log
-plumbline-agent report --since 2026-10-01 --until 2026-10-31
-plumbline-agent report --json > october.json            # the same, as JSON
-plumbline-agent report --data-dir /path/to/copy         # a copied log
-docker exec plumbline-agent /plumbline-agent report     # inside the container
+witnessmark-agent report                                  # the whole log
+witnessmark-agent report --since 2026-10-01 --until 2026-10-31
+witnessmark-agent report --json > october.json            # the same, as JSON
+witnessmark-agent report --data-dir /path/to/copy         # a copied log
+docker exec witnessmark-agent /witnessmark-agent report     # inside the container
 ```
 
 ```
-Plumbline local evidence log, agent agt_localf444634e45d1d9b9d0208705
+Witnessmark local evidence log, agent agt_localf444634e45d1d9b9d0208705
   Verified: 2 batches, signed by this agent's key and chained from batch 1 to 2.
   Latest batch digest: sha256:00a34bc8802ae6135dbd64864373a0b3e391beb4b43e84199eb5786f631a6258
   Windows: 2026-09-01T00:00:00Z to 2026-09-01T02:00:00Z (UTC)
@@ -495,10 +498,10 @@ The report checks every batch's signature against `agent.pub`, that the sequence
 
 Write down what your AI system is meant to be, next to its code, and check the evidence against it: locally, in CI, and with the same evaluator that issues signed packs, so your own check and a reviewer's pack cannot disagree.
 
-### 1. Declare: `plumbline.policy.json`
+### 1. Declare: `witnessmark.policy.json`
 
 ```bash
-plumbline-agent policy init --name "Claims Triage Agent" --timezone Australia/Sydney
+witnessmark-agent policy init --name "Claims Triage Agent" --timezone Australia/Sydney
 ```
 
 This writes a policy declaring the models and regions the log has seen.
@@ -507,11 +510,11 @@ This writes a policy declaring the models and regions the log has seen.
 > Review it before you rely on it. A declaration says what the system *may* use, so remove anything that should not be there. `policy init` never fills the registers: a change or an incident is something a person records.
 
 <details open>
-<summary><b>An example <code>plumbline.policy.json</code></b></summary>
+<summary><b>An example <code>witnessmark.policy.json</code></b></summary>
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/plumbline/main/spec/policy.schema.json",
+  "$schema": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/witnessmark/main/spec/policy.schema.json",
   "organisation": "Kestrel Insurance",
   "ai_system": "Claims Triage Agent",
   "environment": "production",
@@ -545,19 +548,19 @@ This writes a policy declaring the models and regions the log has seen.
 | `incidents` | EO-INC-01 | The incident register. An anomaly hour is covered by an incident opened within an hour of it and acknowledged within an hour of opening. |
 | `evals` | EO-EVAL-01 | Evaluation runs recorded outside the telemetry, added to those the agent sees (Langfuse scores, SDK spans). |
 
-The [JSON Schema](spec/policy.schema.json) gives editors completion and validation; `plumbline-agent policy validate` checks the file the way `check` reads it (unknown keys are refused, so a typo never silently weakens a declaration). The agent looks for the policy at `--policy`, then `$PLUMBLINE_POLICY`, then `./plumbline.policy.json`, then `<data-dir>/plumbline.policy.json` (where a container keeps it).
+The [JSON Schema](spec/policy.schema.json) gives editors completion and validation; `witnessmark-agent policy validate` checks the file the way `check` reads it (unknown keys are refused, so a typo never silently weakens a declaration). The agent looks for the policy at `--policy`, then `$WITNESSMARK_POLICY`, then `./witnessmark.policy.json`, then `<data-dir>/witnessmark.policy.json` (where a container keeps it).
 
-### 2. Check: `plumbline-agent check`
+### 2. Check: `witnessmark-agent check`
 
 ```bash
-plumbline-agent check                                   # the last 30 days with data
-plumbline-agent check --since 2026-10-01 --until 2026-10-31 --junit check.xml
-plumbline-agent check --json > october-check.json
-plumbline-agent check --strict                          # attention fails too
+witnessmark-agent check                                   # the last 30 days with data
+witnessmark-agent check --since 2026-10-01 --until 2026-10-31 --junit check.xml
+witnessmark-agent check --json > october-check.json
+witnessmark-agent check --strict                          # attention fails too
 ```
 
 ```
-Plumbline check: Claims Triage Agent (production), 2026-10-09 to 2026-10-17 (Australia/Sydney)
+Witnessmark check: Claims Triage Agent (production), 2026-10-09 to 2026-10-17 (Australia/Sydney)
   Evidence: 168 batches from agent agt_locald74e27b542973a66bedec4fc, verified (signatures and chain).
 
 ! ATTENTION  EO-LOG-01  Trace coverage
@@ -593,24 +596,24 @@ The dashboard shows the same check for the selected range in its **Evidence obje
 The repository is also a GitHub Action. Validate the policy on every pull request that changes it:
 
 ```yaml
-- uses: Lumetrix-Advanced-Technologies/plumbline@v0.3.0
-  with: { command: validate, policy: plumbline.policy.json }
+- uses: Lumetrix-Advanced-Technologies/witnessmark@v0.3.0
+  with: { command: validate, policy: witnessmark.policy.json }
 ```
 
 Or gate a release on the evidence, with a copy of the agent's data directory (from a scheduled job, an artifact or a volume snapshot):
 
 ```yaml
-- uses: Lumetrix-Advanced-Technologies/plumbline@v0.3.0
-  with: { command: check, policy: plumbline.policy.json, data-dir: evidence/, strict: "true" }
+- uses: Lumetrix-Advanced-Technologies/witnessmark@v0.3.0
+  with: { command: check, policy: witnessmark.policy.json, data-dir: evidence/, strict: "true" }
 ```
 
-It installs `plumbline-agent` from PyPI, writes `plumbline-check.xml` (JUnit), puts the result in the job summary, and fails the job when an objective fails.
+It installs `witnessmark-agent` from PyPI, writes `witnessmark-check.xml` (JUnit), puts the result in the job summary, and fails the job when an objective fails.
 
-### 3. Inventory: `plumbline-agent aibom`
+### 3. Inventory: `witnessmark-agent aibom`
 
 ```bash
-plumbline-agent aibom --out aibom.cdx.json
-plumbline-agent aibom --since 2026-10-01 --until 2026-10-31 > october.cdx.json
+witnessmark-agent aibom --out aibom.cdx.json
+witnessmark-agent aibom --since 2026-10-01 --until 2026-10-31 > october.cdx.json
 ```
 
 A [CycloneDX 1.6](https://cyclonedx.org/) AI bill of materials, built from the verified log rather than a hand-kept list. The AI system is the root component; every model declared or seen is a `machine-learning-model` component with its provider as supplier and properties for whether it was declared and observed, its regions, calls, input and output tokens, first and last hour seen, and prompt versions. A model that is declared but never seen, or seen but never declared, is visible at a glance. The BOM's metadata names the agent and the latest batch digest it was built from. Any CycloneDX tool can read it (Dependency-Track, the CycloneDX CLI, SBOM platforms).
@@ -627,7 +630,7 @@ A [CycloneDX 1.6](https://cyclonedx.org/) AI bill of materials, built from the v
 ```json
 {
   "server": "https://<server>",
-  "data_dir": "./.plumbline-agent",
+  "data_dir": "./.witnessmark-agent",
   "otlp_listen": "127.0.0.1:4318",
   "dashboard_listen": "127.0.0.1:4319",
   "langfuse": { "enabled": false, "base_url": "https://cloud.langfuse.com",
@@ -637,7 +640,7 @@ A [CycloneDX 1.6](https://cyclonedx.org/) AI bill of materials, built from the v
     "anthropic": { "enabled": false, "admin_key_env": "ANTHROPIC_ADMIN_KEY", "workspace_ids": [] },
     "bedrock":   { "enabled": false, "region": "ap-southeast-2" }
   },
-  "salt_secret_env": "PLUMBLINE_SALT_SECRET",
+  "salt_secret_env": "WITNESSMARK_SALT_SECRET",
   "salt_secret_file": "",
   "aggregation": { "grace_minutes": 5, "first_batch_seconds": 60,
                    "anomaly": { "min_calls": 20, "error_rate": 0.05, "guardrail_block_rate": 0.03 } }
@@ -648,14 +651,14 @@ A [CycloneDX 1.6](https://cyclonedx.org/) AI bill of materials, built from the v
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `server` | none | The Plumbline server, for connected mode. `https`, or `http` for localhost only. |
-| `data_dir` | `./.plumbline-agent` (`/data` in the container) | The key, queue, local log, commitment leaves and salt. |
+| `server` | none | The Witnessmark server, for connected mode. `https`, or `http` for localhost only. |
+| `data_dir` | `./.witnessmark-agent` (`/data` in the container) | The key, queue, local log, commitment leaves and salt. |
 | `otlp_listen` | `127.0.0.1:4318` | The span receiver. A non-loopback address needs `otlp_allow_remote`. |
 | `otlp_allow_remote` | `false` | Allow listening beyond loopback. The receiver has no authentication, so do this only on a network you control. |
 | `dashboard_listen` | `127.0.0.1:4319` | The local-mode dashboard; `off` turns it off. Same loopback rule. |
 | `langfuse.*` | off | The [Langfuse puller](#langfuse). |
 | `usage.*` | off | The [provider usage pollers](#provider-usage). |
-| `salt_secret_env` / `salt_secret_file` | `PLUMBLINE_SALT_SECRET` | The secret that salts trace commitments. With `connect` or `run --local` and none set, a random one is kept in `<data-dir>/salt.secret`. |
+| `salt_secret_env` / `salt_secret_file` | `WITNESSMARK_SALT_SECRET` | The secret that salts trace commitments. With `connect` or `run --local` and none set, a random one is kept in `<data-dir>/salt.secret`. |
 | `aggregation.grace_minutes` | `5` | How long after the hour a window stays open (1 to 55). |
 | `aggregation.first_batch_seconds` | `60` | When the open hour is sent once after a start (0 to 3600). |
 | `aggregation.anomaly.*` | `20`, `0.05`, `0.03` | An hour with at least `min_calls` calls and an error rate or guardrail-block rate above these is an anomaly window. |
@@ -666,14 +669,14 @@ Secrets are never written in the file. Each `*_env` key names the environment va
 
 | Variable | Overrides | Notes |
 | --- | --- | --- |
-| `PLUMBLINE_SERVER` | `server` | |
-| `PLUMBLINE_DATA_DIR` | `data_dir` | |
-| `PLUMBLINE_OTLP_LISTEN` | `otlp_listen` | |
-| `PLUMBLINE_DASHBOARD_LISTEN` | `dashboard_listen` | |
-| `PLUMBLINE_OTLP_ALLOW_REMOTE=1` | `otlp_allow_remote` | Set in the container image, whose documented commands publish ports on the host's loopback only. |
-| `PLUMBLINE_ENROL_TOKEN` | | The token for `enrol` and `connect` when it is not given on the command line. |
-| `PLUMBLINE_SALT_SECRET` | | The default salt variable. |
-| SDK: `PLUMBLINE_AGENT_URL`, `PLUMBLINE_SERVICE`, `PLUMBLINE_ENVIRONMENT`, `PLUMBLINE_DISABLED` | | See [Instrument your app](#instrument-your-app). |
+| `WITNESSMARK_SERVER` | `server` | |
+| `WITNESSMARK_DATA_DIR` | `data_dir` | |
+| `WITNESSMARK_OTLP_LISTEN` | `otlp_listen` | |
+| `WITNESSMARK_DASHBOARD_LISTEN` | `dashboard_listen` | |
+| `WITNESSMARK_OTLP_ALLOW_REMOTE=1` | `otlp_allow_remote` | Set in the container image, whose documented commands publish ports on the host's loopback only. |
+| `WITNESSMARK_ENROL_TOKEN` | | The token for `enrol` and `connect` when it is not given on the command line. |
+| `WITNESSMARK_SALT_SECRET` | | The default salt variable. |
+| SDK: `WITNESSMARK_AGENT_URL`, `WITNESSMARK_SERVICE`, `WITNESSMARK_ENVIRONMENT`, `WITNESSMARK_DISABLED` | | See [Instrument your app](#instrument-your-app). |
 
 ---
 
@@ -701,7 +704,7 @@ The agent pulls traces from your Langfuse project with its keys. `eval_scores` t
 }
 ```
 
-The agent polls the providers' usage APIs with an admin key (limit it to this system's projects or workspaces) and puts each hour's billed tokens in the batch, so traced tokens can be compared with billed ones: that is the trace-coverage objective. Bedrock usage comes from CloudWatch in `region`, with the default AWS credential chain, and needs a `plumbline-agent-bedrock-*` binary (or `-tags bedrock`).
+The agent polls the providers' usage APIs with an admin key (limit it to this system's projects or workspaces) and puts each hour's billed tokens in the batch, so traced tokens can be compared with billed ones: that is the trace-coverage objective. Bedrock usage comes from CloudWatch in `region`, with the default AWS credential chain, and needs a `witnessmark-agent-bedrock-*` binary (or `-tags bedrock`).
 
 ---
 
@@ -710,7 +713,7 @@ The agent polls the providers' usage APIs with an admin key (limit it to this sy
 **In local mode, nothing.** In connected mode, one signed batch per hour, defined by [`spec/batch.schema.json`](spec/batch.schema.json).
 
 <details>
-<summary><b>A real batch, trimmed</b> (<code>plumbline-agent run --dry-run</code> shows yours)</summary>
+<summary><b>A real batch, trimmed</b> (<code>witnessmark-agent run --dry-run</code> shows yours)</summary>
 
 ```json
 {
@@ -754,7 +757,7 @@ Each trace becomes a leaf `sha256(0x00 ‖ salt ‖ trace_id)`, where the salt i
 | `leaves/` | Each window's commitment leaves, for disclosing a trace later. |
 | `salt.secret` (0600) | The salt secret, when the agent made one. |
 
-Keep and back up the data directory. In the container it is the `plumbline-agent` volume.
+Keep and back up the data directory. In the container it is the `witnessmark-agent` volume.
 
 ---
 
@@ -771,16 +774,16 @@ services:
   app:
     build: .
     environment:
-      PLUMBLINE_AGENT_URL: http://plumbline-agent:4318
-      PLUMBLINE_SERVICE: claims-api
-      PLUMBLINE_ENVIRONMENT: production
-  plumbline-agent:
-    image: ghcr.io/lumetrix-advanced-technologies/plumbline-agent:v0.2.0
-    command: ["run", "--local"]                 # or ["connect", "<token>"], with PLUMBLINE_SERVER set
+      WITNESSMARK_AGENT_URL: http://witnessmark-agent:4318
+      WITNESSMARK_SERVICE: claims-api
+      WITNESSMARK_ENVIRONMENT: production
+  witnessmark-agent:
+    image: ghcr.io/lumetrix-advanced-technologies/witnessmark-agent:v0.2.0
+    command: ["run", "--local"]                 # or ["connect", "<token>"], with WITNESSMARK_SERVER set
     ports: ["127.0.0.1:4319:4319"]              # the dashboard, on the host's loopback only
-    volumes: ["plumbline-agent:/data"]
+    volumes: ["witnessmark-agent:/data"]
 volumes:
-  plumbline-agent: {}
+  witnessmark-agent: {}
 ```
 
 ### Kubernetes
@@ -791,27 +794,27 @@ Run the agent as a sidecar in the app's pod, so spans never leave the pod, and k
 containers:
   - name: app
     env:
-      - { name: PLUMBLINE_AGENT_URL, value: "http://127.0.0.1:4318" }
-  - name: plumbline-agent
-    image: ghcr.io/lumetrix-advanced-technologies/plumbline-agent:v0.2.0
+      - { name: WITNESSMARK_AGENT_URL, value: "http://127.0.0.1:4318" }
+  - name: witnessmark-agent
+    image: ghcr.io/lumetrix-advanced-technologies/witnessmark-agent:v0.2.0
     args: ["run", "--local"]
-    volumeMounts: [{ name: plumbline-data, mountPath: /data }]
+    volumeMounts: [{ name: witnessmark-data, mountPath: /data }]
 ```
 
 `kubectl port-forward pod/<pod> 4319` opens the dashboard. If one agent serves several pods, restrict who can reach port 4318 with a NetworkPolicy: the receiver has no authentication.
 
 ### Serverless and short scripts
 
-Call `plumbline.flush()` (in Node.js, `await plumbline.flush()`) before the handler returns, and run the agent where the function can reach it, set with `PLUMBLINE_AGENT_URL`.
+Call `witnessmark.flush()` (in Node.js, `await witnessmark.flush()`) before the handler returns, and run the agent where the function can reach it, set with `WITNESSMARK_AGENT_URL`.
 
 ---
 
 ## Signed evidence packs: the hosted service (early access)
 
-The local log is signed by your own key, and `plumbline-agent check` is your own evaluation of it. Reviewers usually need evidence signed by someone other than the vendor. That is what the hosted Plumbline service adds: the same evaluation, signed by an independent issuer, chained month to month and listed in a public checkpoint.
+The local log is signed by your own key, and `witnessmark-agent check` is your own evaluation of it. Reviewers usually need evidence signed by someone other than the vendor. That is what the hosted Witnessmark service adds: the same evaluation, signed by an independent issuer, chained month to month and listed in a public checkpoint.
 
 > [!NOTE]
-> The hosted service is in early access. [Request access](https://github.com/Lumetrix-Advanced-Technologies/plumbline/issues/new?template=early-access.yml); everything else on this page works today without it.
+> The hosted service is in early access. [Request access](https://github.com/Lumetrix-Advanced-Technologies/witnessmark/issues/new?template=early-access.yml); everything else on this page works today without it.
 
 ### What you get
 
@@ -841,14 +844,14 @@ Besides the objectives:
 
 ### The workflow, step by step
 
-1. [Request early access](https://github.com/Lumetrix-Advanced-Technologies/plumbline/issues/new?template=early-access.yml), and pick what fits: hosted packs, design partner, evidence for models you serve, or reviewer.
-2. In the Plumbline app, create your organisation and an AI system, and declare its models, regions and timezone.
+1. [Request early access](https://github.com/Lumetrix-Advanced-Technologies/witnessmark/issues/new?template=early-access.yml), and pick what fits: hosted packs, design partner, evidence for models you serve, or reviewer.
+2. In the Witnessmark app, create your organisation and an AI system, and declare its models, regions and timezone.
 3. Create an enrolment token on the system's *Setup and sources* page. The page shows the exact command.
-4. Run the agent with it: `PLUMBLINE_SERVER=https://<server> plumbline-agent connect <token>`, or the `docker run` line the page shows. Keep the SDK line in your app as before.
+4. Run the agent with it: `WITNESSMARK_SERVER=https://<server> witnessmark-agent connect <token>`, or the `docker run` line the page shows. Keep the SDK line in your app as before.
 5. Record changes, incidents and evaluation runs in the system's registers (by form or CSV upload), so the change and incident objectives have something to compare with.
 6. Issue a pack for a period (by default, the previous calendar month).
 7. Create a share link for a reviewer (for one pack, or always the latest) and send it.
-8. The reviewer opens it, and the verify page checks the pack in their browser. Or they download it and run `plumbline-verify`.
+8. The reviewer opens it, and the verify page checks the pack in their browser. Or they download it and run `witnessmark-verify`.
 9. Optionally, connect Vanta in Settings.
 
 ---
@@ -859,12 +862,12 @@ Besides the objectives:
 
 Open a share link: the verify page fetches the pack and the issuer's keys, and checks everything in your browser with Web Crypto. Or open the verify page with no link, choose the issuer's JWKS file and one or more pack files, and it checks them offline, with no network at all. It shows a pack's contents only after its signature verifies.
 
-### Offline, with plumbline-verify
+### Offline, with witnessmark-verify
 
 ```bash
-plumbline-verify --jwks issuer-jwks.json pack.dsse.json
-plumbline-verify --jwks https://<issuer>/.well-known/jwks.json 2026-09.dsse.json 2026-10.dsse.json   # oldest first: also checks the chain
-plumbline-verify --json --jwks issuer-jwks.json pack.dsse.json                                      # a machine-readable report
+witnessmark-verify --jwks issuer-jwks.json pack.dsse.json
+witnessmark-verify --jwks https://<issuer>/.well-known/jwks.json 2026-09.dsse.json 2026-10.dsse.json   # oldest first: also checks the chain
+witnessmark-verify --json --jwks issuer-jwks.json pack.dsse.json                                      # a machine-readable report
 ```
 
 ```
@@ -884,7 +887,7 @@ It checks the issuer's signature (against a key that was valid when the pack was
 **Prove a pack is in a daily checkpoint:**
 
 ```bash
-plumbline-verify checkpoint --jwks issuer-jwks.json --prev 2026-10-15.json 2026-10-16.json pack.dsse.json
+witnessmark-verify checkpoint --jwks issuer-jwks.json --prev 2026-10-15.json 2026-10-16.json pack.dsse.json
 ```
 
 This checks the checkpoint's signature, its Merkle root and its link to the previous day, and that each pack given is in it.
@@ -917,20 +920,20 @@ The full statement is on the [security page](web/security/index.html).
 
 ## CLI reference
 
-### plumbline-agent
+### witnessmark-agent
 
 ```
-plumbline-agent run --local [--config <agent.json>]
-plumbline-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
-plumbline-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen <host:port>]
-plumbline-agent policy init [--policy <file>] [--data-dir <dir>] [--name <ai system>] [--timezone <tz>] [--force]
-plumbline-agent policy validate [--policy <file>]
-plumbline-agent check [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json] [--junit <file>] [--strict]
-plumbline-agent aibom [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--out <file>]
-plumbline-agent connect [--config <agent.json>] <token>
-plumbline-agent enrol --config <agent.json> [--token <token>]
-plumbline-agent [run] --config <agent.json> [--dry-run] [--replay <export.jsonl>]
-plumbline-agent version
+witnessmark-agent run --local [--config <agent.json>]
+witnessmark-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
+witnessmark-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen <host:port>]
+witnessmark-agent policy init [--policy <file>] [--data-dir <dir>] [--name <ai system>] [--timezone <tz>] [--force]
+witnessmark-agent policy validate [--policy <file>]
+witnessmark-agent check [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json] [--junit <file>] [--strict]
+witnessmark-agent aibom [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--out <file>]
+witnessmark-agent connect [--config <agent.json>] <token>
+witnessmark-agent enrol --config <agent.json> [--token <token>]
+witnessmark-agent [run] --config <agent.json> [--dry-run] [--replay <export.jsonl>]
+witnessmark-agent version
 ```
 
 | Flag | Commands | Meaning |
@@ -939,12 +942,12 @@ plumbline-agent version
 | `--local` | `run` | Local mode: no server, signed batches kept in the data directory, dashboard served. |
 | `--dry-run` | `run` | Print every batch with its payload decoded; send, queue and store nothing. |
 | `--replay <file>` | `run` | Feed an OTLP JSON export (one request per line) through the pipeline, then exit. |
-| `--token <token>` | `enrol` | The one-time enrolment token (default `PLUMBLINE_ENROL_TOKEN`). |
+| `--token <token>` | `enrol` | The one-time enrolment token (default `WITNESSMARK_ENROL_TOKEN`). |
 | `--data-dir <dir>` | `report`, `dashboard` | Read this data directory instead of the configured one. |
 | `--since`, `--until` | `report` | The first and last day to sum (UTC dates). Verification always covers the whole log. |
 | `--json` | `report` | Print the summary as JSON. |
 | `--listen <host:port>` | `dashboard` | Where to serve it (default `dashboard_listen`, else `127.0.0.1:4319`). |
-| `--policy <file>` | `policy`, `check`, `aibom` | The policy file (default `$PLUMBLINE_POLICY`, `./plumbline.policy.json`, then `<data-dir>/plumbline.policy.json`). |
+| `--policy <file>` | `policy`, `check`, `aibom` | The policy file (default `$WITNESSMARK_POLICY`, `./witnessmark.policy.json`, then `<data-dir>/witnessmark.policy.json`). |
 | `--name`, `--timezone`, `--force` | `policy init` | The AI system's name, its IANA time zone (default `$TZ`, else UTC), and replace an existing file. |
 | `--since`, `--until` | `check`, `aibom` | The first and last local day (the policy's time zone). `check` defaults to the last 30 days with data. |
 | `--json`, `--junit <file>`, `--strict` | `check` | Print JSON; also write JUnit XML; fail on attention as well as fail. |
@@ -952,12 +955,12 @@ plumbline-agent version
 
 Exit status: **0** ok, **1** a runtime error (for `report`, a verification failure; for `check`, a failed objective or an unverified log; for `policy validate`, an invalid policy), **2** a usage or configuration error.
 
-### plumbline-verify
+### witnessmark-verify
 
 ```
-plumbline-verify --jwks <file|https-url> [--json] pack1.json [pack2.json ...]
-plumbline-verify checkpoint --jwks <file|https-url> [--prev yesterday.json] checkpoint.json [pack.json ...]
-plumbline-verify --version
+witnessmark-verify --jwks <file|https-url> [--json] pack1.json [pack2.json ...]
+witnessmark-verify checkpoint --jwks <file|https-url> [--prev yesterday.json] checkpoint.json [pack.json ...]
+witnessmark-verify --version
 ```
 
 Exit status: **0** all verified, **1** a check failed, **2** a usage or input error.
@@ -968,26 +971,38 @@ Exit status: **0** all verified, **1** a check failed, **2** a usage or input er
 
 | Symptom | What to check |
 | --- | --- |
-| The dashboard says "Waiting for your first model call" | Is the app calling `plumbline.init()` before its first model call, and can it reach `PLUMBLINE_AGENT_URL`? `plumbline.stats()` shows `exported` and `export_errors`. The first batch comes about a minute after the first span. |
-| `stats()` shows `spans: 0` | The client library is not instrumented: check `stats()["instrumented"]`. In Node.js ES modules, `await plumbline.ready()`; in bundled apps, use `plumbline.instrument({...})`. Or wrap the call in `llm_call`. |
+| The dashboard says "Waiting for your first model call" | Is the app calling `witnessmark.init()` before its first model call, and can it reach `WITNESSMARK_AGENT_URL`? `witnessmark.stats()` shows `exported` and `export_errors`. The first batch comes about a minute after the first span. |
+| `stats()` shows `spans: 0` | The client library is not instrumented: check `stats()["instrumented"]`. In Node.js ES modules, `await witnessmark.ready()`; in bundled apps, use `witnessmark.instrument({...})`. Or wrap the call in `llm_call`. |
 | Counts are doubled | The SDK and another OpenTelemetry exporter both send the same calls. Use one. |
 | Streamed OpenAI calls have no tokens | Turn on `stream_usage` (`streamUsage`), or set `stream_options` yourself. |
-| `npx plumbline-agent` says "no binary for …" | Your platform is not linux, darwin or win32 on x64 or arm64, or optional dependencies were omitted (`--omit=optional`). Download a binary from Releases instead. |
-| "otlp_listen … is not a loopback address" | Set `otlp_allow_remote` (or `PLUMBLINE_OTLP_ALLOW_REMOTE=1`) and restrict the port at the network. |
+| `npx witnessmark-agent` says "no binary for …" | Your platform is not linux, darwin or win32 on x64 or arm64, or optional dependencies were omitted (`--omit=optional`). Download a binary from Releases instead. |
+| "otlp_listen … is not a loopback address" | Set `otlp_allow_remote` (or `WITNESSMARK_OTLP_ALLOW_REMOTE=1`) and restrict the port at the network. |
 | The dashboard says it "answers only on localhost" | Open it as `http://127.0.0.1:4319` or `http://localhost:4319` (or a `*.localhost` name). |
-| Port 4319 is in use | `PLUMBLINE_DASHBOARD_LISTEN=127.0.0.1:4329`, or `off`. |
+| Port 4319 is in use | `WITNESSMARK_DASHBOARD_LISTEN=127.0.0.1:4329`, or `off`. |
 | `report` says FAILED | The message names the first bad batch: edited (signature), missing, or out of order. The figures cover only the batches before it. Restore the data directory from a backup. |
-| `check` says "No policy yet" or a policy error | `plumbline-agent policy init`, then review the file; `plumbline-agent policy validate` names the field at fault. |
+| `check` says "No policy yet" or a policy error | `witnessmark-agent policy init`, then review the file; `witnessmark-agent policy validate` names the field at fault. |
 | `check` fails EO-CHG-01 or EO-INC-01 | The output lists each missing change or incident; record the ones you approve in the policy's `changes` or `incidents`. |
 | `connect` refuses the data directory | It holds a local-mode agent. Use a new data directory (or volume) for connected mode. |
-| No agent appears in the Plumbline app | Check the agent's log for an enrolment error. A used or expired token needs a new one. |
+| No agent appears in the Witnessmark app | Check the agent's log for an enrolment error. A used or expired token needs a new one. |
+
+### Upgrading from Plumbline
+
+| v0.2 (Plumbline) | v0.3 (Witnessmark) | Do you need to change it? |
+| --- | --- | --- |
+| `pip install plumbline-sdk`, `import plumbline` | `pip install witnessmark`, `import witnessmark` | Yes, when you upgrade: the old package gets no new releases. |
+| `npm install plumbline-sdk` | `npm install witnessmark` | Yes, when you upgrade. |
+| `plumbline-agent` (pip, npm, binary, image) | `witnessmark-agent` | Yes, when you upgrade. The new agent picks up the old data directory, identity and hash chain. |
+| `PLUMBLINE_*` environment variables | `WITNESSMARK_*` | No: the old names are read when the new ones are unset. |
+| `plumbline.*` span attributes | `witnessmark.*` | No: both are mapped (`spec/semconv-map.json` v3). |
+| `plumbline.policy.json`, `./.plumbline-agent` | `witnessmark.policy.json`, `./.witnessmark-agent` | No: the old names are used when the new ones do not exist. |
+| Batches (`plumbline-batch/v0.2`), packs, signatures | the same | No: the wire formats are frozen, so every existing batch and pack still verifies. |
 
 ---
 
 ## Develop and contribute
 
 ```bash
-git clone https://github.com/Lumetrix-Advanced-Technologies/plumbline.git && cd plumbline
+git clone https://github.com/Lumetrix-Advanced-Technologies/witnessmark.git && cd witnessmark
 make check          # gofmt, vet, staticcheck, govulncheck, race tests, every verifier on every vector, SDK and packaging tests
 ```
 
@@ -1031,5 +1046,5 @@ Report vulnerabilities privately, through GitHub's private vulnerability reporti
 ---
 
 <p align="center">
-  <sub>Plumbline is built by <b>Lumetrix</b>. ⭐ Star the repository to follow it, <a href="https://github.com/Lumetrix-Advanced-Technologies/plumbline/issues/new?template=early-access.yml">request early access</a> to signed packs, or open an issue with what your reviewers ask for.</sub>
+  <sub>Witnessmark is built by <b>Lumetrix</b>. ⭐ Star the repository to follow it, <a href="https://github.com/Lumetrix-Advanced-Technologies/witnessmark/issues/new?template=early-access.yml">request early access</a> to signed packs, or open an issue with what your reviewers ask for.</sub>
 </p>

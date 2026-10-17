@@ -1,7 +1,7 @@
 // Package vanta sends evidence objectives and packs to a vendor's Vanta
 // account through their own private integration (P6-1, D-049). Each hour the
 // sync mints an access token with the client-credentials grant, replaces the
-// vendor's Plumbline custom resources (one per objective per AI system, from
+// vendor's Witnessmark custom resources (one per objective per AI system, from
 // its latest pack) in one full-state PUT, and uploads packs not yet sent as
 // files of a Vanta document. Credentials and tokens are never logged or put in
 // an error; errors carry only HTTP status codes.
@@ -63,7 +63,7 @@ func (c *Client) base() string {
 
 func (c *Client) do(ctx context.Context, op string, req *http.Request, out any) error {
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "plumbline-vanta-sync")
+	req.Header.Set("User-Agent", "witnessmark-vanta-sync")
 	client := c.HTTP
 	if client == nil {
 		client = &http.Client{Timeout: 60 * time.Second}

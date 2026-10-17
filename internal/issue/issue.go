@@ -24,17 +24,17 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batch"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/evaluate"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jcs"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/keys"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/kmssign"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/merkle"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/pack"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/store"
-	specdata "github.com/lumetrix-advanced-technologies/plumbline/spec"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/evaluate"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jcs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/keys"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/kmssign"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/merkle"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
+	specdata "github.com/lumetrix-advanced-technologies/witnessmark/spec"
 )
 
 // Leaf and node rules as written into production packs (D-027).
@@ -45,7 +45,7 @@ const (
 
 // Assurance level 1 (docs/project-overview.md): provider usage comes from the vendor's agent.
 var assurance = pack.AssuranceLevel{Level: 1,
-	Meaning: "Telemetry and provider usage collected by the Plumbline evidence agent in the vendor's environment and signed per hour; reconciliation computed by the issuer."}
+	Meaning: "Telemetry and provider usage collected by the Witnessmark evidence agent in the vendor's environment and signed per hour; reconciliation computed by the issuer."}
 
 var errNoSystem = errors.New("issue: no AI system in this tenant")
 
@@ -373,7 +373,7 @@ func predicate(s *systemRow, ev *evaluate.Evaluation, seq int, prev *string, iss
 		ObjectiveSetHash: ev.ObjectiveSetHash,
 		BatchDigests:     digests,
 	}
-	p.Sources = []pack.Source{{Kind: "traces", System: "Plumbline evidence agent", Method: "Hourly aggregates signed by the agent (Ed25519); message content dropped at parse"}}
+	p.Sources = []pack.Source{{Kind: "traces", System: "Witnessmark evidence agent", Method: "Hourly aggregates signed by the agent (Ed25519); message content dropped at parse"}}
 	for _, pr := range usageProviders {
 		name := pr
 		if n, ok := s.sys.Providers[pr]; ok {
@@ -382,7 +382,7 @@ func predicate(s *systemRow, ev *evaluate.Evaluation, seq int, prev *string, iss
 		p.Sources = append(p.Sources, pack.Source{Kind: "provider_usage", System: name + " usage", Method: "Billed usage polled hourly by the evidence agent"})
 	}
 	if hasRegisters {
-		p.Sources = append(p.Sources, pack.Source{Kind: "registers", System: "Plumbline change and incident registers", Method: "Entered by the vendor in the Plumbline web app"})
+		p.Sources = append(p.Sources, pack.Source{Kind: "registers", System: "Witnessmark change and incident registers", Method: "Entered by the vendor in the Witnessmark web app"})
 	}
 	for _, c := range ev.Coverage.Providers {
 		tr := c.TracedRequests

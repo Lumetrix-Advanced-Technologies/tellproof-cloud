@@ -1,8 +1,8 @@
-# Plumbline (cloud)
+# Witnessmark (cloud)
 
-This is the private repository: the control plane, the web app and everything else. The agent, the SDKs, the verifiers and the spec are published from here to the public [`plumbline`](https://github.com/Lumetrix-Advanced-Technologies/plumbline) repository by `make oss-export` (D-050, D-052).
+This is the private repository: the control plane, the web app and everything else. The agent, the SDKs, the verifiers and the spec are published from here to the public [`witnessmark`](https://github.com/Lumetrix-Advanced-Technologies/witnessmark) repository by `make oss-export` (D-050, D-052).
 
-Plumbline (by Lumetrix) turns an AI product's runtime telemetry into **signed, chained evidence packs** that a bank, insurer or auditor can verify themselves: offline, with no account, and without trusting the vendor or us. Prompts, completions and trace IDs never leave the vendor's environment.
+Witnessmark (by Lumetrix) turns an AI product's runtime telemetry into **signed, chained evidence packs** that a bank, insurer or auditor can verify themselves: offline, with no account, and without trusting the vendor or us. Prompts, completions and trace IDs never leave the vendor's environment.
 
 A pack reports ten evidence objectives for one AI system over one period (trace coverage, PII redaction, guardrail coverage, eval freshness and more). Each pack is an in-toto statement in a DSSE envelope, signed with ECDSA P-256 and linked to the previous pack by digest, so an edited pack or a missing month fails verification.
 
@@ -11,13 +11,13 @@ A pack reports ten evidence objectives for one AI system over one period (trace 
 | Area | State |
 | --- | --- |
 | Trust core (`internal/jcs`, `dsse`, `merkle`, `pack`) | Built and tested |
-| Verifiers: `plumbline-verify` CLI, browser verify page, `concierge/verify.py` | Built; all three agree on every test vector |
+| Verifiers: `witnessmark-verify` CLI, browser verify page, `concierge/verify.py` | Built; all three agree on every test vector |
 | Concierge CLI (`concierge/evidencepack.py`: ingest, evaluate, sign, share) | Built; used to hand-build packs for design partners |
-| Evidence agent (`plumbline-agent`: OTLP receiver, Langfuse puller, usage pollers, signed batches, durable queue, `--dry-run`) | Built; waits for the control plane's ingest API |
+| Evidence agent (`witnessmark-agent`: OTLP receiver, Langfuse puller, usage pollers, signed batches, durable queue, `--dry-run`) | Built; waits for the control plane's ingest API |
 | Python SDK (`sdk/python`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
 | TypeScript SDK (`sdk/js`) | Built: helpers and automatic OpenAI, Anthropic and Bedrock instrumentation |
-| Control plane (`plumbline-server`: migrate, ingest, jobs, evaluator, pack issue and KMS signing, JWKS with rotation, daily checkpoints, share links and verify API, Supabase sign-in, the vendor web app) | Built |
-| One-command agent install (`plumbline-agent connect`), end-to-end test in CI | Built |
+| Control plane (`witnessmark-server`: migrate, ingest, jobs, evaluator, pack issue and KMS signing, JWKS with rotation, daily checkpoints, share links and verify API, Supabase sign-in, the vendor web app) | Built |
+| One-command agent install (`witnessmark-agent connect`), end-to-end test in CI | Built |
 | Vanta integration (D-049); release tooling and the open-source split (D-050) | Built; the public repository and first release are not published yet |
 | Launch checklist | In progress (build plan Phase 6) |
 
@@ -26,8 +26,8 @@ Progress per task: [`docs/progress-tracker.md`](docs/progress-tracker.md). What 
 ## Quick start
 
 ```bash
-git clone git@github.com:Lumetrix-Advanced-Technologies/plumbline-cloud.git
-cd plumbline-cloud
+git clone git@github.com:Lumetrix-Advanced-Technologies/witnessmark-cloud.git
+cd witnessmark-cloud
 make check
 ```
 
@@ -82,9 +82,9 @@ make db                         # Postgres 16 in Docker, then migrations
 
 The schema is [`migrations/0001_init.sql`](migrations/0001_init.sql): per-tenant row-level security and append-only evidence tables enforced by triggers. The control plane that runs migrations (`cmd/server migrate`) is build task P4-1.
 
-## Using Plumbline
+## Using Witnessmark
 
-### Verify packs: `plumbline-verify`
+### Verify packs: `witnessmark-verify`
 
 ```bash
 go run ./cmd/verify --jwks <jwks.json | https://issuer/.well-known/jwks.json> [--json] pack1.json [pack2.json ...]
@@ -95,7 +95,7 @@ go run ./cmd/verify --jwks <jwks.json | https://issuer/.well-known/jwks.json> [-
 - `--json` prints one machine-readable report whose per-pack fields match `spec/vectors/manifest.json`.
 - Exit code: `0` every pack verified, `1` a pack failed (the output names the failed check), `2` usage or input error.
 
-To build a binary: `go build -ldflags "-X main.version=v0.1.0" -o bin/plumbline-verify ./cmd/verify`.
+To build a binary: `go build -ldflags "-X main.version=v0.1.0" -o bin/witnessmark-verify ./cmd/verify`.
 
 ### Verify packs in a browser: `web/verify/`
 
@@ -111,14 +111,14 @@ The page links `../brand.css`, so a deployment publishes the whole `web/` direct
 
 ### Build a pack by hand: the concierge CLI
 
-Until the evidence agent ships, packs for design partners are built with `concierge/evidencepack.py` in four steps. The salt secret for trace commitments comes from `PLUMBLINE_SALT_SECRET` or `--salt-secret-file` (mode 0600), and it never leaves the vendor.
+Until the evidence agent ships, packs for design partners are built with `concierge/evidencepack.py` in four steps. The salt secret for trace commitments comes from `WITNESSMARK_SALT_SECRET` or `--salt-secret-file` (mode 0600), and it never leaves the vendor.
 
 This walkthrough uses the synthetic sample in `concierge/testdata/` and a throwaway key:
 
 ```bash
 R=$(pwd)                         # run from the root of your checkout
-export PLUMBLINE_SALT_SECRET=demo-salt-secret
-mkdir -p /tmp/plumbline-demo && cd /tmp/plumbline-demo
+export WITNESSMARK_SALT_SECRET=demo-salt-secret
+mkdir -p /tmp/witnessmark-demo && cd /tmp/witnessmark-demo
 openssl ecparam -name prime256v1 -genkey -noout | openssl pkcs8 -topk8 -nocrypt -out key.pem && chmod 600 key.pem
 ```
 
@@ -142,7 +142,7 @@ openssl ecparam -name prime256v1 -genkey -noout | openssl pkcs8 -topk8 -nocrypt 
    ```bash
    python3 $R/concierge/evidencepack.py sign --evaluation evaluation.json --leaves leaves.txt --pack-id DEMO-0001 --kid demo-key --key key.pem --jwks-out jwks.json --sample-notice "SAMPLE. Synthetic data." --out DEMO-0001.dsse.json
    python3 $R/concierge/evidencepack.py sign --evaluation evaluation.json --leaves leaves.txt --pack-id DEMO-0002 --prev DEMO-0001.dsse.json --kid demo-key --key key.pem --out DEMO-0002.dsse.json
-   (cd $R && go run ./cmd/verify --jwks /tmp/plumbline-demo/jwks.json /tmp/plumbline-demo/DEMO-0001.dsse.json /tmp/plumbline-demo/DEMO-0002.dsse.json)
+   (cd $R && go run ./cmd/verify --jwks /tmp/witnessmark-demo/jwks.json /tmp/witnessmark-demo/DEMO-0001.dsse.json /tmp/witnessmark-demo/DEMO-0002.dsse.json)
    ```
 
    `--disclose <trace id>` reveals one trace with its Merkle proof.
@@ -163,16 +163,16 @@ Input formats, attribute names and evaluation rules are described in [`concierge
 ```mermaid
 flowchart LR
   subgraph vendor["Vendor environment"]
-    app["AI application<br/>plumbline.init(), OpenTelemetry or Langfuse"] --> agent["Evidence agent<br/>drops content at parse<br/>signs hourly aggregates"]
+    app["AI application<br/>witnessmark.init(), OpenTelemetry or Langfuse"] --> agent["Evidence agent<br/>drops content at parse<br/>signs hourly aggregates"]
     usage["Provider usage APIs<br/>OpenAI, Anthropic, Bedrock"] --> agent
   end
-  subgraph cp["Plumbline control plane (Sydney)"]
+  subgraph cp["Witnessmark control plane (Sydney)"]
     serve["serve<br/>ingest API, web app, verify API"] --> db[("Postgres<br/>append-only, RLS")]
     work["work<br/>evaluate, build pack,<br/>sign with KMS, checkpoint"] --> db
   end
   subgraph anyone["Anyone, no account"]
     page["Verify page"]
-    cli["plumbline-verify"]
+    cli["witnessmark-verify"]
     repo["Public checkpoint repo"]
   end
   agent -- "signed aggregates" --> serve
@@ -204,14 +204,14 @@ The normative description is [`docs/architecture.md`](docs/architecture.md) §2.
 
 | Path | What |
 | --- | --- |
-| `cmd/verify/` | `plumbline-verify` CLI |
-| `cmd/agent/` | `plumbline-agent`: enrol, run, `--dry-run`, `--replay` |
-| `cmd/server/` | `plumbline-server`: `serve`, `work`, `migrate`, `keys` |
+| `cmd/verify/` | `witnessmark-verify` CLI |
+| `cmd/agent/` | `witnessmark-agent`: enrol, run, `--dry-run`, `--replay` |
+| `cmd/server/` | `witnessmark-server`: `serve`, `work`, `migrate`, `keys` |
 | `internal/store`, `server`, `jobs`, `evaluate`, `issue`, `kmssign`, `keys`, `checkpoint`, `dailycheckpoint`, `share`, `auth`, `webapp` | The control plane |
 | `web/app/` | The vendor web app's templates and stylesheet |
 | `internal/agent/`, `otlp/`, `langfuse/`, `usage/`, `aggregate/`, `commitment/`, `enrol/`, `batchsign/`, `queue/` | The agent's pipeline |
-| `sdk/python/` | Python SDK (`plumbline.init()`), standard library only |
-| `sdk/js/` | Node.js/TypeScript SDK (`plumbline-sdk`), no dependencies |
+| `sdk/python/` | Python SDK (`witnessmark.init()`), standard library only |
+| `sdk/js/` | Node.js/TypeScript SDK (`witnessmark`), no dependencies |
 | `sdk/testdata/` | The shared SDK scenario every SDK and the agent must agree on |
 | `internal/jcs/` | RFC 8785 serializer and strict parser |
 | `internal/dsse/` | DSSE envelopes, PAE, P-256 and Ed25519 signers, verification |
@@ -219,7 +219,7 @@ The normative description is [`docs/architecture.md`](docs/architecture.md) §2.
 | `internal/pack/` | Pack types, digest, chain, full verification, JWKS |
 | `internal/spec/` | Cross-checks of the spec files |
 | `web/verify/` | Static verify page (`verify.js` is the browser verifier) |
-| `web/brand.css` | Plumbline brand tokens, light and dark |
+| `web/brand.css` | Witnessmark brand tokens, light and dark |
 | `spec/` | Schemas, the ten objectives, framework references, OTel name map, test vectors |
 | `migrations/` | Numbered SQL migrations and their tests |
 | `concierge/` | Python concierge CLI and `verify.py` (frozen after Milestone 1) |

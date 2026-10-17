@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/localcheck"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/localreport"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/policy"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localcheck"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/policy"
 )
 
 //go:embed static
@@ -32,7 +32,7 @@ type Options struct {
 	// Hosts are extra Host names the dashboard answers to, besides localhost,
 	// 127.0.0.1 and [::1] (for example a container's published name).
 	Hosts []string
-	// PolicyPath is the plumbline.policy.json the Objectives panel checks the
+	// PolicyPath is the witnessmark.policy.json the Objectives panel checks the
 	// log against, re-read on every request ("" or missing: the panel explains
 	// how to create one).
 	PolicyPath string
@@ -101,7 +101,7 @@ func Handler(o Options) http.Handler {
 		pol, err := policy.Load(o.PolicyPath)
 		switch {
 		case o.PolicyPath == "" || errors.Is(err, os.ErrNotExist):
-			out.Message = "No policy yet. Declare what this AI system may use, then the ten evidence objectives are checked here: plumbline-agent policy init"
+			out.Message = "No policy yet. Declare what this AI system may use, then the ten evidence objectives are checked here: witnessmark-agent policy init"
 		case err != nil:
 			out.Message = err.Error()
 		default:
@@ -138,7 +138,7 @@ func Handler(o Options) http.Handler {
 		}
 		host = strings.ToLower(strings.Trim(host, "[]"))
 		if !allowed[host] && !strings.HasSuffix(host, ".localhost") {
-			http.Error(w, "the Plumbline dashboard answers only on localhost", http.StatusForbidden)
+			http.Error(w, "the Witnessmark dashboard answers only on localhost", http.StatusForbidden)
 			return
 		}
 		h := w.Header()

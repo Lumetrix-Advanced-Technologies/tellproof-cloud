@@ -11,12 +11,12 @@
     <p><b>Enrolment token</b> (shown once, valid for 24 hours, one use):</p>
     <p class="mono">{{.}}</p>
     <p class="small"><b>Run the agent</b> on the machine or cluster next to your app (Docker):</p>
-<pre class="snippet">docker run -d --name plumbline-agent --restart unless-stopped -p 127.0.0.1:4318:4318 -v plumbline-agent:/data -e PLUMBLINE_SERVER={{$.Data.APIBase}} ghcr.io/lumetrix-advanced-technologies/plumbline-agent:latest connect {{.}}</pre>
-    <p class="small">Or with the downloaded binary: <code>PLUMBLINE_SERVER={{$.Data.APIBase}} plumbline-agent connect {{.}}</code></p>
-    <p class="small"><b>Add one line to your app</b> (<code>pip install plumbline-sdk</code> or <code>npm install plumbline-sdk</code>):</p>
-<pre class="snippet">import plumbline; plumbline.init()                              # Python
-import * as plumbline from 'plumbline-sdk'; plumbline.init();   // Node.js</pre>
-    <p class="small muted">The agent's first batch appears below about a minute after your app's first model call. Keep the <code>plumbline-agent</code> volume: it holds the agent's key and the salt that lets you disclose a trace later.</p>
+<pre class="snippet">docker run -d --name witnessmark-agent --restart unless-stopped -p 127.0.0.1:4318:4318 -v witnessmark-agent:/data -e WITNESSMARK_SERVER={{$.Data.APIBase}} ghcr.io/lumetrix-advanced-technologies/witnessmark-agent:latest connect {{.}}</pre>
+    <p class="small">Or with the downloaded binary: <code>WITNESSMARK_SERVER={{$.Data.APIBase}} witnessmark-agent connect {{.}}</code></p>
+    <p class="small"><b>Add one line to your app</b> (<code>pip install witnessmark</code> or <code>npm install witnessmark</code>):</p>
+<pre class="snippet">import witnessmark; witnessmark.init()                              # Python
+import * as witnessmark from 'witnessmark'; witnessmark.init();   // Node.js</pre>
+    <p class="small muted">The agent's first batch appears below about a minute after your app's first model call. Keep the <code>witnessmark-agent</code> volume: it holds the agent's key and the salt that lets you disclose a trace later.</p>
   </div>
   {{end}}
   <form method="post" action="/systems/{{.System.ID}}/enrolment-tokens"><button class="primary" type="submit">Create enrolment token</button></form>

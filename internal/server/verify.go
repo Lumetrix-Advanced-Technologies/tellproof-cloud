@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/share"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/share"
 )
 
 // verify: GET /v1/verify/{token}, public (D-044). 200 {envelope,

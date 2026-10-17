@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/batch"
-	"github.com/lumetrix-advanced-technologies/plumbline/internal/otlp"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/otlp"
 )
 
 // Config holds the window and anomaly settings (D-020 defaults).

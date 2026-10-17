@@ -4,18 +4,18 @@ Status: **draft, not posted.** A founder edits and posts it, after the launch ch
 
 ---
 
-**Title:** Show HN: Plumbline – signed evidence packs for AI systems that auditors verify offline
+**Title:** Show HN: Witnessmark – signed evidence packs for AI systems that auditors verify offline
 
 **Text:**
 
 When an AI vendor sells to a bank or an insurer, the vendor-risk team asks the same questions every quarter: which models are you running, where, do guardrails run on every call, when did you last evaluate, did anything change? Today the answers are screenshots and a spreadsheet, and the buyer has to take the vendor's word for them.
 
-Plumbline turns the vendor's own runtime telemetry into a monthly evidence pack that the buyer can check without trusting the vendor or us:
+Witnessmark turns the vendor's own runtime telemetry into a monthly evidence pack that the buyer can check without trusting the vendor or us:
 
-- A one-line SDK (`plumbline.init()`, Python and TypeScript, no dependencies) instruments OpenAI, Anthropic and Bedrock calls. It never reads prompts or completions.
+- A one-line SDK (`witnessmark.init()`, Python and TypeScript, no dependencies) instruments OpenAI, Anthropic and Bedrock calls. It never reads prompts or completions.
 - An open-source agent runs in the vendor's environment, drops any message content at parse time, and sends only signed hourly aggregates: token counts per model and region, guardrail and eval results, and a Merkle root over that hour's trace IDs. `--dry-run` prints exactly what it would send.
 - The service evaluates ten evidence objectives (coverage against provider billing, residency, guardrail coverage, eval freshness, change and incident registers…) and issues a pack. A pack is an in-toto statement in a DSSE envelope, signed with a KMS-held P-256 key and chained to the previous pack by digest.
-- The reviewer opens a share link and the checks run in their browser (Web Crypto), or they run `plumbline-verify` offline. Every pack digest also goes into a signed daily checkpoint in a public Git repository, so packs can't be backdated quietly.
+- The reviewer opens a share link and the checks run in their browser (Web Crypto), or they run `witnessmark-verify` offline. Every pack digest also goes into a signed daily checkpoint in a public Git repository, so packs can't be backdated quietly.
 
 What it doesn't do: a pack shows what the telemetry shows. If calls bypass the agent, they're not in it; the coverage objective compares traced tokens with the provider's billed tokens to show the gap.
 

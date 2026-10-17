@@ -77,16 +77,16 @@ Predicate fields (schema: `spec/pack.schema.json`): `pack_schema`, `pack_id`, `s
 
 ### 3.0 SDKs (D-025)
 
-`pip install plumbline-sdk` / `npm install plumbline-sdk`, then one line: `plumbline.init()`. The SDK patches the LLM clients the app uses (OpenAI, Anthropic, AWS Bedrock Runtime; sync, async, streaming) and records one span per call with provider, model, region, token usage, operation, duration and error status. Helpers add what no client knows: `prompt(name, version)`, `guardrail(decision)`, `personal_data(redacted)`, `tool(name, high_impact, approved)`, `escalation()`, `agent_run(name)` (attribute names from D-020). Spans go as OTLP JSON to the agent (`http://127.0.0.1:4318/v1/traces`, or `PLUMBLINE_AGENT_URL`) from a bounded background queue that drops rather than blocks. No message content is ever read. No runtime dependencies. Apps already on OpenTelemetry can skip the SDK and point an OTLP JSON exporter at the agent. Scope, guardrail and exporter semantics: D-033; every SDK's export of the shared scenario (`sdk/testdata/`) must aggregate identically in the agent.
+`pip install witnessmark` / `npm install witnessmark`, then one line: `witnessmark.init()`. The SDK patches the LLM clients the app uses (OpenAI, Anthropic, AWS Bedrock Runtime; sync, async, streaming) and records one span per call with provider, model, region, token usage, operation, duration and error status. Helpers add what no client knows: `prompt(name, version)`, `guardrail(decision)`, `personal_data(redacted)`, `tool(name, high_impact, approved)`, `escalation()`, `agent_run(name)` (attribute names from D-020). Spans go as OTLP JSON to the agent (`http://127.0.0.1:4318/v1/traces`, or `WITNESSMARK_AGENT_URL`) from a bounded background queue that drops rather than blocks. No message content is ever read. No runtime dependencies. Apps already on OpenTelemetry can skip the SDK and point an OTLP JSON exporter at the agent. Scope, guardrail and exporter semantics: D-033; every SDK's export of the shared scenario (`sdk/testdata/`) must aggregate identically in the agent.
 
 ## 3.1 Evidence agent (`cmd/agent`)
 
 - **Inputs:** OTLP/HTTP JSON receiver on `127.0.0.1:4318` path `/v1/traces` (no protobuf); Langfuse puller (Observations v2, Scores v3); provider usage pollers (OpenAI Usage API, Anthropic Usage & Cost API, Bedrock CloudWatch with build tag `bedrock`). Change and incident registers are uploaded in the web app, not read by the agent (D-032).
 - **Normaliser:** `spec/semconv-map.json` maps old and new OTel GenAI attribute names to internal fields. The map version is recorded in each batch. Message-content attributes are dropped on parse; only their presence is counted.
 - **Aggregation:** hourly windows, UTC, closed 5 minutes after the hour to absorb late spans. Late spans after close go into the next window and are counted in `metrics.late_spans`. A new run also sends its open hour once, a minute after its first spans, so a new agent is seen at once (windows are additive, D-047).
-- **Install:** `plumbline-agent connect <token>` (enrols once, then runs), as a container (`cmd/agent/Dockerfile`) or a static binary (D-047).
+- **Install:** `witnessmark-agent connect <token>` (enrols once, then runs), as a container (`cmd/agent/Dockerfile`) or a static binary (D-047).
 - **Queue:** append-only segment files under `--data-dir`, `fsync` before acknowledgement, deleted after the server returns 201. Retry with exponential backoff capped at 15 minutes.
-- **Keys:** Ed25519 key generated at `plumbline-agent enrol` (one-time token from `PLUMBLINE_ENROL_TOKEN`), private key stored `0600` in the data dir; the public key is registered with the server.
+- **Keys:** Ed25519 key generated at `witnessmark-agent enrol` (one-time token from `WITNESSMARK_ENROL_TOKEN`), private key stored `0600` in the data dir; the public key is registered with the server.
 - **Egress:** one host (`--server`). `--dry-run` prints each batch envelope to stdout and sends nothing.
 - **Config:** JSON file plus env overrides; secrets (Langfuse keys, provider admin keys, salt secret) only from env or files with `0600`.
 
@@ -137,7 +137,7 @@ Each objective also has `attention_band` (how close to the threshold reads as `a
 
 ### 4.5 Checkpoints
 
-Daily at 00:10 Australia/Sydney: a signed checkpoint statement for the previous local day listing every pack digest issued that day (all tenants, issue order) with their Merkle root (leaf `sha256(0x00 ‖ "sha256:<hex>")`, node as 2.4, all-zero root for none) and the previous day's checkpoint digest; empty days included, missed days caught up in order. Written to `checkpoints/YYYY/MM/DD.json` in the public repo via the GitHub contents API (never overwritten), commit SHA stored. `plumbline-verify checkpoint` proves a pack is in a day's checkpoint (D-043).
+Daily at 00:10 Australia/Sydney: a signed checkpoint statement for the previous local day listing every pack digest issued that day (all tenants, issue order) with their Merkle root (leaf `sha256(0x00 ‖ "sha256:<hex>")`, node as 2.4, all-zero root for none) and the previous day's checkpoint digest; empty days included, missed days caught up in order. Written to `checkpoints/YYYY/MM/DD.json` in the public repo via the GitHub contents API (never overwritten), commit SHA stored. `witnessmark-verify checkpoint` proves a pack is in a day's checkpoint (D-043).
 
 ### 4.6 Share and verify
 
@@ -145,7 +145,7 @@ Share token: 16 random bytes, base64url; store `sha256(token)`. The verify page 
 
 ### 4.7 Vanta
 
-A private integration per customer (D-049): an admin pastes the client ID and secret of their own Vanta application, the custom resource ID and optionally a document ID in Settings; the credentials are sealed with AES-256-GCM under `INTEGRATION_KEY` in `integration_secrets`. Hourly `vanta_sync` job: per connected tenant, mint a token (client credentials), one full-state `PUT /v1/resources/custom_resource` of one resource per objective of each system's latest pack (`uniqueId` `plumbline:<system>:<objective>`; custom properties `objectiveId`, `objective`, `system`, `status`, `passing`, `packId`, `packDigest`, `periodStart`, `periodEnd`, `lastEvaluated`, `verifyUrl`), then upload packs not yet sent as files of the document (at most 10 per hour; rate limit 20 req/min per token). `verifyUrl` is a share link for the system's latest pack that the sync keeps alive and the vendor can revoke. Errors are stored per tenant as a sentence. Drata: manual upload until a Drata Advanced customer pays.
+A private integration per customer (D-049): an admin pastes the client ID and secret of their own Vanta application, the custom resource ID and optionally a document ID in Settings; the credentials are sealed with AES-256-GCM under `INTEGRATION_KEY` in `integration_secrets`. Hourly `vanta_sync` job: per connected tenant, mint a token (client credentials), one full-state `PUT /v1/resources/custom_resource` of one resource per objective of each system's latest pack (`uniqueId` `witnessmark:<system>:<objective>`; custom properties `objectiveId`, `objective`, `system`, `status`, `passing`, `packId`, `packDigest`, `periodStart`, `periodEnd`, `lastEvaluated`, `verifyUrl`), then upload packs not yet sent as files of the document (at most 10 per hour; rate limit 20 req/min per token). `verifyUrl` is a share link for the system's latest pack that the sync keeps alive and the vendor can revoke. Errors are stored per tenant as a sentence. Drata: manual upload until a Drata Advanced customer pays.
 
 ## 5. Data
 
@@ -153,7 +153,7 @@ Postgres 16 on Supabase (Sydney). Schema in `migrations/0001_init.sql`. The serv
 
 ## 6. Deployment and config
 
-- Fly.io app `plumbline` in `syd`, one shared-cpu-1x 512 MB machine running both process groups (`fly.toml` `[processes] serve = "serve"`, `work = "work"`).
+- Fly.io app `witnessmark` in `syd`, one shared-cpu-1x 512 MB machine running both process groups (`fly.toml` `[processes] serve = "serve"`, `work = "work"`).
 - Env: `DATABASE_URL`, `KMS_KEY_ID`, `AWS_REGION=ap-southeast-2`, `SUPABASE_URL`, `SUPABASE_JWKS_URL`, `PUBLIC_BASE_URL`, `VERIFY_BASE_URL`, `CHECKPOINT_REPO`, `GITHUB_TOKEN`, `RESEND_API_KEY`, `INTEGRATION_KEY` (seals vendors' Vanta credentials; optional `VANTA_API_URL`). Secrets via `fly secrets`.
 - Environments: local (docker compose Postgres; `KMS_KEY_ID=local` uses a P-256 key from `.dev/local-signing.pem`), staging, production. Different KMS keys; the verify page shows the `kid`.
 

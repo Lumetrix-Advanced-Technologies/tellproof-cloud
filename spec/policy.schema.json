@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/plumbline/main/spec/policy.schema.json",
-  "title": "Plumbline policy (plumbline.policy.json)",
-  "description": "What an AI system is meant to be: the models and regions it may use, and the change, incident and evaluation registers its evidence objectives compare telemetry with. Read by plumbline-agent check, policy init and aibom (D-055).",
+  "$id": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/witnessmark/main/spec/policy.schema.json",
+  "title": "Witnessmark policy (witnessmark.policy.json)",
+  "description": "What an AI system is meant to be: the models and regions it may use, and the change, incident and evaluation registers its evidence objectives compare telemetry with. Read by witnessmark-agent check, policy init and aibom (D-055).",
   "type": "object",
   "additionalProperties": false,
   "required": ["ai_system"],
