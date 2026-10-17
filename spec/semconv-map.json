@@ -1,6 +1,6 @@
 {
   "version": "v3",
-  "note": "Old and new OTel GenAI attribute names map to one internal field. The witnessmark.* fields carry facts no GenAI convention defines yet (D-020); agents may override their names per deployment. Content fields are presence-only: their values are never read, and any attribute whose name starts with a presence_only_prefixes entry counts as content too. v3: the witnessmark.* names (D-056); the plumbline.* names they replace are read as aliases.",
+  "note": "Old and new OTel GenAI attribute names map to one internal field. The witnessmark.* fields carry facts no GenAI convention defines yet (D-020); agents may override their names per deployment. Content fields are presence-only: their values are never read, and any attribute whose name starts with a presence_only_prefixes entry counts as content too. v3: the witnessmark.* names (D-056); the plumbline.* names they replace are read as aliases. witnessmark.canary.kind and witnessmark.canary.caught mark a guardrail canary span (D-057).",
   "fields": {
     "provider": [
       "gen_ai.provider.name",
@@ -62,6 +62,12 @@
     "escalation": [
       "witnessmark.escalation",
       "plumbline.escalation"
+    ],
+    "canary_kind": [
+      "witnessmark.canary.kind"
+    ],
+    "canary_caught": [
+      "witnessmark.canary.caught"
     ]
   },
   "presence_only": [

@@ -109,7 +109,7 @@ def main(argv=None) -> int:
     g.add_argument("--salt-secret-file")
     g.add_argument("files", nargs="+")
     g.set_defaults(fn=cmd_ingest)
-    e = sub.add_parser("evaluate", help="aggregates + provider usage + registers -> the ten objectives")
+    e = sub.add_parser("evaluate", help="aggregates + provider usage + registers -> the eleven objectives")
     e.add_argument("--system", required=True, help="the AI system's declarations (JSON)")
     e.add_argument("--aggregates", action="append", required=True, help="output of ingest (repeatable)")
     e.add_argument("--usage", action="append", required=True, help="provider usage CSV (repeatable)")

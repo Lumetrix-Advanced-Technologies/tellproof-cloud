@@ -73,6 +73,18 @@ Names and versions are capped at 128 characters; anything that is not a string o
 
 Calls inside a `guardrail` scope are held until the scope ends, so a decision made after the call (an output check) still applies. A `block` with no call inside counts as one blocked call; pass `provider=` and `model=` to attribute it.
 
+## Guardrail canaries
+
+Show that your guardrail catches something, not only that it ran. The SDK passes synthetic, known-bad probes (prompt injection, jailbreak, made-up personal data, a documented example AWS key) to your own guardrail check and records only the kind and whether it was caught (EO-CAN-01):
+
+```python
+witnessmark.schedule_canaries(lambda text: my_guardrail.scan(text).blocked, every=3600)  # now, then hourly
+witnessmark.run_canaries(check)          # once: {"prompt_injection": True, ...}; arun_canaries for an async check
+witnessmark.canary("toxicity", True)     # a canary you run with your own probe
+```
+
+The check returns `True`, `"block"` or `"flag"` when it would stop the text; anything else, or an exception, counts as missed. Pass probes to the guardrail only, never to the model. The probes never leave the process (`witnessmark.PROBES`); with the SDK off the check is never called.
+
 ## Already on OpenTelemetry?
 
 You can skip the SDK: point an OTLP/HTTP **JSON** exporter at the agent (`http://127.0.0.1:4318/v1/traces`) and set the `witnessmark.*` attributes yourself (`spec/semconv-map.json`). Do not run both for the same calls, or they are counted twice.

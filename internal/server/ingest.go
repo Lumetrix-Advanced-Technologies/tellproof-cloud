@@ -63,7 +63,7 @@ func (s *Server) ingest(w http.ResponseWriter, r *http.Request) {
 	}
 	b, err := batchsign.Verify(env, ed25519.PublicKey(pub), agentID)
 	if errors.Is(err, batchsign.ErrInvalid) {
-		writeError(w, http.StatusBadRequest, "the payload is not a valid plumbline-batch/v0.2")
+		writeError(w, http.StatusBadRequest, "the payload is not a valid plumbline-batch/v0.2 or v0.3")
 		return
 	}
 	if err != nil {

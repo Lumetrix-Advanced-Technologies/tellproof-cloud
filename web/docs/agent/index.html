@@ -51,13 +51,15 @@ witnessmark-agent report --json --since 2026-10-01</code></pre>
   <p>For packs evaluated against Witnessmark's evidence objectives and signed by an independent issuer, which a reviewer can verify, <a href="https://github.com/lumetrix-advanced-technologies/witnessmark/issues/new?template=early-access.yml">request early access</a> to the hosted service. Connecting starts a new agent with its own data directory; the local log stays local.</p>
 
   <h2 id="governance">Governance as code</h2>
-  <p>Declare what the AI system may use in <code>witnessmark.policy.json</code>, next to its code, and check the evidence against the ten evidence objectives with the same evaluator that issues signed packs:</p>
+  <p>Declare what the AI system may use in <code>witnessmark.policy.json</code>, next to its code, and check the evidence against the eleven evidence objectives with the same evaluator that issues signed packs:</p>
 <pre><code>witnessmark-agent policy init --name "Claims Triage Agent" --timezone Australia/Sydney   # declare what the log has seen; review it
 witnessmark-agent policy validate                                                       # in CI, on every policy change
 witnessmark-agent check                                                                 # pass, attention or fail per objective
 witnessmark-agent check --junit check.xml --strict                                      # gate a release
+witnessmark-agent check --self-test                                                     # prove each objective can fail
 witnessmark-agent aibom --out aibom.cdx.json                                            # CycloneDX 1.6 AI bill of materials</code></pre>
   <p>The policy declares models and regions (lineage and residency) and keeps the change, incident and evaluation registers (the change, incident and evaluation-freshness objectives); its JSON Schema is <code>spec/policy.schema.json</code>. <code>check</code> verifies the log first, then shows each objective's measurement, target, the framework references it supports and any register entries that are missing; it exits 1 when an objective fails. The dashboard shows the same results in its Evidence objectives panel. A GitHub Action, <code>Lumetrix-Advanced-Technologies/witnessmark</code>, runs <code>policy validate</code> or <code>check</code> in CI.</p>
+  <p><code>check --self-test</code> adds, for each objective, the least synthetic evidence that should fail it to a copy of the input and requires it to fail; it reports a register that leaves no room for a violation as vacuous, and checks that an edited, re-signed or missing batch fails verification on a copy of the log. Guardrail canaries from the SDK (<code>schedule_canaries</code>, <code>scheduleCanaries</code>) send known-bad probes through your own guardrail and record only whether each was caught (objective EO-CAN-01).</p>
 
   <h2 id="quick">Connect to Witnessmark</h2>
   <ol>

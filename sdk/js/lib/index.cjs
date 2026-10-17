@@ -13,6 +13,7 @@
 
 const path = require('node:path');
 const core = require('./core.cjs');
+const canaries = require('./canary.cjs');
 const otlp = require('./otlp.cjs');
 const { Exporter, httpTransport } = require('./export.cjs');
 
@@ -165,4 +166,8 @@ module.exports = {
   agentRun: core.agentRun,
   llmCall: core.llmCall,
   escalation: core.escalation,
+  PROBES: canaries.PROBES,
+  canary: canaries.canary,
+  runCanaries: canaries.runCanaries,
+  scheduleCanaries: canaries.scheduleCanaries,
 };

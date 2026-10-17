@@ -295,7 +295,7 @@ func TestIssueMatchesTheConciergeEvaluation(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = f.owner.QueryRow(ctx, `SELECT count(*) FROM objective_defs`).Scan(&defs)
-	if evals != 1 || results != 10 || defs != 10 {
+	if evals != 1 || results != 11 || defs != 11 {
 		t.Errorf("stored %d evaluations, %d results, %d objective definitions", evals, results, defs)
 	}
 }

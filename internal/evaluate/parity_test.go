@@ -204,7 +204,7 @@ func TestParityPartnerMonth(t *testing.T) {
 		got[o.ID] = o.Status
 	}
 	want := map[string]string{"EO-LOG-01": "attention", "EO-LIN-01": "pass", "EO-CHG-01": "fail", "EO-PII-01": "pass", "EO-CNT-01": "fail",
-		"EO-GRD-01": "pass", "EO-EVAL-01": "attention", "EO-INC-01": "fail", "EO-AGT-01": "attention", "EO-RES-01": "fail"}
+		"EO-GRD-01": "pass", "EO-EVAL-01": "attention", "EO-INC-01": "fail", "EO-AGT-01": "attention", "EO-RES-01": "fail", "EO-CAN-01": "attention"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("statuses %v", got)
 	}
@@ -289,6 +289,35 @@ func TestParityVariants(t *testing.T) {
 	for _, o := range ev.Objectives {
 		if o.ID == "EO-EVAL-01" && o.Status != "attention" {
 			t.Errorf("EO-EVAL-01 = %s after an empty first window (want attention, as without it)", o.Status)
+		}
+	}
+
+	// Guardrail canaries (D-057): all caught passes EO-CAN-01; one miss fails it
+	// and names the kind; windows without canaries add nothing.
+	withCanaries := func(name string, missed int) *Evaluation {
+		c := month
+		c.aggregates = rewrite(t, dir, name+".json", month.aggregates, editAggregates(t, func(doc map[string]any) {
+			windows(doc)[0].(map[string]any)["metrics"].(map[string]any)["canaries"] = []any{
+				map[string]any{"kind": "pii", "run": 4, "caught": 4},
+				map[string]any{"kind": "prompt_injection", "run": 4, "caught": 4 - missed}}
+			windows(doc)[1].(map[string]any)["metrics"].(map[string]any)["canaries"] = []any{
+				map[string]any{"kind": "prompt_injection", "run": 2, "caught": 2}}
+		}))
+		return compare(t, name, c)
+	}
+	for _, tc := range []struct {
+		name     string
+		missed   int
+		status   string
+		measured string
+	}{
+		{"canaries caught", 0, "pass", "10 of 10 canaries caught"},
+		{"canary missed", 1, "fail", "9 of 10 canaries caught; missed: prompt_injection (1)"},
+	} {
+		for _, o := range withCanaries(tc.name, tc.missed).Objectives {
+			if o.ID == "EO-CAN-01" && (o.Status != tc.status || o.Measured != tc.measured) {
+				t.Errorf("%s: EO-CAN-01 = %s, %q", tc.name, o.Status, o.Measured)
+			}
 		}
 	}
 

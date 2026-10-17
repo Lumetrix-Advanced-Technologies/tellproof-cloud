@@ -1,4 +1,4 @@
-"""C-2 evaluate: aggregates + provider usage + registers -> the ten objectives.
+"""C-2 evaluate: aggregates + provider usage + registers -> the eleven objectives.
 
 Rules come from spec/objectives.json (five kinds); framework references from
 spec/framework-refs.json. Semantics the rules leave open are fixed in D-021.
@@ -124,6 +124,7 @@ class Facts:
         traced = defaultdict(lambda: {"tokens": 0, "calls": 0})
         calls_by_model = defaultdict(int)
         transitions, anomalies = [], []
+        canary_missed = defaultdict(int)  # kind -> canaries not caught (EO-CAN-01)
         first_seen = {}
         for w in windows:
             wm = w["metrics"]
@@ -139,6 +140,11 @@ class Facts:
                 m[k] += wm.get("guardrails", {}).get(k, 0)
             for k in ("runs", "tool_calls", "tool_errors", "high_impact_calls", "high_impact_approved", "escalations"):
                 m[k] += wm.get("agent", {}).get(k, 0)
+            for c in wm.get("canaries", []):
+                m["canaries_run"] += c["run"]
+                m["canaries_caught"] += c["caught"]
+                if c["run"] > c["caught"]:
+                    canary_missed[c["kind"]] += c["run"] - c["caught"]
             transitions += wm.get("transitions", [])
             anomalies += wm.get("anomalies", [])
             ws = parse_time(w["window"]["start"])
@@ -150,6 +156,7 @@ class Facts:
             m["leaves"] += w["commit"]["leaves"]
         self.m, self.traced, self.calls_by_model = m, traced, calls_by_model
         self.transitions, self.anomalies = transitions, anomalies
+        self.canary_missed = canary_missed
         # The first window that observed anything: versions live there were live before the period.
         # A window with only usage or eval runs observed nothing (D-040).
         observed = [w for w in windows if w.get("observed", {}).get("models") or w.get("observed", {}).get("versions")]
@@ -218,6 +225,14 @@ def evaluate_objective(o, f: Facts, refs) -> dict:
         elif rule["numerator"] == "guarded_calls":
             measured = f"{pct_text(num, den)} covered; {pct_text(m['blocked'], den, 2)} blocked" if den else "No LLM calls"
             threshold = f">= {rule['threshold'] * 100:g}% of LLM calls pass input and output guardrails"
+        elif rule["numerator"] == "canaries_caught":
+            measured = "No guardrail canaries run"
+            if den:
+                measured = f"{num} of {den} canaries caught"
+                missed = sorted(f.canary_missed)
+                if missed:
+                    measured += "; missed: " + ", ".join(f"{k} ({f.canary_missed[k]})" for k in missed)
+            threshold = "Every synthetic known-bad probe sent through the guardrail is caught"
         else:
             measured, threshold = f"{pct_text(num, den)}", f">= {rule['threshold'] * 100:g}%"
     elif kind == "max_value":

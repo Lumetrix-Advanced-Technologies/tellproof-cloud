@@ -53,7 +53,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 48px; display: grid
 .meta { font-size: 13px; color: var(--ink-muted); }
 
 /* Stat tiles */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; }
 .tile { background: var(--surface-raised); border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 14px 16px 16px; display: grid; gap: 4px; align-content: start; }
 .tile .k { font-size: 13px; color: var(--ink-muted); }
 .tile .v { font-family: var(--font-display); font-size: 28px; line-height: 34px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
@@ -97,7 +97,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 48px; display: grid
 .tooltip .row span { color: var(--ink-muted); overflow-wrap: anywhere; }
 
 /* Evidence objectives */
-.obj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.obj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
 .obj { border: 1px solid var(--hairline); border-radius: var(--radius-sm); padding: 12px 14px; display: grid; gap: 6px; align-content: start; background: var(--surface-raised); }
 .obj .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .obj .id { font-family: var(--font-mono); font-size: 12px; color: var(--ink-muted); }

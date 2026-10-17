@@ -242,6 +242,26 @@ class ObservedTest(unittest.TestCase):
             for part in ("window", "metrics", "observed", "commit"):
                 self.assertEqual(schema.errors(w[part], s["properties"][part], part), [], part)
 
+    def test_canary_windows_match_batch_schema_v03(self):
+        # D-057: a window with canaries is a v0.3 payload; one without stays v0.2.
+        import schema
+        v02 = json.loads((ROOT / "spec/batch.schema.json").read_text())
+        v03 = json.loads((ROOT / "spec/batch-v0.3.schema.json").read_text())
+        out, _ = ingest.ingest("otlp", [str(ROOT / "sdk/testdata/python-export.jsonl")], SECRET)
+        plain, canary = out["windows"]
+        self.assertNotIn("canaries", plain["metrics"])
+        self.assertEqual(canary["metrics"]["canaries"], [{"kind": "pii", "run": 2, "caught": 1}, {"kind": "prompt_injection", "run": 1, "caught": 1}])
+        for w, good, bad in ((plain, v02, v03), (canary, v03, v02)):
+            batch = {"schema": good["properties"]["schema"]["const"], "agent_id": "agt_abcdef12", "seq": 1, "prev": None,
+                     "window": w["window"], "semconv_map": "v3", "metrics": w["metrics"], "observed": w["observed"],
+                     "usage": [], "commit": w["commit"]}
+            self.assertEqual(schema.errors(batch, good), [])
+            batch["schema"] = bad["properties"]["schema"]["const"]
+            self.assertTrue(schema.errors(batch, bad))
+        self.assertEqual(ingest.canary_kind("Prompt_Injection"), "prompt_injection")
+        for odd in ("", "x" * 33, "has space", "naïve", 7, None, True):
+            self.assertEqual(ingest.canary_kind(odd), "other", odd)
+
     def test_v01_batches_still_validate_against_the_v01_schema(self):
         import schema
         v01 = json.loads((ROOT / "spec/batch-v0.1.schema.json").read_text())

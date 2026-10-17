@@ -86,7 +86,7 @@ func TestCheckIsThePackEvaluation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Period.Start != "2026-09-01" || r.Period.End != "2026-09-01" || !r.Log.Verified || r.Log.Batches != 2 || len(r.Objectives) != 10 {
+	if r.Period.Start != "2026-09-01" || r.Period.End != "2026-09-01" || !r.Log.Verified || r.Log.Batches != 2 || len(r.Objectives) != 11 {
 		t.Fatalf("report %+v", r)
 	}
 	// The same evaluation, computed the issuer's way from the same batches.
@@ -106,7 +106,7 @@ func TestCheckIsThePackEvaluation(t *testing.T) {
 	if st["EO-LIN-01"] != "pass" || st["EO-RES-01"] != "pass" || st["EO-CHG-01"] != "fail" || st["EO-LOG-01"] != "attention" {
 		t.Errorf("statuses %v", st)
 	}
-	if !r.Failed(false) || r.Summary["pass"]+r.Summary["attention"]+r.Summary["fail"] != 10 {
+	if !r.Failed(false) || r.Summary["pass"]+r.Summary["attention"]+r.Summary["fail"] != 11 {
 		t.Errorf("summary %v", r.Summary)
 	}
 	var text bytes.Buffer
@@ -153,7 +153,7 @@ func TestReportsAndExitRules(t *testing.T) {
 			Name string `xml:"name,attr"`
 		} `xml:"testcase"`
 	}
-	if err := xml.Unmarshal(x.Bytes(), &suite); err != nil || suite.Tests != 10 || len(suite.Cases) != 10 ||
+	if err := xml.Unmarshal(x.Bytes(), &suite); err != nil || suite.Tests != 11 || len(suite.Cases) != 11 ||
 		suite.Failures != r.Summary["fail"] || suite.Skipped != r.Summary["attention"] {
 		t.Fatalf("junit %v %+v", err, suite)
 	}
@@ -166,7 +166,7 @@ func TestReportsAndExitRules(t *testing.T) {
 	var j bytes.Buffer
 	_ = WriteJSON(&j, r)
 	var back Report
-	if err := json.Unmarshal(j.Bytes(), &back); err != nil || len(back.Objectives) != 10 || back.Log.AgentID == "" {
+	if err := json.Unmarshal(j.Bytes(), &back); err != nil || len(back.Objectives) != 11 || back.Log.AgentID == "" {
 		t.Errorf("json %v %+v", err, back)
 	}
 	// Explicit and invalid periods.
@@ -230,5 +230,78 @@ func TestAIBOMFromTheLog(t *testing.T) {
 	var out bytes.Buffer
 	if err := aibom.Write(&out, b); err != nil || !json.Valid(out.Bytes()) {
 		t.Errorf("write: %v", err)
+	}
+}
+
+// D-057: on real evidence every objective can be made to fail, and every
+// tampering of a copy of the log is refused; the real log is untouched.
+func TestSelfTest(t *testing.T) {
+	dir := writeLog(t)
+	before, _ := os.ReadDir(filepath.Join(dir, localreport.Dir))
+	r, err := SelfTest(Options{DataDir: dir, Policy: basePolicy(), Now: sampleDay})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Objectives) != 11 || len(r.Tamper) != 3 || r.Failed() {
+		t.Fatalf("self-test %+v", r)
+	}
+	for _, o := range r.Objectives {
+		if o.Outcome != Falsifiable || o.Status != "fail" || o.Injected == "" {
+			t.Errorf("%s: %+v", o.ID, o)
+		}
+	}
+	for _, tt := range r.Tamper {
+		if !tt.Detected || tt.Problem == "" {
+			t.Errorf("tamper %+v", tt)
+		}
+	}
+	after, _ := os.ReadDir(filepath.Join(dir, localreport.Dir))
+	if len(after) != len(before) {
+		t.Error("the self-test changed the real log")
+	}
+	if again, _ := Run(Options{DataDir: dir, Policy: basePolicy(), Now: sampleDay}); !again.Log.Verified {
+		t.Error("the real log no longer verifies")
+	}
+	var text bytes.Buffer
+	_ = WriteSelfTestText(&text, r)
+	for _, want := range []string{"✓ CAN FAIL     EO-CAN-01", "✓ DETECTED     the first batch removed", "11 of 11 objectives can fail"} {
+		if !strings.Contains(text.String(), want) {
+			t.Errorf("text lacks %q:\n%s", want, text.String())
+		}
+	}
+}
+
+// A register that leaves no room for a violation makes its objective vacuous,
+// and the self-test fails.
+func TestSelfTestFindsVacuousRegisters(t *testing.T) {
+	dir := writeLog(t)
+	pol := basePolicy()
+	for _, d := range []string{"2026-08-31", "2026-09-01", "2026-09-02"} {
+		pol.Changes = append(pol.Changes, evaluate.Change{Date: d, Kind: "model", What: "every day"}, evaluate.Change{Date: d, Kind: "prompt", What: "every day"})
+	}
+	for h := -1; h <= 24; h++ {
+		at := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(h) * time.Hour).Format(time.RFC3339)
+		pol.Incidents = append(pol.Incidents, evaluate.Incident{ID: at, Opened: at, Acknowledged: at})
+	}
+	r, err := SelfTest(Options{DataDir: dir, Policy: pol, Now: sampleDay})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, o := range r.Objectives {
+		got[o.ID] = o.Outcome
+	}
+	if got["EO-CHG-01"] != Vacuous || got["EO-INC-01"] != Vacuous || got["EO-LIN-01"] != Falsifiable || !r.Failed() {
+		t.Errorf("outcomes %v", got)
+	}
+}
+
+// Every objective in the spec has a mutation.
+func TestEveryObjectiveHasAMutation(t *testing.T) {
+	r, _ := Run(Options{DataDir: writeLog(t), Policy: basePolicy(), Now: sampleDay})
+	for _, o := range r.Objectives {
+		if mutations[o.ID] == nil {
+			t.Errorf("%s has no self-test mutation", o.ID)
+		}
 	}
 }

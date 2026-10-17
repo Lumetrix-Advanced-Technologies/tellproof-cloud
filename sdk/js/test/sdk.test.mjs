@@ -338,3 +338,71 @@ test('a script that awaits flush() is not cut short by the unref\'d timers', () 
   const out = execFileSync(process.execPath, ['-e', script], { encoding: 'utf8', timeout: 10000 });
   assert.equal(out.trim(), 'flushed true 1');
 });
+
+// Guardrail canaries (D-057): only the kind and the result leave the probe.
+test('canary probes are spec/canaries.json', () => {
+  const spec = JSON.parse(readFileSync(new URL('../../../spec/canaries.json', import.meta.url), 'utf8'));
+  assert.deepEqual({ ...witnessmark.PROBES }, Object.fromEntries(spec.probes.map((p) => [p.kind, p.text])));
+  assert.equal(esm.runCanaries, witnessmark.runCanaries);
+});
+
+test('runCanaries records the kind and the result only', async () => {
+  const seen = [];
+  let got;
+  const spans = await spansOf(() =>
+    witnessmark.personalData(async () => {
+      got = await witnessmark.runCanaries(async (text) => {
+        seen.push(text);
+        if (text.includes('AKIA')) throw new Error('guardrail crashed'); // counts as missed
+        return text.includes('instructions') ? 'block' : text.includes('4111') ? true : 'allow';
+      });
+    }),
+  );
+  assert.deepEqual(got, { prompt_injection: true, jailbreak: false, pii: true, secret: false });
+  assert.deepEqual(seen, Object.values(witnessmark.PROBES));
+  assert.equal(spans.length, 4);
+  for (const s of spans) {
+    assert.deepEqual(Object.keys(attrs(s)).sort(), ['witnessmark.canary.caught', 'witnessmark.canary.kind']);
+    assert.equal(s.parent, null);
+  }
+  assert.equal(new Set(spans.map((s) => s.traceId)).size, 4);
+  const dumped = JSON.stringify(spans, (k, v) => (typeof v === 'bigint' ? String(v) : v));
+  for (const text of Object.values(witnessmark.PROBES)) assert.ok(!dumped.includes(text.slice(0, 20)));
+});
+
+test('canary() and kinds', async () => {
+  let got;
+  const spans = await spansOf(async () => {
+    witnessmark.canary('Prompt_Injection', true);
+    witnessmark.canary('custom-check_2', 'allow');
+    witnessmark.canary('has space', true);
+    witnessmark.canary(null, true);
+    got = await witnessmark.runCanaries(() => true, { kinds: ['pii', 'unknown'] });
+  });
+  assert.deepEqual(got, { pii: true });
+  assert.deepEqual(
+    spans.map((s) => [attrs(s)['witnessmark.canary.kind'], attrs(s)['witnessmark.canary.caught']]),
+    [['prompt_injection', true], ['custom-check_2', false], ['pii', true]],
+  );
+});
+
+test('canaries do not call the guardrail when the SDK is off; schedules unref and stop', async () => {
+  const calls = [];
+  const old = core.currentClient();
+  core.setClient(new core.Client());
+  try {
+    assert.deepEqual(await witnessmark.runCanaries((t) => calls.push(t)), {});
+  } finally {
+    core.setClient(old);
+  }
+  assert.deepEqual(calls, []);
+  let ran = 0;
+  const spans = await spansOf(async () => {
+    const s = witnessmark.scheduleCanaries(() => { ran++; return true; }, { every: 0, kinds: ['pii'] });
+    assert.equal(s.every, 60_000);
+    await new Promise((r) => setTimeout(r, 20));
+    s.stop();
+  });
+  assert.equal(ran, 1);
+  assert.equal(spans.length, 1);
+});

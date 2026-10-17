@@ -34,7 +34,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/dashboard-dark.png">
-    <img src="docs/dashboard.png" alt="The local dashboard: totals, the ten evidence objectives with pass, attention or fail, and a week of model calls per hour by model" width="900">
+    <img src="docs/dashboard.png" alt="The local dashboard: totals, the eleven evidence objectives with pass, attention or fail, and a week of model calls per hour by model" width="900">
   </picture>
 </p>
 
@@ -64,11 +64,11 @@
   <tr>
     <td width="33%" valign="top">
       <h4>📐 Governance as code</h4>
-      <p>Declare models, regions and registers in <code>witnessmark.policy.json</code>. <code>witnessmark-agent check</code> evaluates the ten evidence objectives and fails CI when one fails. There's a GitHub Action for it.</p>
+      <p>Declare models, regions and registers in <code>witnessmark.policy.json</code>. <code>witnessmark-agent check</code> evaluates the eleven evidence objectives and fails CI when one fails, with a GitHub Action, and <code>aibom</code> writes a CycloneDX AI bill of materials from the evidence.</p>
     </td>
     <td width="33%" valign="top">
-      <h4>🧾 An AI bill of materials</h4>
-      <p><code>witnessmark-agent aibom</code> writes a CycloneDX 1.6 inventory of every model declared or seen, built from evidence rather than a spreadsheet.</p>
+      <h4>🧪 Evidence that can fail</h4>
+      <p>A check that cannot fail proves nothing. Guardrail canaries send known-bad probes through your own guardrail and record whether it caught them; <code>check --self-test</code> proves every objective fails on bad evidence and every tampering is caught.</p>
     </td>
     <td width="33%" valign="top">
       <h4>✅ Verifiable by anyone</h4>
@@ -84,7 +84,8 @@
 | One-line SDKs, agent, content dropped at parse time | ✓ | ✓ |
 | Signed, chained hourly batches with trace commitments | ✓ | ✓ |
 | Dashboard and terminal report | ✓ | ✓ |
-| Policy file, `check` against the ten objectives, CI gating, AI-BOM | ✓ | ✓ |
+| Policy file, `check` against the eleven objectives, CI gating, AI-BOM | ✓ | ✓ |
+| Guardrail canaries and `check --self-test` | ✓ | ✓ |
 | Evidence signed by an **independent issuer** (KMS-held key) | | ✓ |
 | Monthly packs, chained, in a **public daily checkpoint** | | ✓ |
 | Share links for reviewers, with view counts | | ✓ |
@@ -132,7 +133,7 @@ You call OpenAI, Anthropic, Amazon Bedrock or any OpenAI-compatible API, and you
 | **That evaluations are current** | Evaluation runs (suite, model, prompt version, pass rate, time), set against the models and prompt versions that were actually live. |
 | **That an agent's actions are under control** | Agent runs, tool calls and tool errors, high-impact tool calls and how many were approved, hand-offs to a person. |
 | **That nothing was left out** | A Merkle commitment to every trace in every hour, and token totals that can be reconciled with the provider's own billed usage. |
-| **That the system is what you said it is** | A policy file in your repository declares the models and regions it may use and keeps the change, incident and evaluation registers; `witnessmark-agent check` evaluates the evidence against the ten evidence objectives and fails CI when one fails. |
+| **That the system is what you said it is** | A policy file in your repository declares the models and regions it may use and keeps the change, incident and evaluation registers; `witnessmark-agent check` evaluates the evidence against the eleven evidence objectives and fails CI when one fails. |
 | **An inventory of the AI you actually run** | `witnessmark-agent aibom` writes a CycloneDX 1.6 AI bill of materials of every model declared or seen, with regions, volumes and first and last use. |
 | **Operational awareness, privately** | A local dashboard of all of the above, hour by hour, without sending anything to a SaaS. |
 
@@ -148,7 +149,7 @@ A vendor sends you a share link or a pack file. You check it yourself, in your b
 
 - Audit exactly what the agent would send before you allow it: `witnessmark-agent run --dry-run` prints every batch, decoded, and sends nothing.
 - Run it with no network egress at all (local mode).
-- Keep governance in code review: `witnessmark.policy.json` sits next to the code, `witnessmark-agent policy validate` checks it in CI, and `witnessmark-agent check` (or the [GitHub Action](#in-ci)) gates releases on the ten evidence objectives.
+- Keep governance in code review: `witnessmark.policy.json` sits next to the code, `witnessmark-agent policy validate` checks it in CI, and `witnessmark-agent check` (or the [GitHub Action](#in-ci)) gates releases on the eleven evidence objectives.
 - Map results to framework references by ID (EU AI Act, ISO/IEC 42001, AIUC-1, CSA AICM and more; each objective lists the references it supports), hand auditors an AI-BOM, and, with the hosted service, keep your compliance platform (Vanta) up to date automatically.
 
 ---
@@ -173,7 +174,7 @@ flowchart LR
 | **SDKs** (`witnessmark` for Python and Node.js) | `witnessmark.init()` instruments the OpenAI, Anthropic and Bedrock client libraries you already use: one span per model call with provider, model, region, token counts, operation, timing and error status. **They never read message content.** Helpers add the facts no client library knows (prompt version, guardrail decision, redaction, tool approval). |
 | **Agent** (`witnessmark-agent`) | Runs next to your app. Receives spans on `127.0.0.1:4318`, drops every message attribute at parse time, aggregates per hour, commits every trace into a salted Merkle tree, and signs each hourly batch with its own Ed25519 key. |
 | **Local mode** | The agent keeps the signed, chained batches in its data directory and serves a dashboard. Nothing is sent anywhere. |
-| **Connected mode** | The agent sends the same signed batches to the Witnessmark service, which evaluates ten evidence objectives and issues signed, chained monthly packs. |
+| **Connected mode** | The agent sends the same signed batches to the Witnessmark service, which evaluates eleven evidence objectives and issues signed, chained monthly packs. |
 | **Verifiers** | `witnessmark-verify` (offline command), the verify page (in the browser) and `concierge/verify.py` (an independent Python verifier). |
 
 ---
@@ -217,7 +218,7 @@ witnessmark.init();
 **3. Make a model call, then open http://127.0.0.1:4319.** The first batch appears about a minute after the first call, and every hour after that.
 
 > [!TIP]
-> Next: declare what the system may use and check the evidence against the ten objectives, in two commands: `witnessmark-agent policy init`, then `witnessmark-agent check`. See [Governance as code](#governance-as-code-policy-check-and-ai-bom). To share signed packs with reviewers, see [the hosted service](#signed-evidence-packs-the-hosted-service-early-access).
+> Next: declare what the system may use and check the evidence against the eleven objectives, in two commands: `witnessmark-agent policy init`, then `witnessmark-agent check`. See [Governance as code](#governance-as-code-policy-check-and-ai-bom). To share signed packs with reviewers, see [the hosted service](#signed-evidence-packs-the-hosted-service-early-access).
 
 ---
 
@@ -357,6 +358,33 @@ app.post('/claims/:id/triage', (req, res) =>
 
 Calls inside a `guardrail` scope are held until it ends, so a decision made after the call (an output check) still applies. Names and versions are capped at 128 characters.
 
+### Guardrail canaries
+
+Guardrail coverage (EO-GRD-01) shows a guardrail *ran* on every call. It cannot show the guardrail *works*: a guardrail that allows everything has full coverage. Canaries close that gap. The SDK passes a few synthetic, known-bad probes (a prompt injection, a jailbreak, made-up personal data, a documented example AWS key) to **your own guardrail check**, and records only the kind and whether it was caught. EO-CAN-01 passes when every canary was caught; a missed one fails it and names the kind.
+
+```python
+def guardrail_check(text: str) -> bool:      # your guardrail; True (or "block"/"flag") means it would stop the text
+    return my_guardrail.scan(text).blocked
+
+witnessmark.schedule_canaries(guardrail_check, every=3600)   # now, then hourly, on a daemon thread
+witnessmark.run_canaries(guardrail_check)                     # or once, e.g. from a health check: {"pii": True, ...}
+await witnessmark.arun_canaries(async_guardrail_check)        # for an async check
+witnessmark.canary("toxicity", caught=True)                   # a canary you run yourself, with your own probe
+```
+
+```js
+const check = async (text) => (await myGuardrail.scan(text)).blocked;
+witnessmark.scheduleCanaries(check, { every: 3_600_000 });   // now, then hourly, on an unref'd timer
+await witnessmark.runCanaries(check);                        // { prompt_injection: true, ... }
+witnessmark.canary('toxicity', true);
+```
+
+- **Only the result leaves.** The probe text stays in the process (it is in `witnessmark.PROBES` and [`spec/canaries.json`](spec/canaries.json)); the span carries `witnessmark.canary.kind` and `witnessmark.canary.caught`, in its own trace, outside any scope of yours, so it never counts as a model call, personal data or a prompt version.
+- **Send probes to the guardrail only, never to the model.** The check you pass should call your guardrail and nothing else.
+- **A check that throws, or returns anything but `True`, `"block"` or `"flag"`, counts the canary as missed.** If your guardrail raises to block, catch that and return `True`.
+- **Off means off.** With the SDK disabled the check is never called. Scheduled runs are at least a minute apart.
+- Without canaries, EO-CAN-01 is *attention* ("No guardrail canaries run"), never fail.
+
 ### For model vendors and inference providers
 
 If you serve models yourself, there is no client library to patch. Wrap each inference request in your serving layer with `llm_call`, naming your own provider and model, and report the tokens you already count:
@@ -421,7 +449,7 @@ Message attributes (`gen_ai.input.messages`, `gen_ai.output.messages`, `gen_ai.p
 | `witnessmark-agent run --config agent.json --dry-run` | Print every batch it would send, with its payload decoded; send, queue and store nothing. Works before enrolment. |
 | `witnessmark-agent run --config agent.json --dry-run --replay export.jsonl` | Feed an OTLP JSON export through the pipeline, print every window and exit: the fastest way to see what Witnessmark would make of traces you already have. |
 | `witnessmark-agent report` | Verify and summarise the local log in the terminal. |
-| `witnessmark-agent check` | Evaluate the local log against the ten evidence objectives and your policy ([governance as code](#governance-as-code-policy-check-and-ai-bom)). |
+| `witnessmark-agent check` | Evaluate the local log against the eleven evidence objectives and your policy ([governance as code](#governance-as-code-policy-check-and-ai-bom)). |
 | `witnessmark-agent aibom` | Write a CycloneDX AI bill of materials from the log. |
 | `witnessmark-agent dashboard --data-dir <dir>` | Serve the dashboard on its own for a data directory (a copied log, or one written elsewhere). |
 | `witnessmark-agent version` | Print the version. |
@@ -585,11 +613,41 @@ The dashboard shows the same check for the selected range in its **Evidence obje
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/objectives-dark.png">
-  <img src="docs/objectives.png" alt="The dashboard's Evidence objectives panel: ten objectives with pass, attention or fail, what was measured and the target">
+  <img src="docs/objectives.png" alt="The dashboard's Evidence objectives panel: eleven objectives with pass, attention or fail, what was measured and the target">
 </picture>
 
 > [!NOTE]
 > `check` is a self-assessment: the evidence is signed by your own agent's key and evaluated by you. A [pack](#signed-evidence-packs-the-hosted-service-early-access) is the same evaluation, signed by an independent issuer.
+
+### Prove it can fail: `check --self-test`
+
+A green check is worth something only if the same check would have gone red. `--self-test` asks that of your own evidence and policy: for each objective it adds the least synthetic evidence that should fail it (an undeclared model, unredacted personal data, a missed canary, an unregistered change, ...) to a copy of the input and evaluates again, and it tampers with a copy of the log (an edited number, a batch re-signed with another key, a missing batch) and requires verification to refuse each one. Your log and policy are never changed, and the agent's private key is never copied.
+
+```bash
+witnessmark-agent check --self-test
+witnessmark-agent check --self-test --json > self-test.json
+```
+
+```
+Witnessmark self-test: Claims Triage Agent, 2026-10-09 to 2026-10-17
+  Can each objective fail on this evidence and policy? A violation is added to a copy of the evidence; the objective must fail.
+
+✓ CAN FAIL     EO-LIN-01  Model and provider lineage (now pass)
+               added one call to an undeclared model: fail
+✕ VACUOUS      EO-CHG-01  Material-change log (now pass)
+               the change register has a model and a prompt change within a day of every day in the period, so no change can ever be unlogged
+✓ CAN FAIL     EO-CAN-01  Guardrail canaries (now pass)
+               added 14500 guardrail canaries missed: fail
+...
+Is tampering with the log detected?
+✓ DETECTED     one number edited in the newest batch
+✓ DETECTED     the newest batch re-signed with another key
+✓ DETECTED     the first batch removed
+
+10 of 11 objectives can fail; 1 vacuous, 0 cannot fail, 0 untested.
+```
+
+**Vacuous** is the finding to act on: a register written so that nothing could ever be missing from it (a change logged for every day, an incident open every hour) turns its objective into a rubber stamp. Exit status **1** for a vacuous or unfailable objective or undetected tampering, so the self-test can run in CI next to `check`. Two limits are printed with every run: deleting the newest batches cannot be detected from the log alone (the hosted chain and daily public checkpoints catch that), and the self-test cannot show the telemetry itself is complete, which is what trace coverage and canaries measure.
 
 ### In CI
 
@@ -606,6 +664,8 @@ Or gate a release on the evidence, with a copy of the agent's data directory (fr
 - uses: Lumetrix-Advanced-Technologies/witnessmark@v0.3.0
   with: { command: check, policy: witnessmark.policy.json, data-dir: evidence/, strict: "true" }
 ```
+
+Add `command: self-test` as a second step to show the check could have failed.
 
 It installs `witnessmark-agent` from PyPI, writes `witnessmark-check.xml` (JUnit), puts the result in the job summary, and fails the job when an objective fails.
 
@@ -710,7 +770,7 @@ The agent polls the providers' usage APIs with an admin key (limit it to this sy
 
 ## What leaves your machine
 
-**In local mode, nothing.** In connected mode, one signed batch per hour, defined by [`spec/batch.schema.json`](spec/batch.schema.json).
+**In local mode, nothing.** In connected mode, one signed batch per hour, defined by [`spec/batch.schema.json`](spec/batch.schema.json) (`plumbline-batch/v0.2`), or, for an hour with guardrail canaries, [`spec/batch-v0.3.schema.json`](spec/batch-v0.3.schema.json), which adds `"canaries": [{"kind": "pii", "run": 1, "caught": 1}]`: counts per kind, never the probes.
 
 <details>
 <summary><b>A real batch, trimmed</b> (<code>witnessmark-agent run --dry-run</code> shows yours)</summary>
@@ -818,7 +878,7 @@ The local log is signed by your own key, and `witnessmark-agent check` is your o
 
 ### What you get
 
-**Ten evidence objectives**, evaluated for each AI system over each period:
+**Eleven evidence objectives**, evaluated for each AI system over each period:
 
 | ID | Objective | Passes when |
 | --- | --- | --- |
@@ -832,6 +892,7 @@ The local log is signed by your own key, and `witnessmark-agent check` is your o
 | EO-INC-01 | Incident register | Every anomaly hour was acknowledged in the incident register. |
 | EO-AGT-01 | Agent action safety | Tool calls fail at most 1% of the time. |
 | EO-RES-01 | Inference residency | Every region seen was declared. |
+| EO-CAN-01 | Guardrail canaries | Every synthetic known-bad probe sent through the guardrail was caught ([canaries](#guardrail-canaries)). |
 
 Results near a threshold are marked *attention* rather than pass or fail. Each objective lists the framework references it supports, by ID (for example ISO/IEC 42001 controls): see [`spec/objectives.json`](spec/objectives.json) and [`spec/framework-refs.json`](spec/framework-refs.json).
 
@@ -929,6 +990,7 @@ witnessmark-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen
 witnessmark-agent policy init [--policy <file>] [--data-dir <dir>] [--name <ai system>] [--timezone <tz>] [--force]
 witnessmark-agent policy validate [--policy <file>]
 witnessmark-agent check [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json] [--junit <file>] [--strict]
+witnessmark-agent check --self-test [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
 witnessmark-agent aibom [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--out <file>]
 witnessmark-agent connect [--config <agent.json>] <token>
 witnessmark-agent enrol --config <agent.json> [--token <token>]
@@ -951,6 +1013,7 @@ witnessmark-agent version
 | `--name`, `--timezone`, `--force` | `policy init` | The AI system's name, its IANA time zone (default `$TZ`, else UTC), and replace an existing file. |
 | `--since`, `--until` | `check`, `aibom` | The first and last local day (the policy's time zone). `check` defaults to the last 30 days with data. |
 | `--json`, `--junit <file>`, `--strict` | `check` | Print JSON; also write JUnit XML; fail on attention as well as fail. |
+| `--self-test` | `check` | Show that each objective fails on evidence built to fail it and that tampering with the log is detected ([details](#prove-it-can-fail-check---self-test)). |
 | `--out <file>` | `aibom` | Write the BOM to a file instead of standard output. |
 
 Exit status: **0** ok, **1** a runtime error (for `report`, a verification failure; for `check`, a failed objective or an unverified log; for `policy validate`, an invalid policy), **2** a usage or configuration error.
@@ -981,6 +1044,8 @@ Exit status: **0** all verified, **1** a check failed, **2** a usage or input er
 | Port 4319 is in use | `WITNESSMARK_DASHBOARD_LISTEN=127.0.0.1:4329`, or `off`. |
 | `report` says FAILED | The message names the first bad batch: edited (signature), missing, or out of order. The figures cover only the batches before it. Restore the data directory from a backup. |
 | `check` says "No policy yet" or a policy error | `witnessmark-agent policy init`, then review the file; `witnessmark-agent policy validate` names the field at fault. |
+| `check --self-test` says VACUOUS | A register leaves no room for a violation, for example a change recorded for every day. Record the changes and incidents that happened, not blanket entries. |
+| EO-CAN-01 fails | Your guardrail let a known-bad probe through; the measurement names the kind. Fix the guardrail, or check that your canary check returns `True` (or `"block"`/`"flag"`) when it blocks, and does not raise. |
 | `check` fails EO-CHG-01 or EO-INC-01 | The output lists each missing change or incident; record the ones you approve in the policy's `changes` or `incidents`. |
 | `connect` refuses the data directory | It holds a local-mode agent. Use a new data directory (or volume) for connected mode. |
 | No agent appears in the Witnessmark app | Check the agent's log for an enrolment error. A used or expired token needs a new one. |
