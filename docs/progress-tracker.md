@@ -67,7 +67,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
-- 2026-10-17 · P7-4 · PR pending · The product is Tellproof; the name check that missed a governance advisory called WitnessMark was redone before anything shipped.
+- 2026-10-17 · P7-4 · PR #59 merged; v0.3.0 released; site on GitHub Pages · The product is Tellproof; the name check that missed a governance advisory called WitnessMark was redone before anything shipped.
 - 2026-10-17 · P7-3 · PR #57 merged · Any commit, human or agent written, can carry signed evidence that its CI gates ran, tested something, and could have failed.
 - 2026-10-17 · P7-2 · PR #56 merged · Evidence can now be shown to be able to fail: canaries prove the guardrail catches known-bad input, and the self-test proves every objective and the log's integrity respond to violations.
 - 2026-10-17 · P7-1 · PR #55 merged · Plumbline is now Witnessmark, and nothing set up under the old name breaks.

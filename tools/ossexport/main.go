@@ -42,6 +42,8 @@ var extra = []string{
 	"web/brand.css",
 	// The static site's other pages, deployed with the verify page (D-019).
 	"web/site.css",
+	"web/index.html",
+	"web/favicon.svg",
 	"web/security",
 	"web/docs",
 	"web/site_test.go",
