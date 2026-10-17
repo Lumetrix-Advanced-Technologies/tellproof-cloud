@@ -1,6 +1,6 @@
 {
   "name": "witnessmark",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "One-line evidence telemetry for AI products: sends model-call facts (never content) to the local Witnessmark agent.",
   "main": "./lib/index.cjs",
   "module": "./lib/index.mjs",
