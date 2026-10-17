@@ -8,7 +8,7 @@ import (
 )
 
 const good = `{
-  "$schema": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/witnessmark/main/spec/policy.schema.json",
+  "$schema": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/tellproof/main/spec/policy.schema.json",
   "organisation": "Kestrel", "ai_system": "Claims Triage Agent", "environment": "production", "timezone": "Australia/Sydney",
   "declared_models": [{"provider": "openai", "model": "gpt-4.1-mini", "role": "triage"}],
   "declared_regions": ["us-east-1"],
@@ -78,8 +78,8 @@ func TestFindLooksInOrder(t *testing.T) {
 	if got := Find(getenv, data); got != DefaultFile {
 		t.Errorf("the working directory comes first: %s", got)
 	}
-	env["WITNESSMARK_POLICY"] = "/etc/witnessmark.json"
-	if got := Find(getenv, data); got != "/etc/witnessmark.json" {
+	env["TELLPROOF_POLICY"] = "/etc/tellproof.json"
+	if got := Find(getenv, data); got != "/etc/tellproof.json" {
 		t.Errorf("the environment comes first: %s", got)
 	}
 	// Write then Load round-trips.

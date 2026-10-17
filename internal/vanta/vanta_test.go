@@ -20,20 +20,20 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/secretbox"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/share"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/pack"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/secretbox"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/share"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store/storetest"
 )
 
 const (
 	clientID     = "vanta-client-id-0001"
 	clientSecret = "vanta-client-secret-do-not-leak"
 	resourceID   = "65f0c0ffee0000000000aaaa"
-	documentID   = "doc-witnessmark-packs"
+	documentID   = "doc-tellproof-packs"
 )
 
 // fakeVanta is the slice of the Vanta API the sync uses. Like Vanta, it
@@ -254,7 +254,7 @@ func TestHourlySyncSendsFullStateAndUploadsEachPackOnce(t *testing.T) {
 		t.Fatalf("%d resources, want one per objective (10)", len(got))
 	}
 	r := got[0]
-	if r.UniqueID != "witnessmark:"+systemA+":EO-LOG-01" || !strings.HasPrefix(r.DisplayName, "Claims Triage Agent (production) · EO-LOG-01 ") {
+	if r.UniqueID != "tellproof:"+systemA+":EO-LOG-01" || !strings.HasPrefix(r.DisplayName, "Claims Triage Agent (production) · EO-LOG-01 ") {
 		t.Errorf("resource = %+v", r)
 	}
 	p := r.CustomProperties

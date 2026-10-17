@@ -100,7 +100,7 @@ func statement() *Statement {
 	return NewStatement("git+https://github.com/acme/app", commit, "refs/heads/main", Run{Provider: "github", ID: "42"},
 		[]Gate{{Name: "lint", Passed: true}, {Name: "tests", Passed: true, JUnit: &JUnit{Tests: 12, Skipped: 1}, Attempts: 2}},
 		[]Gate{{Name: "tests", Canary: true, Passed: true, ExitCode: 1}},
-		&AgentCommits{Range: commit, Commits: 1, WithAgent: 1, ByAgent: map[string]int{"claude": 1}}, "witnessmark-agent test", time.Unix(0, 0))
+		&AgentCommits{Range: commit, Commits: 1, WithAgent: 1, ByAgent: map[string]int{"claude": 1}}, "tellproof-agent test", time.Unix(0, 0))
 }
 
 func TestSignOpenAndTamper(t *testing.T) {

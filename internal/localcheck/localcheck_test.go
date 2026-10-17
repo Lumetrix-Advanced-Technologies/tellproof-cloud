@@ -12,16 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/aggregate"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/aibom"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batchsign"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/commitment"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/evaluate"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localreport"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/otlp"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/policy"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/queue"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/aggregate"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/aibom"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batchsign"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/commitment"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/evaluate"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/otlp"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/policy"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/queue"
 )
 
 // writeLog writes the concierge's OTLP sample (two hours on 1 Sep 2026: three
@@ -210,16 +210,16 @@ func TestAIBOMFromTheLog(t *testing.T) {
 	}
 	for _, c := range b.Components {
 		p := props(c)
-		if c.Type != "machine-learning-model" || c.Publisher == "" || p["witnessmark:declared"] != "true" {
+		if c.Type != "machine-learning-model" || c.Publisher == "" || p["tellproof:declared"] != "true" {
 			t.Errorf("component %+v", c)
 		}
 		switch c.Name {
 		case "claude-opus-4-1":
-			if p["witnessmark:observed"] != "false" || c.ModelCard == nil || c.ModelCard.Considerations.UseCases[0] != "fallback" {
+			if p["tellproof:observed"] != "false" || c.ModelCard == nil || c.ModelCard.Considerations.UseCases[0] != "fallback" {
 				t.Errorf("declared, never seen: %+v", c)
 			}
 		case "anthropic.claude-sonnet-4-5":
-			if p["witnessmark:observed"] != "true" || p["witnessmark:regions"] != "ap-southeast-2" || p["witnessmark:calls"] == "0" || p["witnessmark:first_seen"] == "" {
+			if p["tellproof:observed"] != "true" || p["tellproof:regions"] != "ap-southeast-2" || p["tellproof:calls"] == "0" || p["tellproof:first_seen"] == "" {
 				t.Errorf("observed: %v", p)
 			}
 		}

@@ -24,7 +24,7 @@ from urllib.parse import urlsplit
 
 from . import _core
 
-_MARK = "__witnessmark_wrapped__"
+_MARK = "__tellproof_wrapped__"
 
 
 def _available(name: str) -> bool:

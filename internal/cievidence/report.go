@@ -52,7 +52,7 @@ func WriteText(w io.Writer, st *Statement, signed bool, checks []Check) error {
 	if !signed {
 		sig = "UNSIGNED: integrity not checked here (verify its GitHub attestation with gh attestation verify)"
 	}
-	fmt.Fprintf(&b, "Witnessmark CI evidence: %s at %s (%s)\n", p.Repository, p.Commit, sig)
+	fmt.Fprintf(&b, "Tellproof CI evidence: %s at %s (%s)\n", p.Repository, p.Commit, sig)
 	if p.Run.URL != "" {
 		fmt.Fprintf(&b, "  Run: %s\n", p.Run.URL)
 	}

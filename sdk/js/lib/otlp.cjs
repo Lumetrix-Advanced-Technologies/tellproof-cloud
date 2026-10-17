@@ -36,7 +36,7 @@ function encode(spans, resource, scopeVersion) {
     resourceSpans: [
       {
         resource: { attributes: attrs(resource) },
-        scopeSpans: [{ scope: { name: 'witnessmark', version: scopeVersion }, spans: out }],
+        scopeSpans: [{ scope: { name: 'tellproof', version: scopeVersion }, spans: out }],
       },
     ],
   });

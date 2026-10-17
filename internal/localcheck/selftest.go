@@ -15,11 +15,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/evaluate"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batch"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/evaluate"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/localreport"
 )
 
 // The self-test (D-057) asks whether this evidence and this policy could
@@ -96,7 +96,7 @@ type selfFacts struct {
 	declaredModel, declaredRegion             map[string]bool
 }
 
-const selfTag = "witnessmark-selftest" // names nothing real
+const selfTag = "tellproof-selftest" // names nothing real
 
 func syntheticWindow(in *evaluate.Input, at time.Time) *batch.Metrics {
 	w := evaluate.Window{Window: batch.Window{Start: at.UTC().Format(time.RFC3339), End: at.Add(time.Hour).UTC().Format(time.RFC3339)},
@@ -384,7 +384,7 @@ func tamperTests(dataDir string) ([]TamperTest, error) {
 	}
 	var out []TamperTest
 	for _, c := range cases {
-		dir, err := os.MkdirTemp("", "witnessmark-selftest-")
+		dir, err := os.MkdirTemp("", "tellproof-selftest-")
 		if err != nil {
 			return out, err
 		}
@@ -476,7 +476,7 @@ var outcomeMarks = map[string]string{Falsifiable: "✓ CAN FAIL", Vacuous: "✕ 
 func WriteSelfTestText(w io.Writer, r *SelfTestReport) error {
 	var b strings.Builder
 	p := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
-	p("Witnessmark self-test: %s, %s to %s", r.AISystem, r.Period.Start, r.Period.End)
+	p("Tellproof self-test: %s, %s to %s", r.AISystem, r.Period.Start, r.Period.End)
 	p("  Can each objective fail on this evidence and policy? A violation is added to a copy of the evidence; the objective must fail.")
 	p("")
 	n := map[string]int{}

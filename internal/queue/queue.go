@@ -18,8 +18,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batchsign"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batchsign"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
 )
 
 const (

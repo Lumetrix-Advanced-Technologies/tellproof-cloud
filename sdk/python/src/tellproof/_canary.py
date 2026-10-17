@@ -16,8 +16,8 @@ from typing import Any, Awaitable, Callable, Iterable
 
 from . import _core
 
-CANARY_KIND = "witnessmark.canary.kind"
-CANARY_CAUGHT = "witnessmark.canary.caught"
+CANARY_KIND = "tellproof.canary.kind"
+CANARY_CAUGHT = "tellproof.canary.caught"
 
 # spec/canaries.json v1; tests compare them with the file.
 PROBES: dict[str, str] = {
@@ -59,7 +59,7 @@ def canary(kind: Any, caught: Any) -> None:
             _core._fail("canary: kind")
             return
         now = _core.current_client().clock()
-        _core.record("witnessmark.canary", 1, now, now, {CANARY_KIND: k, CANARY_CAUGHT: _caught(caught)}, False, frame=None)
+        _core.record("tellproof.canary", 1, now, now, {CANARY_KIND: k, CANARY_CAUGHT: _caught(caught)}, False, frame=None)
     except Exception:
         _core._fail("canary")
 
@@ -120,7 +120,7 @@ class Schedule:
     def __init__(self, check: Callable[[str], Any], every: float, kinds: Iterable[str] | None) -> None:
         self._check, self._every, self._kinds = check, max(float(every), MIN_EVERY), list(_kinds(kinds))
         self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._run, name="witnessmark-canaries", daemon=True)
+        self._thread = threading.Thread(target=self._run, name="tellproof-canaries", daemon=True)
 
     def _run(self) -> None:
         while not self._stop.is_set():

@@ -41,7 +41,7 @@ func (g *GitHub) do(ctx context.Context, method, path string, body any, out any)
 	req.Header.Set("Authorization", "Bearer "+g.Token)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	req.Header.Set("User-Agent", "witnessmark-checkpoint")
+	req.Header.Set("User-Agent", "tellproof-checkpoint")
 	client := g.HTTP
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}

@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/evaluate"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localreport"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/policy"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batch"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/evaluate"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/policy"
 )
 
 // Options for a check.
@@ -162,7 +162,7 @@ func WriteText(w io.Writer, r *Report) error {
 	if r.Environment != "" {
 		name += " (" + r.Environment + ")"
 	}
-	p("Witnessmark check: %s, %s to %s (%s)", name, r.Period.Start, r.Period.End, r.Timezone)
+	p("Tellproof check: %s, %s to %s (%s)", name, r.Period.Start, r.Period.End, r.Timezone)
 	p("  Evidence: %d batches from agent %s, verified (signatures and chain).", r.Log.Batches, r.Log.AgentID)
 	p("")
 	unverified := false
@@ -233,10 +233,10 @@ func WriteJUnit(w io.Writer, r *Report, strict bool) error {
 		Skipped  int        `xml:"skipped,attr"`
 		Cases    []testcase `xml:"testcase"`
 	}
-	s := suite{Name: "witnessmark: " + r.AISystem + " " + r.Period.Start + " to " + r.Period.End, Tests: len(r.Objectives)}
+	s := suite{Name: "tellproof: " + r.AISystem + " " + r.Period.Start + " to " + r.Period.End, Tests: len(r.Objectives)}
 	for _, o := range r.Objectives {
 		msg := o.Measured + "; target: " + o.Threshold
-		c := testcase{Name: o.ID + " " + o.Title, Classname: "witnessmark." + o.ID, Out: msg}
+		c := testcase{Name: o.ID + " " + o.Title, Classname: "tellproof." + o.ID, Out: msg}
 		switch {
 		case o.Status == "fail" || (o.Status == "attention" && strict):
 			c.Failure = &failure{Message: strings.ToUpper(o.Status[:1]) + o.Status[1:] + ": " + msg, Text: strings.Join(o.Maps, "\n")}

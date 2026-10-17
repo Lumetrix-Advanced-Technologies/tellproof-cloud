@@ -59,6 +59,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P7-1 | Rename to Witnessmark | done | 2026-10-17 | Every name, package and page is Witnessmark with a new mark; v0.2 names (env, attributes, policy file, data dir) still read, v0.2 SDK exports kept as fixtures; wire formats, key bindings and DB names frozen. Repos, domains and package publishing wait on the founders (D-056) |
 | P7-2 | Falsifiable evidence | done | 2026-10-17 | Guardrail canaries in both SDKs (probes stay in the app; kind and caught only), batch v0.3 only for windows with canaries, EO-CAN-01 in both evaluators, `check --self-test` (each objective must fail on injected violations; vacuous registers flagged; tampering detected), report, dashboard tile and Action (D-057) |
 | P7-3 | Coding-agent evidence | done | 2026-10-17 | `witnessmark-agent ci run/canary/attest/verify/keygen`: gate outcomes per commit (no logs, code or command lines), must-fail canaries on a patched worktree, signed in-toto statements (or GitHub attestations) with coding-agent commit counts, `witnessmark-verify ci`, policy `ci` section (D-058) |
+| P7-4 | Rename to Tellproof | done | 2026-10-17 | Witnessmark collided with a governance advisory (witnessmark.co) and its domains were taken; renamed to Tellproof before any public release, with no Witnessmark aliases (never shipped); v0.2 compatibility unchanged (D-059) |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
@@ -66,10 +67,11 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
-- 2026-10-17 · P7-3 · PR pending · Any commit, human or agent written, can carry signed evidence that its CI gates ran, tested something, and could have failed.
-- 2026-10-17 · P7-2 · PR pending · Evidence can now be shown to be able to fail: canaries prove the guardrail catches known-bad input, and the self-test proves every objective and the log's integrity respond to violations.
-- 2026-10-17 · P7-1 · PR pending · Plumbline is now Witnessmark, and nothing set up under the old name breaks.
-- 2026-10-17 · P6-7 · PR pending · Teams can declare an AI system in a policy file and check its evidence against the ten objectives locally and in CI, with the same evaluator as signed packs.
+- 2026-10-17 · P7-4 · PR pending · The product is Tellproof; the name check that missed a governance advisory called WitnessMark was redone before anything shipped.
+- 2026-10-17 · P7-3 · PR #57 merged · Any commit, human or agent written, can carry signed evidence that its CI gates ran, tested something, and could have failed.
+- 2026-10-17 · P7-2 · PR #56 merged · Evidence can now be shown to be able to fail: canaries prove the guardrail catches known-bad input, and the self-test proves every objective and the log's integrity respond to violations.
+- 2026-10-17 · P7-1 · PR #55 merged · Plumbline is now Witnessmark, and nothing set up under the old name breaks.
+- 2026-10-17 · P6-7 · PR #54 merged · Teams can declare an AI system in a policy file and check its evidence against the ten objectives locally and in CI, with the same evaluator as signed packs.
 - 2026-10-16 · P6-6 · PR pending · The agent installs with pip or npx and runs with one command.
 - 2026-10-16 · P6-5 · PR pending · Local mode has a dashboard that shows what an AI system did, hour by hour, from its signed log.
 - 2026-10-16 · P6-4 · PR pending · Plumbline is open source: anyone can run the agent locally with one line of app code, and v0.1.0 is released with signed provenance.

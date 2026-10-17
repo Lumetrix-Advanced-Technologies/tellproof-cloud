@@ -1,14 +1,14 @@
-// Command witnessmark-agent is the Witnessmark evidence agent. It runs next to an
+// Command tellproof-agent is the Tellproof evidence agent. It runs next to an
 // AI product, turns its telemetry into signed hourly aggregates and sends only
 // those (docs/architecture.md §3).
 //
-//	witnessmark-agent run --local                   # no server: keep signed batches locally, with a dashboard
-//	witnessmark-agent report [--json]               # verify and summarise the local evidence log
-//	witnessmark-agent dashboard [--data-dir <dir>]  # the dashboard alone, for a copied log
-//	witnessmark-agent connect <token>               # enrol once, then run (the one-command install)
-//	witnessmark-agent enrol --config agent.json      # token in WITNESSMARK_ENROL_TOKEN
-//	witnessmark-agent [run] --config agent.json [--dry-run] [--replay export.jsonl]
-//	witnessmark-agent version
+//	tellproof-agent run --local                   # no server: keep signed batches locally, with a dashboard
+//	tellproof-agent report [--json]               # verify and summarise the local evidence log
+//	tellproof-agent dashboard [--data-dir <dir>]  # the dashboard alone, for a copied log
+//	tellproof-agent connect <token>               # enrol once, then run (the one-command install)
+//	tellproof-agent enrol --config agent.json      # token in TELLPROOF_ENROL_TOKEN
+//	tellproof-agent [run] --config agent.json [--dry-run] [--replay export.jsonl]
+//	tellproof-agent version
 //
 // --dry-run prints every batch it would send, with its payload decoded, and
 // sends, queues and stores nothing. --replay feeds an OTLP JSON export through
@@ -32,32 +32,32 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/agent"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dashboard"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/enrol"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/envcompat"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/localreport"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/policy"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/agent"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dashboard"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/enrol"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/envcompat"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/localreport"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/policy"
 )
 
 // version is set at link time: go build -ldflags "-X main.version=v0.1.0".
 var version = "dev"
 
 const usage = `usage:
-  witnessmark-agent run --local [--config <agent.json>]
-  witnessmark-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
-  witnessmark-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen <host:port>]
-  witnessmark-agent policy init | check | aibom ...   (run one with --help for its flags)
-  witnessmark-agent ci run | canary | attest | verify | keygen ...   (CI evidence per commit)
-  witnessmark-agent connect [--config <agent.json>] <token>
-  witnessmark-agent enrol --config <agent.json> [--token <token>]
-  witnessmark-agent [run] --config <agent.json> [--dry-run] [--replay <export.jsonl>]
-  witnessmark-agent version
+  tellproof-agent run --local [--config <agent.json>]
+  tellproof-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
+  tellproof-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen <host:port>]
+  tellproof-agent policy init | check | aibom ...   (run one with --help for its flags)
+  tellproof-agent ci run | canary | attest | verify | keygen ...   (CI evidence per commit)
+  tellproof-agent connect [--config <agent.json>] <token>
+  tellproof-agent enrol --config <agent.json> [--token <token>]
+  tellproof-agent [run] --config <agent.json> [--dry-run] [--replay <export.jsonl>]
+  tellproof-agent version
 
 run --local (or just local) runs with no server and no token: batches are
 signed with the agent's own key and kept in <data-dir>/local, a dashboard is
 served on http://127.0.0.1:4319, and report verifies and summarises the log.
-The enrolment token is read from WITNESSMARK_ENROL_TOKEN when --token is not
+The enrolment token is read from TELLPROOF_ENROL_TOKEN when --token is not
 given. Secrets are read from the environment variables the config names.
 Exit status: 0 ok, 1 runtime error, 2 usage or config error.
 `
@@ -69,7 +69,7 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, getenv func(string) string, stdout, stderr io.Writer) int {
-	getenv = envcompat.Wrap(getenv) // WITNESSMARK_*, else the PLUMBLINE_* names of v0.1 and v0.2
+	getenv = envcompat.Wrap(getenv) // TELLPROOF_*, else the PLUMBLINE_* names of v0.1 and v0.2
 	if isGovernance(args) {
 		return governance(args, getenv, stdout, stderr)
 	}
@@ -80,12 +80,12 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 	if len(args) > 0 && (args[0] == "run" || args[0] == "enrol" || args[0] == "connect" || args[0] == "version" || args[0] == "local" || args[0] == "report" || args[0] == "dashboard") {
 		cmd, args = args[0], args[1:]
 	}
-	fs := flag.NewFlagSet("witnessmark-agent "+cmd, flag.ContinueOnError)
+	fs := flag.NewFlagSet("tellproof-agent "+cmd, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	configPath := fs.String("config", "", "agent config file")
 	dryRun := fs.Bool("dry-run", false, "print what would be sent; send, queue and store nothing")
 	replay := fs.String("replay", "", "feed an OTLP JSON export through the pipeline and exit")
-	token := fs.String("token", "", "one-time enrolment token (default $WITNESSMARK_ENROL_TOKEN)")
+	token := fs.String("token", "", "one-time enrolment token (default $TELLPROOF_ENROL_TOKEN)")
 	dataDir := fs.String("data-dir", "", "report: the data directory to read (default from the config)")
 	since := fs.String("since", "", "report: first day to sum, YYYY-MM-DD (UTC)")
 	until := fs.String("until", "", "report: last day to sum, YYYY-MM-DD (UTC)")
@@ -103,7 +103,7 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 	log := slog.New(slog.NewJSONHandler(stderr, nil))
 	switch cmd {
 	case "version":
-		fmt.Fprintf(stdout, "witnessmark-agent %s\n", version)
+		fmt.Fprintf(stdout, "tellproof-agent %s\n", version)
 		return 0
 	case "connect":
 		if *dryRun || *replay != "" || *token != "" {
@@ -185,10 +185,10 @@ func doReplay(ctx context.Context, a *agent.Agent, path string) error {
 
 func doEnrol(ctx context.Context, configPath, token string, getenv func(string) string, stdout, stderr io.Writer) int {
 	if token == "" {
-		token = getenv("WITNESSMARK_ENROL_TOKEN")
+		token = getenv("TELLPROOF_ENROL_TOKEN")
 	}
 	if token == "" {
-		fmt.Fprintln(stderr, "witnessmark-agent: enrol needs a token: set WITNESSMARK_ENROL_TOKEN or pass --token")
+		fmt.Fprintln(stderr, "tellproof-agent: enrol needs a token: set TELLPROOF_ENROL_TOKEN or pass --token")
 		return 2
 	}
 	cfg, err := agent.LoadConfig(configPath, getenv)
@@ -197,7 +197,7 @@ func doEnrol(ctx context.Context, configPath, token string, getenv func(string) 
 		return 2
 	}
 	if cfg.Server == "" {
-		fmt.Fprintln(stderr, "witnessmark-agent: enrol needs a server in the config or WITNESSMARK_SERVER")
+		fmt.Fprintln(stderr, "tellproof-agent: enrol needs a server in the config or TELLPROOF_SERVER")
 		return 2
 	}
 	id, err := enrol.Enrol(ctx, enrol.Options{Server: cfg.Server, Token: token, DataDir: cfg.DataDir, HTTP: &http.Client{Timeout: 30 * time.Second}})
@@ -214,7 +214,7 @@ func doEnrol(ctx context.Context, configPath, token string, getenv func(string) 
 // keep a salt secret in the data directory when none is configured, then run.
 func connect(ctx context.Context, configPath, token string, getenv func(string) string, stdout, stderr io.Writer, log *slog.Logger) int {
 	if token == "" {
-		token = getenv("WITNESSMARK_ENROL_TOKEN")
+		token = getenv("TELLPROOF_ENROL_TOKEN")
 	}
 	cfg, err := agent.LoadConfig(configPath, getenv)
 	if err != nil {
@@ -222,14 +222,14 @@ func connect(ctx context.Context, configPath, token string, getenv func(string) 
 		return 2
 	}
 	if cfg.Server == "" {
-		fmt.Fprintln(stderr, "witnessmark-agent: connect needs the server: set WITNESSMARK_SERVER")
+		fmt.Fprintln(stderr, "tellproof-agent: connect needs the server: set TELLPROOF_SERVER")
 		return 2
 	}
 	if _, err := os.Stat(filepath.Join(cfg.DataDir, enrol.IdentityFile)); err == nil {
 		log.Info("already enrolled; starting", "data_dir", cfg.DataDir)
 	} else {
 		if token == "" {
-			fmt.Fprintln(stderr, "witnessmark-agent: connect needs an enrolment token from the Witnessmark app")
+			fmt.Fprintln(stderr, "tellproof-agent: connect needs an enrolment token from the Tellproof app")
 			return 2
 		}
 		id, err := enrol.Enrol(ctx, enrol.Options{Server: cfg.Server, Token: token, DataDir: cfg.DataDir, HTTP: &http.Client{Timeout: 30 * time.Second}})
@@ -290,12 +290,12 @@ func local(ctx context.Context, configPath string, getenv func(string) string, s
 		return 1
 	}
 	defer stopDash()
-	fmt.Fprintf(stdout, "witnessmark-agent %s in local mode as %s: listening for spans on %s; signed batches are kept in %s and never sent.\n",
+	fmt.Fprintf(stdout, "tellproof-agent %s in local mode as %s: listening for spans on %s; signed batches are kept in %s and never sent.\n",
 		version, a.AgentID(), cfg.OTLPListen, filepath.Join(cfg.DataDir, agent.LocalDir))
 	if url != "" {
 		fmt.Fprintf(stdout, "Dashboard: %s\n", url)
 	}
-	fmt.Fprintln(stdout, "In a terminal: witnessmark-agent report")
+	fmt.Fprintln(stdout, "In a terminal: tellproof-agent report")
 	if err := a.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		log.Error("agent stopped", "error", err.Error())
 		return 1
@@ -311,7 +311,7 @@ func startDashboard(addr, dataDir string, log *slog.Logger) (func(), string, err
 	}
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, "", fmt.Errorf("witnessmark-agent: dashboard: %w (set WITNESSMARK_DASHBOARD_LISTEN, or off)", err)
+		return nil, "", fmt.Errorf("tellproof-agent: dashboard: %w (set TELLPROOF_DASHBOARD_LISTEN, or off)", err)
 	}
 	srv := &http.Server{Handler: dashboard.Handler(dashboard.Options{DataDir: dataDir, Version: version, PolicyPath: policy.Find(envcompat.Get, dataDir)}),
 		ReadHeaderTimeout: 10 * time.Second}
@@ -379,7 +379,7 @@ func report(configPath, dataDir, since, until string, asJSON bool, getenv func(s
 		}
 		t, err := time.Parse("2006-01-02", d.in)
 		if err != nil {
-			fmt.Fprintf(stderr, "witnessmark-agent: %q is not a date (YYYY-MM-DD)\n", d.in)
+			fmt.Fprintf(stderr, "tellproof-agent: %q is not a date (YYYY-MM-DD)\n", d.in)
 			return 2
 		}
 		*d.out = t.AddDate(0, 0, d.add)
@@ -424,7 +424,7 @@ func ensureSaltSecret(dir string) (string, error) {
 	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
-		return "", fmt.Errorf("witnessmark-agent: salt secret: %w", err)
+		return "", fmt.Errorf("tellproof-agent: salt secret: %w", err)
 	}
 	if _, err := f.WriteString(hex.EncodeToString(b) + "\n"); err != nil {
 		f.Close()

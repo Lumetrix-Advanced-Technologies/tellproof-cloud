@@ -8,7 +8,7 @@ Tasks are sized for one PR each (roughly 2–6 hours with Claude Code). Do them 
 
 ## Phase 0: Bootstrap (allowed now)
 
-**P0-1 Repo skeleton.** `go.mod` (module `github.com/lumetrix/witnessmark`, rename if the org differs), folders from CLAUDE.md, `Makefile` targets, `docker-compose.yml`, `.github/workflows/ci.yml`, `.gitignore`.
+**P0-1 Repo skeleton.** `go.mod` (module `github.com/lumetrix/tellproof`, rename if the org differs), folders from CLAUDE.md, `Makefile` targets, `docker-compose.yml`, `.github/workflows/ci.yml`, `.gitignore`.
 Done when: `make check` runs green on an empty `cmd/verify/main.go` that prints its version; CI runs on every PR.
 
 **P0-2 Spec checks.** A Go test in `internal/spec` that loads `spec/objectives.json`, `spec/framework-refs.json` and `spec/semconv-map.json` with `encoding/json` (`DisallowUnknownFields`) and validates that every objective's `maps_to` entries exist in `framework-refs.json` and every rule kind is one of the five.
@@ -31,7 +31,7 @@ Done when: the disclosed proofs in all pass vectors verify; `fail/bad-merkle-pro
 Done when: results for every file in `spec/vectors/manifest.json` match its expected result exactly.
 Depends on: P1-1 to P1-3.
 
-**P1-5 `cmd/verify`.** CLI: `witnessmark-verify --jwks <file|url> pack1.json [pack2.json …]` (oldest first), human output by default, `--json` for machines, exit code 0 only when everything verifies.
+**P1-5 `cmd/verify`.** CLI: `tellproof-verify --jwks <file|url> pack1.json [pack2.json …]` (oldest first), human output by default, `--json` for machines, exit code 0 only when everything verifies.
 Done when: running it over `spec/vectors/pass/*` prints VERIFIED and exits 0; each fail vector exits 1 with the right failed check named.
 
 **P1-6 `web/verify/`.** Port `reference/sample-verify-page.html` into `index.html`, `verify.js` (pure functions exported as an ES module: `jcs`, `pae`, `derToRaw`, `verifyEnvelope`, `verifyMerkle`) and `verify.css` using `web/brand.css` tokens. Loads the envelope from `?t=` via `GET /v1/verify/{token}` or from a local file picker (offline mode). Print stylesheet included.
@@ -83,21 +83,21 @@ Done when: killing the agent mid-send and restarting loses no batch and sends no
 
 ## Phase S: SDKs and one-line integration (D-025)
 
-Zero-dependency SDKs that make adoption one line of code, like Sentry: `witnessmark.init()` instruments the LLM clients an app already uses and streams spans (OTLP JSON, no content) to the local evidence agent. The SDKs never capture prompt or completion text.
+Zero-dependency SDKs that make adoption one line of code, like Sentry: `tellproof.init()` instruments the LLM clients an app already uses and streams spans (OTLP JSON, no content) to the local evidence agent. The SDKs never capture prompt or completion text.
 
-**S-1 Python SDK core (`sdk/python`, package `witnessmark`).** `witnessmark.init(agent_url=None, service=None)` (default `http://127.0.0.1:4318`, env `WITNESSMARK_AGENT_URL`); a background exporter that batches spans as OTLP JSON and never blocks or raises into the app; manual helpers for the D-020 attributes: `witnessmark.prompt(name, version)`, `witnessmark.guardrail(decision)`, `witnessmark.personal_data(redacted=…)`, `witnessmark.tool(name, high_impact=…, approved=…)`, `witnessmark.escalation()`, `witnessmark.agent_run(name)`. Standard library only.
+**S-1 Python SDK core (`sdk/python`, package `tellproof`).** `tellproof.init(agent_url=None, service=None)` (default `http://127.0.0.1:4318`, env `TELLPROOF_AGENT_URL`); a background exporter that batches spans as OTLP JSON and never blocks or raises into the app; manual helpers for the D-020 attributes: `tellproof.prompt(name, version)`, `tellproof.guardrail(decision)`, `tellproof.personal_data(redacted=…)`, `tellproof.tool(name, high_impact=…, approved=…)`, `tellproof.escalation()`, `tellproof.agent_run(name)`. Standard library only.
 Done when: spans the SDK exports parse in `internal/otlp` (shared fixture) and aggregate to the expected counts; the exporter drops on overload instead of blocking; a fuzz-style test proves no argument text reaches an exported span.
 
 **S-2 Python auto-instrumentation.** `init()` patches, when installed: `openai` (chat completions, responses, embeddings; sync, async and streaming), `anthropic` (messages; sync, async, streaming), `boto3` Bedrock Runtime (`converse`, `invoke_model`). Each call becomes a span with provider, model, region, token usage, error status; message content is never read.
-Done when: against fake clients with the real libraries' call shapes (and the real libraries when installed), every call type yields the right span; streaming usage is counted once; `witnessmark.shutdown()` flushes.
+Done when: against fake clients with the real libraries' call shapes (and the real libraries when installed), every call type yields the right span; streaming usage is counted once; `tellproof.shutdown()` flushes.
 
-**S-3 TypeScript SDK core (`sdk/js`, package `@witnessmark/sdk`).** The S-1 API for Node 18+ (ES module and CommonJS builds without a bundler: the package ships plain `.js` with `.d.ts`), using `fetch`; no dependencies.
+**S-3 TypeScript SDK core (`sdk/js`, package `@tellproof/sdk`).** The S-1 API for Node 18+ (ES module and CommonJS builds without a bundler: the package ships plain `.js` with `.d.ts`), using `fetch`; no dependencies.
 Done when: as S-1, tested with `node --test`.
 
 **S-4 TypeScript auto-instrumentation.** `openai`, `@anthropic-ai/sdk`, `@aws-sdk/client-bedrock-runtime` (middleware), including streams.
 Done when: as S-2.
 
-**S-5 One-command agent install and connect flow.** Agent container image and a static binary per platform; `witnessmark-agent connect <enrolment token>` enrols and starts; the web app's Sources screen shows a copy-paste snippet (one `docker run` line plus the one-line `init()` for Python and TypeScript) with the token filled in. Depends on P3-6, P5-3.
+**S-5 One-command agent install and connect flow.** Agent container image and a static binary per platform; `tellproof-agent connect <enrolment token>` enrols and starts; the web app's Sources screen shows a copy-paste snippet (one `docker run` line plus the one-line `init()` for Python and TypeScript) with the token filled in. Depends on P3-6, P5-3.
 Done when: on a clean machine, the snippet from the Sources screen gets a sample app's calls into a batch the server accepts, in under five minutes.
 
 **S-6 End to end.** A sample Python app and a sample TypeScript app → SDK → agent → server → evaluation → signed pack → share link verified in a browser, in CI.
@@ -141,20 +141,23 @@ Done when: a new partner goes from sign-up to first issued pack in under 30 minu
 
 **P6-3 Launch checklist.** Security page, docs site page for the agent, HN post draft, test vectors published.
 
-**P6-4 Local mode, early access and the public repository.** (Added 16 Oct 2026 at the founders' request.) `witnessmark-agent local`: no server or token, signed batches kept in the data directory; `witnessmark-agent report` verifies and summarises them. Early-access request options in the public repository. SDKs published as `witnessmark`. This repository renamed `witnessmark-cloud`; the public `witnessmark` repository created from the export, with its first release.
+**P6-4 Local mode, early access and the public repository.** (Added 16 Oct 2026 at the founders' request.) `tellproof-agent local`: no server or token, signed batches kept in the data directory; `tellproof-agent report` verifies and summarises them. Early-access request options in the public repository. SDKs published as `tellproof`. This repository renamed `tellproof-cloud`; the public `tellproof` repository created from the export, with its first release.
 
 
 **P6-5 Local dashboard.** (Added 16 Oct 2026 at the founders' request.) `run --local` serves a dashboard of the verified local log on loopback, in the spirit of Sentry or Grafana: totals, calls per model over time, coverage, tokens, models, timeline and the evidence chain. No frameworks.
 
 **P6-7 Governance as code.** (Added 17 Oct 2026 at the founders' request.) A policy file declaring models, regions and registers; `check` evaluating the local log against the ten objectives with the pack evaluator; a dashboard panel; an AI-BOM; a GitHub Action.
 
-**P6-6 The agent from pip and npm.** (Added 16 Oct 2026.) `pip install witnessmark-agent` and `npx witnessmark-agent`, carrying the release binaries; `run --local` as the documented local-mode command.
-## Phase 7: Witnessmark (added 17 Oct 2026 at the founders' request)
+**P6-6 The agent from pip and npm.** (Added 16 Oct 2026.) `pip install tellproof-agent` and `npx tellproof-agent`, carrying the release binaries; `run --local` as the documented local-mode command.
+## Phase 7: Tellproof (added 17 Oct 2026 at the founders' request)
 
 A consultancy called Plumbline (plumblinehq.ai) audits AI systems by hand. It has no technology, but its point is a good one: most AI controls are checks that cannot fail. Phase 7 renames the product and builds two things no audit and no observability tool gives: evidence that a control *can* fail, and evidence of what coding agents did to a codebase.
 
-**P7-1 Rename to Witnessmark.** Every name, package, command, variable, attribute, file and page becomes Witnessmark; a new mark (a bolt head with a torque stripe). Acceptance: v0.2 integrations keep working unchanged (`PLUMBLINE_*` variables, `plumbline.*` attributes, `plumbline.policy.json`, `.plumbline-agent`), proven by tests and by keeping the v0.2 SDK exports as fixtures that must aggregate to the same windows; every vector still verifies; wire formats, key bindings and DB identifiers are frozen; `make check` and `make oss-check` pass.
+**P7-1 Rename to Witnessmark.** (Superseded before release by P7-4.) Every name, package, command, variable, attribute, file and page becomes Witnessmark; a new mark (a bolt head with a torque stripe). Acceptance: v0.2 integrations keep working unchanged (`PLUMBLINE_*` variables, `plumbline.*` attributes, `plumbline.policy.json`, `.plumbline-agent`), proven by tests and by keeping the v0.2 SDK exports as fixtures that must aggregate to the same windows; every vector still verifies; wire formats, key bindings and DB identifiers are frozen; `make check` and `make oss-check` pass.
 
 **P7-2 Falsifiable evidence.** Guardrail canaries: the SDK sends a known-bad, content-free probe through the app's own guardrail on a schedule and records whether it was caught, so a pack shows the guardrail was alive and catching, not just configured. `check --self-test` mutates the evidence to prove each objective can fail and that a tampered log fails verification. Acceptance: canary counts per window in a new batch schema version the server accepts beside v0.2; an objective on canary catch rate in both evaluators with Go and Python parity; the self-test fails if an objective passes on evidence built to fail it.
 
-**P7-3 Coding-agent evidence.** `witnessmark-agent ci`: wraps each CI gate (tests, lint, scans), records exit code, duration and JUnit counts without logs or code, runs must-fail canary gates, and writes a signed in-toto statement per commit, including which commits name an AI agent as author. `ci verify` checks that the required gates ran and passed on a commit. Acceptance: a gate skipped, edited or faked in the statement fails `ci verify`; the statement verifies with `witnessmark-verify`; the GitHub Action can attest it.
+**P7-3 Coding-agent evidence.** `tellproof-agent ci`: wraps each CI gate (tests, lint, scans), records exit code, duration and JUnit counts without logs or code, runs must-fail canary gates, and writes a signed in-toto statement per commit, including which commits name an AI agent as author. `ci verify` checks that the required gates ran and passed on a commit. Acceptance: a gate skipped, edited or faked in the statement fails `ci verify`; the statement verifies with `tellproof-verify`; the GitHub Action can attest it.
+
+**P7-4 Rename to Tellproof.** (Added 17 Oct 2026.) Witnessmark turned out to be the name of a governance and assurance advisory (witnessmark.co) and its domains were taken, so before any public release every Witnessmark name becomes Tellproof. Acceptance: no `witnessmark` identifier left outside history; the v0.2 compatibility of P7-1 unchanged; `make check` and `make oss-check` pass; repositories renamed `tellproof` and `tellproof-cloud`.
+

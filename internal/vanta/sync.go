@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jobs"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/secretbox"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/share"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/jobs"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/pack"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/secretbox"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/share"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store"
 )
 
 // Share links the sync makes live a year and are replaced a month before they expire.
@@ -154,7 +154,7 @@ func Describe(err error) string {
 	if errors.As(err, &ae) {
 		switch {
 		case ae.Op == "sync resources" && ae.Status/100 == 4:
-			return fmt.Sprintf("Vanta did not accept the resources (HTTP %d). Check the resource ID and that its schema has Witnessmark's properties.", ae.Status)
+			return fmt.Sprintf("Vanta did not accept the resources (HTTP %d). Check the resource ID and that its schema has Tellproof's properties.", ae.Status)
 		case ae.Op == "upload document" && ae.Status == 404:
 			return "Vanta has no document with that ID. Check the document ID, or clear it to stop uploading packs."
 		}
@@ -232,7 +232,7 @@ func (s *Syncer) sync(ctx context.Context, tenantID string) Result {
 	}
 	res.Resources = len(resources)
 	for _, u := range uploads {
-		desc := fmt.Sprintf("Witnessmark evidence pack %s for %s, period %s, digest %s. Verify it with the verify page or witnessmark-verify.", u.packID, u.system, u.period, u.digest)
+		desc := fmt.Sprintf("Tellproof evidence pack %s for %s, period %s, digest %s. Verify it with the verify page or tellproof-verify.", u.packID, u.system, u.period, u.digest)
 		if err := s.Client.Upload(ctx, token, cfg.DocumentID, u.packID+".dsse.json", u.envelope, u.issuedAt, desc); err != nil {
 			res.Err = err
 			return res
@@ -377,7 +377,7 @@ func (s *Syncer) resources(packs []latest, links map[string]Link) []Resource {
 		for _, o := range p.predicate.Objectives {
 			out = append(out, Resource{
 				DisplayName: system + " · " + o.ID + " " + o.Title,
-				UniqueID:    "witnessmark:" + p.systemID + ":" + o.ID,
+				UniqueID:    "tellproof:" + p.systemID + ":" + o.ID,
 				ExternalURL: external,
 				CustomProperties: map[string]any{
 					"objectiveId":   o.ID,

@@ -9,12 +9,12 @@
 </section>
 <section class="panel narrow">
   <h2>Issuer keys</h2>
-  <p>Packs are signed by Witnessmark's key. Reviewers verify them against <a href="/.well-known/jwks.json">/.well-known/jwks.json</a>, and every pack issued each day is listed in the public daily checkpoint.</p>
+  <p>Packs are signed by Tellproof's key. Reviewers verify them against <a href="/.well-known/jwks.json">/.well-known/jwks.json</a>, and every pack issued each day is listed in the public daily checkpoint.</p>
 </section>
 <section class="panel narrow">
   <h2>Vanta</h2>
   {{with .Data.Vanta}}
-  <p>Each hour Witnessmark sends Vanta one resource per evidence objective of each AI system, from its latest pack (status, pack digest and a verify link), and uploads new packs to a Vanta document. Nothing else is sent.</p>
+  <p>Each hour Tellproof sends Vanta one resource per evidence objective of each AI system, from its latest pack (status, pack digest and a verify link), and uploads new packs to a Vanta document. Nothing else is sent.</p>
   <details class="small"><summary>Set up Vanta first</summary>
     <ol>
       <li>In Vanta's developer console, create an application for a private integration. Note its client ID and secret.</li>
@@ -48,7 +48,7 @@
     <form class="inline" method="post" action="/settings/vanta/sync"><button type="submit">Sync now</button></form>
     <form class="inline" method="post" action="/settings/vanta/disconnect"><button class="danger" type="submit">Disconnect Vanta</button></form>
   </div>
-  <p class="small muted">Disconnecting revokes the verify links Witnessmark made for Vanta and deletes the credentials. Remove the resources in Vanta by removing the integration there.</p>
+  <p class="small muted">Disconnecting revokes the verify links Tellproof made for Vanta and deletes the credentials. Remove the resources in Vanta by removing the integration there.</p>
   {{end}}
   {{else}}
   <p class="small muted">Only an admin of the organisation can change the Vanta integration.</p>

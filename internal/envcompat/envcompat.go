@@ -1,4 +1,4 @@
-// Package envcompat reads Witnessmark's environment variables, falling back
+// Package envcompat reads Tellproof's environment variables, falling back
 // to the PLUMBLINE_* names that v0.1 and v0.2 (as Plumbline) used, so a
 // deployment keeps working across the rename (D-056).
 package envcompat
@@ -10,11 +10,11 @@ import (
 
 // Prefix is the current variable prefix; Legacy the one before the rename.
 const (
-	Prefix = "WITNESSMARK_"
+	Prefix = "TELLPROOF_"
 	Legacy = "PLUMBLINE_"
 )
 
-// Wrap returns getenv that, for a WITNESSMARK_ name with no value, returns
+// Wrap returns getenv that, for a TELLPROOF_ name with no value, returns
 // the legacy PLUMBLINE_ variable instead.
 func Wrap(getenv func(string) string) func(string) string {
 	return func(k string) string {

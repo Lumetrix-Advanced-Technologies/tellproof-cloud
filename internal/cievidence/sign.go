@@ -13,8 +13,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/jcs"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/dsse"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/jcs"
 )
 
 // NewKey makes an Ed25519 signing key, as PKCS #8 and PKIX PEM.

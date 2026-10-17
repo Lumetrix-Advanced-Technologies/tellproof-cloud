@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batch"
 )
 
 // FromBatches turns batches, in the order they were sent, into the
 // evaluation's windows, billed usage and evaluation runs: what the pack
-// issuer and `witnessmark-agent check` both evaluate, so the two cannot drift.
+// issuer and `tellproof-agent check` both evaluate, so the two cannot drift.
 // Provider usage reported for the same provider, model, region and hour by
 // more than one batch (the early first batch and the hour's own) counts
 // once, the larger report winning; rows keep their first-seen order.

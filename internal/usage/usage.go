@@ -15,7 +15,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/batch"
 )
 
 // HourUsage is one provider's billed usage for one UTC hour.

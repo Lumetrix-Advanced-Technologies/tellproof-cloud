@@ -12,16 +12,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/cievidence"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/policy"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/cievidence"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/policy"
 )
 
 const ciUsage = `usage:
-  witnessmark-agent ci run --gate <name> [--junit <file>] [--dir <dir>] -- <command> [args...]
-  witnessmark-agent ci canary --gate <name> [--patch <file>] [--dir <dir>] -- <command> [args...]
-  witnessmark-agent ci attest [--dir <dir>] [--base <rev>] [--key <file>] [--unsigned] [--out <file>] [--predicate <file>]
-  witnessmark-agent ci verify [--policy <file>] [--require a,b] [--canary a,b] [--commit <sha>] [--pub <file>] [--unsigned] [--json] <statement>
-  witnessmark-agent ci keygen --out <file>
+  tellproof-agent ci run --gate <name> [--junit <file>] [--dir <dir>] -- <command> [args...]
+  tellproof-agent ci canary --gate <name> [--patch <file>] [--dir <dir>] -- <command> [args...]
+  tellproof-agent ci attest [--dir <dir>] [--base <rev>] [--key <file>] [--unsigned] [--out <file>] [--predicate <file>]
+  tellproof-agent ci verify [--policy <file>] [--require a,b] [--canary a,b] [--commit <sha>] [--pub <file>] [--unsigned] [--json] <statement>
+  tellproof-agent ci keygen --out <file>
 
 ci run runs a CI gate (tests, lint, a scan) with its output and exit status
 passed straight through, and records only the gate's name, exit status,
@@ -29,9 +29,9 @@ duration, a digest of the command line and, with --junit, the report's test
 counts. ci canary runs a must-fail check: the gate on known-bad code (--patch
 is applied to a temporary worktree first); it exits 0 when the gate failed as
 it should and 1 when it passed. Records go to --dir (default
-$WITNESSMARK_CI_DIR, else .witnessmark-ci). ci attest writes the commit's
+$TELLPROOF_CI_DIR, else .tellproof-ci). ci attest writes the commit's
 in-toto statement, signed with --key (default the PEM key in
-$WITNESSMARK_CI_KEY) or, with --unsigned, bare for GitHub artifact
+$TELLPROOF_CI_KEY) or, with --unsigned, bare for GitHub artifact
 attestations to sign (--predicate also writes the predicate alone, for
 actions/attest). ci verify checks a statement against the policy's "ci"
 section, or --require and --canary.
@@ -45,7 +45,7 @@ func ciCommand(ctx context.Context, args []string, getenv func(string) string, s
 		return 2
 	}
 	sub, args := args[1], args[2:]
-	fs := flag.NewFlagSet("witnessmark-agent ci "+sub, flag.ContinueOnError)
+	fs := flag.NewFlagSet("tellproof-agent ci "+sub, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	dir := fs.String("dir", "", "where gate runs are recorded")
 	gate := fs.String("gate", "", "run, canary: the gate's name")
@@ -67,10 +67,10 @@ func ciCommand(ctx context.Context, args []string, getenv func(string) string, s
 		return 2
 	}
 	if *dir == "" {
-		*dir = getenv("WITNESSMARK_CI_DIR")
+		*dir = getenv("TELLPROOF_CI_DIR")
 	}
 	if *dir == "" {
-		*dir = ".witnessmark-ci"
+		*dir = ".tellproof-ci"
 	}
 	git := cievidence.Git{}
 	switch sub {
@@ -105,12 +105,12 @@ func ciCommand(ctx context.Context, args []string, getenv func(string) string, s
 
 func ciRun(ctx context.Context, git cievidence.Git, isCanary bool, gate, junit, patch, dir string, argv []string, stderr io.Writer) int {
 	if !cievidence.GateRE.MatchString(gate) {
-		fmt.Fprintf(stderr, "witnessmark-agent: %q is not a gate name (lower-case letters, digits, '.', '_' or '-', at most 64)\n", gate)
+		fmt.Fprintf(stderr, "tellproof-agent: %q is not a gate name (lower-case letters, digits, '.', '_' or '-', at most 64)\n", gate)
 		return 2
 	}
 	head, err := git.Head()
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-agent: ci needs a git checkout: %v\n", err)
+		fmt.Fprintf(stderr, "tellproof-agent: ci needs a git checkout: %v\n", err)
 		return 2
 	}
 	g := cievidence.Gate{Name: gate, Canary: isCanary, CommandDigest: cievidence.CommandDigest(argv)}
@@ -145,7 +145,7 @@ func ciRun(ctx context.Context, git cievidence.Git, isCanary bool, gate, junit, 
 		g.ExitCode = exitErr.ExitCode()
 	default:
 		g.ExitCode = 127 // could not start
-		fmt.Fprintf(stderr, "witnessmark-agent: %v\n", runErr)
+		fmt.Fprintf(stderr, "tellproof-agent: %v\n", runErr)
 	}
 	if isCanary {
 		g.Passed = g.ExitCode != 0
@@ -154,18 +154,18 @@ func ciRun(ctx context.Context, git cievidence.Git, isCanary bool, gate, junit, 
 	}
 	if junit != "" && !isCanary {
 		if g.JUnit, err = cievidence.ReadJUnit(junit); err != nil {
-			fmt.Fprintf(stderr, "witnessmark-agent: %v (recorded without test counts)\n", err)
+			fmt.Fprintf(stderr, "tellproof-agent: %v (recorded without test counts)\n", err)
 		}
 	}
 	if _, err := cievidence.Save(dir, head, g); err != nil {
-		fmt.Fprintf(stderr, "witnessmark-agent: could not record the gate: %v\n", err)
+		fmt.Fprintf(stderr, "tellproof-agent: could not record the gate: %v\n", err)
 	}
 	if isCanary {
 		if g.Passed {
-			fmt.Fprintf(stderr, "witnessmark-agent: canary %s caught: the gate failed on known-bad code (exit %d), as it should.\n", gate, g.ExitCode)
+			fmt.Fprintf(stderr, "tellproof-agent: canary %s caught: the gate failed on known-bad code (exit %d), as it should.\n", gate, g.ExitCode)
 			return 0
 		}
-		fmt.Fprintf(stderr, "witnessmark-agent: canary %s MISSED: the gate passed on known-bad code, so it cannot tell broken code from working code.\n", gate)
+		fmt.Fprintf(stderr, "tellproof-agent: canary %s MISSED: the gate passed on known-bad code, so it cannot tell broken code from working code.\n", gate)
 		return 1
 	}
 	return g.ExitCode
@@ -203,7 +203,7 @@ func ciContext(git cievidence.Git, getenv func(string) string) (repo, ref string
 func ciAttest(ctx context.Context, git cievidence.Git, dir, base, keyPath string, unsigned bool, out, predicateOut string, getenv func(string) string, stdout, stderr io.Writer) int {
 	head, err := git.Head()
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-agent: ci needs a git checkout: %v\n", err)
+		fmt.Fprintf(stderr, "tellproof-agent: ci needs a git checkout: %v\n", err)
 		return 2
 	}
 	gates, canaries, err := cievidence.Load(dir, head)
@@ -212,16 +212,16 @@ func ciAttest(ctx context.Context, git cievidence.Git, dir, base, keyPath string
 		return 1
 	}
 	if len(gates)+len(canaries) == 0 {
-		fmt.Fprintf(stderr, "witnessmark-agent: no gate runs are recorded for %s in %s (run gates with: witnessmark-agent ci run --gate <name> -- <command>)\n", head, dir)
+		fmt.Fprintf(stderr, "tellproof-agent: no gate runs are recorded for %s in %s (run gates with: tellproof-agent ci run --gate <name> -- <command>)\n", head, dir)
 		return 1
 	}
 	agents, err := git.AgentCommitsIn(base, head)
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-agent: %v (is the history fetched? use fetch-depth: 0)\n", err)
+		fmt.Fprintf(stderr, "tellproof-agent: %v (is the history fetched? use fetch-depth: 0)\n", err)
 		return 1
 	}
 	repo, ref, run := ciContext(git, getenv)
-	st := cievidence.NewStatement(repo, head, ref, run, gates, canaries, agents, "witnessmark-agent "+version, time.Now())
+	st := cievidence.NewStatement(repo, head, ref, run, gates, canaries, agents, "tellproof-agent "+version, time.Now())
 	var b []byte
 	if unsigned {
 		b, err = cievidence.Payload(st)
@@ -230,10 +230,10 @@ func ciAttest(ctx context.Context, git cievidence.Git, dir, base, keyPath string
 		switch {
 		case keyPath != "":
 			pemKey, err = os.ReadFile(keyPath)
-		case getenv("WITNESSMARK_CI_KEY") != "":
-			pemKey = []byte(getenv("WITNESSMARK_CI_KEY"))
+		case getenv("TELLPROOF_CI_KEY") != "":
+			pemKey = []byte(getenv("TELLPROOF_CI_KEY"))
 		default:
-			err = errors.New("no signing key: pass --key, set WITNESSMARK_CI_KEY, or use --unsigned and sign with GitHub artifact attestations")
+			err = errors.New("no signing key: pass --key, set TELLPROOF_CI_KEY, or use --unsigned and sign with GitHub artifact attestations")
 		}
 		if err == nil {
 			priv, perr := cievidence.ParsePrivate(pemKey)
@@ -247,7 +247,7 @@ func ciAttest(ctx context.Context, git cievidence.Git, dir, base, keyPath string
 		}
 	}
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-agent: %v\n", err)
+		fmt.Fprintf(stderr, "tellproof-agent: %v\n", err)
 		return 2
 	}
 	b = append(b, '\n')
@@ -270,7 +270,7 @@ func ciAttest(ctx context.Context, git cievidence.Git, dir, base, keyPath string
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	fmt.Fprintf(stderr, "witnessmark-agent: CI evidence for %s: %d gates, %d canaries, %d of %d commits name a coding agent.\n",
+	fmt.Fprintf(stderr, "tellproof-agent: CI evidence for %s: %d gates, %d canaries, %d of %d commits name a coding agent.\n",
 		head[:12], len(gates), len(canaries), agents.WithAgent, agents.Commits)
 	return 0
 }
@@ -293,7 +293,7 @@ func ciVerify(git cievidence.Git, path, policyPath, require, canary, commit, pub
 		}
 		p, err := policy.Load(policyPath)
 		if err != nil || p.CI == nil {
-			fmt.Fprintf(stderr, "witnessmark-agent: nothing to require: add a \"ci\" section to %s, or pass --require and --canary\n", policyPath)
+			fmt.Fprintf(stderr, "tellproof-agent: nothing to require: add a \"ci\" section to %s, or pass --require and --canary\n", policyPath)
 			return 2
 		}
 		req.Required, req.Canaries = p.CI.RequiredGates, p.CI.CanaryGates
@@ -313,7 +313,7 @@ func ciVerify(git cievidence.Git, path, policyPath, require, canary, commit, pub
 			return 2
 		}
 	}
-	return verifyCIStatement(b, pub, unsigned, req, asJSON, "witnessmark-agent", stdout, stderr)
+	return verifyCIStatement(b, pub, unsigned, req, asJSON, "tellproof-agent", stdout, stderr)
 }
 
 // verifyCIStatement opens, checks and reports a statement.
@@ -340,11 +340,11 @@ func ciKeygen(out string, stdout, stderr io.Writer) int {
 		err = os.WriteFile(out+".pub", pub, 0o644)
 	}
 	if err != nil {
-		fmt.Fprintf(stderr, "witnessmark-agent: %v\n", err)
+		fmt.Fprintf(stderr, "tellproof-agent: %v\n", err)
 		return 1
 	}
 	k, _ := cievidence.ParsePublic(pub)
-	fmt.Fprintf(stdout, "Wrote the signing key to %s (keep it secret: store it as the CI secret WITNESSMARK_CI_KEY) and the public key to %s.pub (key ID %s):\n%s",
+	fmt.Fprintf(stdout, "Wrote the signing key to %s (keep it secret: store it as the CI secret TELLPROOF_CI_KEY) and the public key to %s.pub (key ID %s):\n%s",
 		out, out, cievidence.KeyID(k), pub)
 	return 0
 }

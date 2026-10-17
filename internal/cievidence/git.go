@@ -161,7 +161,7 @@ func (g Git) PatchedWorktree(patch string) (string, func(), error) {
 	if err != nil {
 		return "", nil, err
 	}
-	dir, err := os.MkdirTemp("", "witnessmark-canary-")
+	dir, err := os.MkdirTemp("", "tellproof-canary-")
 	if err != nil {
 		return "", nil, err
 	}

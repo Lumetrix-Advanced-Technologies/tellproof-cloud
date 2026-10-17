@@ -9,9 +9,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store"
-	"github.com/lumetrix-advanced-technologies/witnessmark/internal/store/storetest"
-	"github.com/lumetrix-advanced-technologies/witnessmark/migrations"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store"
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/store/storetest"
+	"github.com/lumetrix-advanced-technologies/tellproof/migrations"
 )
 
 const (

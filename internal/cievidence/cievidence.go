@@ -26,8 +26,8 @@ import (
 
 // Identifiers. The predicate type uses the placeholder domain until D-008.
 const (
-	Schema        = "witnessmark-ci/v0.1"
-	PredicateType = "https://lumetrix.example/witnessmark/ci/v0.1"
+	Schema        = "tellproof-ci/v0.1"
+	PredicateType = "https://lumetrix.example/tellproof/ci/v0.1"
 	StatementType = "https://in-toto.io/Statement/v1"
 )
 
@@ -203,8 +203,8 @@ func NewStatement(repo, commit, ref string, run Run, gates, canaries []Gate, age
 			AgentCommits: agents, GeneratedAt: now.UTC().Format(time.RFC3339), Generator: generator}}
 }
 
-// ErrInvalid is a statement that is not a Witnessmark CI statement.
-var ErrInvalid = errors.New("cievidence: not a Witnessmark CI statement")
+// ErrInvalid is a statement that is not a Tellproof CI statement.
+var ErrInvalid = errors.New("cievidence: not a Tellproof CI statement")
 
 // Decode reads a statement strictly.
 func Decode(b []byte) (*Statement, error) {
