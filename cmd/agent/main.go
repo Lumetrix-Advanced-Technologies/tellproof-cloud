@@ -48,6 +48,7 @@ const usage = `usage:
   witnessmark-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
   witnessmark-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen <host:port>]
   witnessmark-agent policy init | check | aibom ...   (run one with --help for its flags)
+  witnessmark-agent ci run | canary | attest | verify | keygen ...   (CI evidence per commit)
   witnessmark-agent connect [--config <agent.json>] <token>
   witnessmark-agent enrol --config <agent.json> [--token <token>]
   witnessmark-agent [run] --config <agent.json> [--dry-run] [--replay <export.jsonl>]
@@ -71,6 +72,9 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 	getenv = envcompat.Wrap(getenv) // WITNESSMARK_*, else the PLUMBLINE_* names of v0.1 and v0.2
 	if isGovernance(args) {
 		return governance(args, getenv, stdout, stderr)
+	}
+	if isCI(args) {
+		return ciCommand(ctx, args, getenv, stdout, stderr)
 	}
 	cmd := "run"
 	if len(args) > 0 && (args[0] == "run" || args[0] == "enrol" || args[0] == "connect" || args[0] == "version" || args[0] == "local" || args[0] == "report" || args[0] == "dashboard") {

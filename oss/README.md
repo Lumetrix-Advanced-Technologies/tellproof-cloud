@@ -86,6 +86,7 @@
 | Dashboard and terminal report | ✓ | ✓ |
 | Policy file, `check` against the eleven objectives, CI gating, AI-BOM | ✓ | ✓ |
 | Guardrail canaries and `check --self-test` | ✓ | ✓ |
+| CI evidence per commit for coding agents (`ci`), with must-fail canaries | ✓ | ✓ |
 | Evidence signed by an **independent issuer** (KMS-held key) | | ✓ |
 | Monthly packs, chained, in a **public daily checkpoint** | | ✓ |
 | Share links for reviewers, with view counts | | ✓ |
@@ -103,17 +104,18 @@
 7. [The dashboard](#the-dashboard)
 8. [Reports in the terminal](#reports-in-the-terminal)
 9. [Governance as code: policy, check and AI-BOM](#governance-as-code-policy-check-and-ai-bom)
-10. [Configuration reference](#configuration-reference)
-11. [More evidence sources: Langfuse and provider usage](#more-evidence-sources-langfuse-and-provider-usage)
-12. [What leaves your machine](#what-leaves-your-machine)
-13. [Deploying the agent](#deploying-the-agent)
-14. [Signed evidence packs: the hosted service (early access)](#signed-evidence-packs-the-hosted-service-early-access)
-15. [Verify a pack](#verify-a-pack)
-16. [Security model](#security-model)
-17. [CLI reference](#cli-reference)
-18. [Troubleshooting](#troubleshooting)
-19. [Develop and contribute](#develop-and-contribute)
-20. [Security reports and licence](#security-reports-and-licence)
+10. [Evidence for coding agents: CI gates per commit](#evidence-for-coding-agents-ci-gates-per-commit)
+11. [Configuration reference](#configuration-reference)
+12. [More evidence sources: Langfuse and provider usage](#more-evidence-sources-langfuse-and-provider-usage)
+13. [What leaves your machine](#what-leaves-your-machine)
+14. [Deploying the agent](#deploying-the-agent)
+15. [Signed evidence packs: the hosted service (early access)](#signed-evidence-packs-the-hosted-service-early-access)
+16. [Verify a pack](#verify-a-pack)
+17. [Security model](#security-model)
+18. [CLI reference](#cli-reference)
+19. [Troubleshooting](#troubleshooting)
+20. [Develop and contribute](#develop-and-contribute)
+21. [Security reports and licence](#security-reports-and-licence)
 
 ---
 
@@ -140,6 +142,10 @@ You call OpenAI, Anthropic, Amazon Bedrock or any OpenAI-compatible API, and you
 ### You are an AI model vendor or inference provider
 
 You serve your own models (or host others') behind an API. Wrap each inference request in your serving layer with one helper, and you can show your customers which models and regions served their traffic, guardrail and redaction coverage on your side, and model changes over time. They can pass that evidence on to their own reviewers. See [For model vendors and inference providers](#for-model-vendors-and-inference-providers).
+
+### You ship code written with coding agents
+
+Claude Code, Copilot, Cursor and their peers now write a large share of commits, and reviewers want to know the same thing about all of it: did the checks actually run, and could they have caught a mistake? `witnessmark-agent ci` records each CI gate's outcome per commit (exit status, duration, test counts; never logs, code or command lines), runs **must-fail canaries** that break the code on purpose and require the gate to fail, counts the commits that name a coding agent, and writes a signed in-toto statement per commit that anyone can check with `witnessmark-agent ci verify` or `witnessmark-verify ci`. See [Evidence for coding agents](#evidence-for-coding-agents-ci-gates-per-commit).
 
 ### You review AI vendors: bank, insurer, auditor, risk or procurement team
 
@@ -560,7 +566,8 @@ This writes a policy declaring the models and regions the log has seen.
   ],
   "evals": [
     { "suite": "triage-regression", "model": "gpt-4.1-mini", "prompt_version": "14", "ran_at": "2026-10-12T00:00:00Z", "pass_rate": 0.96 }
-  ]
+  ],
+  "ci": { "required_gates": ["lint", "tests"], "canary_gates": ["tests"] }
 }
 ```
 
@@ -575,6 +582,7 @@ This writes a policy declaring the models and regions the log has seen.
 | `changes` | EO-CHG-01 | The material-change register: each model or prompt change, by local date (`kind` is `model` or `prompt`). A change the telemetry shows matches an entry of the same kind within a day. |
 | `incidents` | EO-INC-01 | The incident register. An anomaly hour is covered by an incident opened within an hour of it and acknowledged within an hour of opening. |
 | `evals` | EO-EVAL-01 | Evaluation runs recorded outside the telemetry, added to those the agent sees (Langfuse scores, SDK spans). |
+| `ci` | `ci verify` | Optional. `required_gates` must have run and passed on every commit; each of `canary_gates` must have had its must-fail canary caught ([coding-agent evidence](#evidence-for-coding-agents-ci-gates-per-commit)). |
 
 The [JSON Schema](spec/policy.schema.json) gives editors completion and validation; `witnessmark-agent policy validate` checks the file the way `check` reads it (unknown keys are refused, so a typo never silently weakens a declaration). The agent looks for the policy at `--policy`, then `$WITNESSMARK_POLICY`, then `./witnessmark.policy.json`, then `<data-dir>/witnessmark.policy.json` (where a container keeps it).
 
@@ -677,6 +685,63 @@ witnessmark-agent aibom --since 2026-10-01 --until 2026-10-31 > october.cdx.json
 ```
 
 A [CycloneDX 1.6](https://cyclonedx.org/) AI bill of materials, built from the verified log rather than a hand-kept list. The AI system is the root component; every model declared or seen is a `machine-learning-model` component with its provider as supplier and properties for whether it was declared and observed, its regions, calls, input and output tokens, first and last hour seen, and prompt versions. A model that is declared but never seen, or seen but never declared, is visible at a glance. The BOM's metadata names the agent and the latest batch digest it was built from. Any CycloneDX tool can read it (Dependency-Track, the CycloneDX CLI, SBOM platforms).
+
+## Evidence for coding agents: CI gates per commit
+
+A green CI badge says the last run passed. It does not say which checks ran on *this* commit, whether the test step ran any tests, or whether the tests could have caught a broken change. That matters more as coding agents write more of the code. `witnessmark-agent ci` turns a CI run into evidence about one commit:
+
+| Command | What it does |
+| --- | --- |
+| `ci run --gate <name> [--junit <file>] -- <command>` | Runs a gate (tests, lint, a scan) with its output and exit status passed straight through, and records the gate's name, exit status, duration, a SHA-256 of the command line and, with `--junit`, the report's counts (cases counted, not the summary attributes). Never the output, the code or the command line itself. |
+| `ci canary --gate <name> --patch <file> -- <command>` | A **must-fail canary**: applies a patch that breaks the code to a temporary worktree (your checkout is untouched), runs the same gate there and requires it to **fail**. Exit 0 when the gate caught the breakage, 1 when it passed (the gate cannot tell broken code from working code). |
+| `ci attest [--base <rev>] [--key <file> \| --unsigned]` | Writes the commit's in-toto statement: every gate and canary (the latest run of each, with the number of runs, so a gate retried until green shows it), the CI run and its URL, and how many commits in `base..HEAD` name a coding agent (Claude, Copilot, Cursor, Aider, Devin, Codex, Gemini, Jules, Amazon Q), by name and count only. Signed with an Ed25519 key in a DSSE envelope, or bare for GitHub artifact attestations. |
+| `ci verify [--pub <file> \| --unsigned] <statement>` | Checks the signature, the commit (the checked-out one by default), that every required gate passed, that a test gate ran at least one test and has no failing tests in its report, and that every canary gate's canary was caught. Requirements come from the policy's `ci` section or `--require` and `--canary`. |
+| `ci keygen --out <file>` | Makes a signing key (and `<file>.pub`). Store the key as a CI secret, `WITNESSMARK_CI_KEY`; publish the public key. |
+
+```bash
+witnessmark-agent ci run --gate lint -- golangci-lint run
+witnessmark-agent ci run --gate tests --junit report.xml -- pytest --junitxml=report.xml   # or gotestsum --junitfile report.xml
+witnessmark-agent ci canary --gate tests --patch ci/canaries/skip-auth-check.patch -- pytest tests/test_auth.py
+witnessmark-agent ci attest --base origin/main --out ci-evidence.json             # signed with $WITNESSMARK_CI_KEY
+witnessmark-agent ci verify --pub ci.pub ci-evidence.json
+```
+
+```
+Witnessmark CI evidence: git+https://github.com/acme/app at 421bbd4a7238b1db67d8384bc838a373143a4728 (signature verified)
+  Run: https://github.com/acme/app/actions/runs/1234567
+✓ OK   commit                   statement is for 421bbd4a7238…, expected 421bbd4a7238…
+✓ OK   gate lint                passed
+✓ OK   gate tests               passed: 412 tests, 3 skipped
+✓ OK   canary tests             caught: the gate failed on known-bad input (exit 1)
+Coding agents: 4 of 5 commits in origin/main..421bbd4a7238… name one (claude 4).
+```
+
+A canary patch is a small, deliberate bug in code that matters: an authorisation check removed, a boundary flipped, a validation skipped. Keep a few under `ci/canaries/`; if a canary stops being caught, your tests stopped covering that code. Add `.witnessmark-ci/` (where runs are recorded until `attest`) to `.gitignore`.
+
+<details>
+<summary><b>A GitHub workflow</b>, signed with GitHub artifact attestations (no key to manage)</summary>
+
+```yaml
+permissions: { contents: read, id-token: write, attestations: write }
+steps:
+  - uses: actions/checkout@v4
+    with: { fetch-depth: 0 }
+  - run: pip install witnessmark-agent
+  - run: witnessmark-agent ci run --gate lint -- make lint
+  - run: witnessmark-agent ci run --gate tests --junit report.xml -- make test-junit
+  - run: witnessmark-agent ci canary --gate tests --patch ci/canaries/skip-auth-check.patch -- make test
+  - run: witnessmark-agent ci attest --unsigned --base origin/${{ github.base_ref || 'main' }} --out ci-evidence.json --predicate ci-predicate.json
+  - uses: actions/attest@v2
+    with:
+      subject-path: ci-evidence.json
+      predicate-type: https://lumetrix.example/witnessmark/ci/v0.1
+      predicate-path: ci-predicate.json
+  - run: witnessmark-agent ci verify --unsigned ci-evidence.json   # gate the merge on the policy's ci section
+```
+
+Anyone can then check it: `gh attestation verify ci-evidence.json -R acme/app`, then `witnessmark-verify ci --unsigned --commit <sha> --require lint,tests --canary tests ci-evidence.json`.
+
+</details>
 
 ---
 
@@ -992,6 +1057,11 @@ witnessmark-agent policy validate [--policy <file>]
 witnessmark-agent check [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json] [--junit <file>] [--strict]
 witnessmark-agent check --self-test [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
 witnessmark-agent aibom [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--out <file>]
+witnessmark-agent ci run --gate <name> [--junit <file>] [--dir <dir>] -- <command> [args...]
+witnessmark-agent ci canary --gate <name> [--patch <file>] [--dir <dir>] -- <command> [args...]
+witnessmark-agent ci attest [--dir <dir>] [--base <rev>] [--key <file>] [--unsigned] [--out <file>] [--predicate <file>]
+witnessmark-agent ci verify [--policy <file>] [--require a,b] [--canary a,b] [--commit <sha>] [--pub <file>] [--unsigned] [--json] <statement>
+witnessmark-agent ci keygen --out <file>
 witnessmark-agent connect [--config <agent.json>] <token>
 witnessmark-agent enrol --config <agent.json> [--token <token>]
 witnessmark-agent [run] --config <agent.json> [--dry-run] [--replay <export.jsonl>]
@@ -1023,6 +1093,7 @@ Exit status: **0** ok, **1** a runtime error (for `report`, a verification failu
 ```
 witnessmark-verify --jwks <file|https-url> [--json] pack1.json [pack2.json ...]
 witnessmark-verify checkpoint --jwks <file|https-url> [--prev yesterday.json] checkpoint.json [pack.json ...]
+witnessmark-verify ci (--pub <key.pem> | --unsigned) --commit <sha> [--require a,b] [--canary a,b] [--json] statement.json
 witnessmark-verify --version
 ```
 
@@ -1046,6 +1117,9 @@ Exit status: **0** all verified, **1** a check failed, **2** a usage or input er
 | `check` says "No policy yet" or a policy error | `witnessmark-agent policy init`, then review the file; `witnessmark-agent policy validate` names the field at fault. |
 | `check --self-test` says VACUOUS | A register leaves no room for a violation, for example a change recorded for every day. Record the changes and incidents that happened, not blanket entries. |
 | EO-CAN-01 fails | Your guardrail let a known-bad probe through; the measurement names the kind. Fix the guardrail, or check that your canary check returns `True` (or `"block"`/`"flag"`) when it blocks, and does not raise. |
+| `ci verify` says a gate "ran no tests" | The gate's JUnit report has no test cases: the test command matched nothing or wrote the report elsewhere. A gate that tests nothing cannot fail. |
+| `ci canary` says MISSED | The gate passed with the canary patch applied, so no test covers that code. Add a test that fails on the patch. If the patch does not apply, update it to the current code. |
+| `ci attest` finds no gate runs | Gates are recorded per commit in `.witnessmark-ci/<commit>/`: run `ci run` in the same job and checkout, or pass the same `--dir`. |
 | `check` fails EO-CHG-01 or EO-INC-01 | The output lists each missing change or incident; record the ones you approve in the policy's `changes` or `incidents`. |
 | `connect` refuses the data directory | It holds a local-mode agent. Use a new data directory (or volume) for connected mode. |
 | No agent appears in the Witnessmark app | Check the agent's log for an enrolment error. A used or expired token needs a new one. |

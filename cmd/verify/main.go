@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/lumetrix-advanced-technologies/witnessmark/internal/checkpoint"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/cievidence"
 	"github.com/lumetrix-advanced-technologies/witnessmark/internal/dsse"
 	"github.com/lumetrix-advanced-technologies/witnessmark/internal/pack"
 )
@@ -44,11 +45,15 @@ func main() {
 
 const usage = `usage: witnessmark-verify --jwks <file|https-url> [--json] pack1.json [pack2.json ...]
        witnessmark-verify checkpoint --jwks <file|https-url> [--prev yesterday.json] checkpoint.json [pack.json ...]
+       witnessmark-verify ci (--pub <key.pem> | --unsigned) --commit <sha> [--require a,b] [--canary a,b] [--json] statement.json
 
 Verifies Witnessmark evidence packs: the issuer's signature, the subject digest,
 the link to the previous pack and the disclosed trace's Merkle proof.
 Give packs oldest first. The checkpoint form verifies a daily checkpoint (its
 signature, root and link to the previous day) and proves each pack is in it.
+The ci form verifies a Witnessmark CI evidence statement (witnessmark-agent ci
+attest) and checks that the required gates passed on the commit and that each
+listed gate's must-fail canary was caught.
 Exit status: 0 all verified, 1 a check failed, 2 usage or input error.
 `
 
@@ -60,6 +65,9 @@ func (e usageError) Error() string { return e.msg }
 func run(ctx context.Context, cfg config, args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "checkpoint" {
 		return runCheckpoint(ctx, cfg, args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "ci" {
+		return runCI(args[1:], stdout, stderr)
 	}
 	opts, err := parseArgs(args)
 	if err != nil {
@@ -393,4 +401,46 @@ func runCheckpoint(ctx context.Context, cfg config, args []string, stdout, stder
 	}
 	fmt.Fprintln(stdout, "RESULT: VERIFIED")
 	return 0
+}
+
+// runCI verifies a CI evidence statement against the gates it must show.
+func runCI(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("witnessmark-verify ci", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	pubFile := fs.String("pub", "", "the signer's Ed25519 public key (PEM)")
+	unsigned := fs.Bool("unsigned", false, "accept a bare statement (verify its GitHub attestation separately)")
+	commit := fs.String("commit", "", "the commit the statement must be for")
+	require := fs.String("require", "", "gates that must have passed, comma-separated")
+	canary := fs.String("canary", "", "gates whose canary must have been caught, comma-separated")
+	asJSON := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil || fs.NArg() != 1 || *commit == "" || (*pubFile == "" && !*unsigned) {
+		fmt.Fprintf(stderr, "witnessmark-verify: ci needs --pub (or --unsigned), --commit and one statement file\n\n%s", usage)
+		return 2
+	}
+	b, err := os.ReadFile(fs.Arg(0))
+	if err != nil {
+		fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
+		return 2
+	}
+	var pub []byte
+	if *pubFile != "" {
+		if pub, err = os.ReadFile(*pubFile); err != nil {
+			fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
+			return 2
+		}
+	}
+	list := func(s string) []string {
+		var out []string
+		for _, p := range strings.Split(s, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+	code, err := cievidence.VerifyAndReport(stdout, b, pub, *unsigned, cievidence.Requirements{Commit: *commit, Required: list(*require), Canaries: list(*canary)}, *asJSON)
+	if err != nil {
+		fmt.Fprintf(stderr, "witnessmark-verify: %v\n", err)
+	}
+	return code
 }

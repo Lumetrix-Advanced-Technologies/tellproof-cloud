@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/lumetrix-advanced-technologies/witnessmark/internal/batch"
+	"github.com/lumetrix-advanced-technologies/witnessmark/internal/cievidence"
 	"github.com/lumetrix-advanced-technologies/witnessmark/internal/evaluate"
 )
 
@@ -46,6 +47,15 @@ type Policy struct {
 	Changes         []evaluate.Change        `json:"changes"`
 	Incidents       []evaluate.Incident      `json:"incidents"`
 	Evals           []batch.Eval             `json:"evals"`
+	CI              *CI                      `json:"ci,omitempty"`
+}
+
+// CI is what `witnessmark-agent ci verify` requires of a commit (D-058):
+// gates that must have run and passed, and gates whose must-fail canary
+// must have been caught.
+type CI struct {
+	RequiredGates []string `json:"required_gates"`
+	CanaryGates   []string `json:"canary_gates,omitempty"`
 }
 
 var (
@@ -168,6 +178,15 @@ func (p *Policy) Validate() error {
 		}
 		if e.PassRate < 0 || e.PassRate > 1 {
 			return bad("evals[%d]: pass_rate is a number from 0 to 1", i)
+		}
+	}
+	if p.CI != nil {
+		for field, gates := range map[string][]string{"required_gates": p.CI.RequiredGates, "canary_gates": p.CI.CanaryGates} {
+			for i, g := range gates {
+				if !cievidence.GateRE.MatchString(g) {
+					return bad("ci.%s[%d]: %q is not a gate name (lower-case letters, digits, '.', '_' or '-', at most 64)", field, i, g)
+				}
+			}
 		}
 	}
 	return nil
