@@ -23,7 +23,9 @@ What must be true before Plumbline is announced (P6-3). Code-side items were don
 - [ ] Make the ghcr package `plumbline-agent` public (GitHub web settings only; until then the README's `docker run` quick start fails for others).
 - [ ] PyPI: trusted publisher for `plumbline-sdk` (repository `Lumetrix-Advanced-Technologies/plumbline`, workflow `sdk-release.yml`, environment `release`). npm: an account that owns `plumbline-sdk` and an `NPM_TOKEN` secret in the public repository.
 - [x] Tag `v0.1.0`, check the draft release (checksums, attestations, versions, local mode smoke test), publish it.
-- [ ] Tag `sdk-v0.1.0` once PyPI and npm are set up.
+- [x] v0.2.0 released (dashboard, pip/npm packages attached to the release, `run --local`).
+- [x] Published: `plumbline-agent` 0.2.0 (PyPI, npm and six npm platform packages) and `plumbline-sdk` 0.1.0 (PyPI and npm), all with provenance; PyPI and npm both on trusted publishing.
+- [ ] Delete the `NPM_TOKEN` repository secret and revoke the token on npmjs.com (the workflows no longer use it).
 - [ ] Choose a private contact address for early access and security, or confirm GitHub-only is enough.
 - [ ] Check that the agent snippet in the app works with the published image.
 

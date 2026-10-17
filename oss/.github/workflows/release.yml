@@ -4,6 +4,8 @@
 # artifact attestations: Sigstore-signed SLSA provenance tied to this workflow
 # and commit). The GitHub release is created as a draft for a maintainer to
 # publish; the container image waits for approval in the `release` environment.
+# Publishing the release starts packages.yml, which builds the pip and npm
+# packages from these binaries.
 #
 # Check a download:
 #   sha256sum --ignore-missing -c SHA256SUMS
