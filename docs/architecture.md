@@ -92,6 +92,10 @@ v0.3 (D-057) is v0.2 plus `metrics.canaries`, `[{"kind": "pii", "run": 4, "caugh
 - **Egress:** one host (`--server`). `--dry-run` prints each batch envelope to stdout and sends nothing.
 - **Config:** JSON file plus env overrides; secrets (Langfuse keys, provider admin keys, salt secret) only from env or files with `0600`.
 
+## 3.2 CI evidence (`witnessmark-agent ci`, `internal/cievidence`, D-058)
+
+For codebases, whoever writes the code. `ci run --gate <name> -- <cmd>` passes the command's output and exit status through and records, per commit under `.witnessmark-ci/<commit>/`, the gate's name, exit status, duration, `sha256` of the command line (never the line: it may hold a token) and, with `--junit`, the report's case counts. `ci canary --gate <name> --patch <p>` applies a breaking patch in a temporary `git worktree` and requires the gate to fail. `ci attest` writes an in-toto Statement v1 (subject: the repository with digest `gitCommit`; predicate type `https://lumetrix.example/witnessmark/ci/v0.1`, schema `witnessmark-ci/v0.1`) with the latest run of each gate and canary and its run count, the CI run, and counts of commits in `base..HEAD` that name a coding agent (author or trailer patterns, names and counts only); JCS payload, DSSE with an Ed25519 key (key ID `ci-` + 16 hex of SHA-256 of the public key), or bare for GitHub artifact attestations. Remote URLs lose any user, password or token before they reach a statement. `ci verify` / `witnessmark-verify ci` check the signature, the commit, required gates (passed, at least one test, no failing tests in the report) and canary gates (caught); other failures are notes. Requirements come from the policy's `ci` section.
+
 ## 4. Control plane (`cmd/server`)
 
 ### 4.1 Processes

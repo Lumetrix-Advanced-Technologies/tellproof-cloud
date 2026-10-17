@@ -58,7 +58,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P6-7 | Governance as code | done | 2026-10-17 | `plumbline.policy.json` (schema, `policy init`/`validate`), `check` with the pack evaluator (now open source) and JUnit/JSON, the dashboard's Evidence objectives panel, `aibom` (CycloneDX 1.6), a GitHub Action (D-055) |
 | P7-1 | Rename to Witnessmark | done | 2026-10-17 | Every name, package and page is Witnessmark with a new mark; v0.2 names (env, attributes, policy file, data dir) still read, v0.2 SDK exports kept as fixtures; wire formats, key bindings and DB names frozen. Repos, domains and package publishing wait on the founders (D-056) |
 | P7-2 | Falsifiable evidence | done | 2026-10-17 | Guardrail canaries in both SDKs (probes stay in the app; kind and caught only), batch v0.3 only for windows with canaries, EO-CAN-01 in both evaluators, `check --self-test` (each objective must fail on injected violations; vacuous registers flagged; tampering detected), report, dashboard tile and Action (D-057) |
-| P7-3 | Coding-agent evidence | not started | | `witnessmark-agent ci`: gate evidence per commit, in-toto, `ci verify` |
+| P7-3 | Coding-agent evidence | done | 2026-10-17 | `witnessmark-agent ci run/canary/attest/verify/keygen`: gate outcomes per commit (no logs, code or command lines), must-fail canaries on a patched worktree, signed in-toto statements (or GitHub attestations) with coding-agent commit counts, `witnessmark-verify ci`, policy `ci` section (D-058) |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
@@ -66,6 +66,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-17 · P7-3 · PR pending · Any commit, human or agent written, can carry signed evidence that its CI gates ran, tested something, and could have failed.
 - 2026-10-17 · P7-2 · PR pending · Evidence can now be shown to be able to fail: canaries prove the guardrail catches known-bad input, and the self-test proves every objective and the log's integrity respond to violations.
 - 2026-10-17 · P7-1 · PR pending · Plumbline is now Witnessmark, and nothing set up under the old name breaks.
 - 2026-10-17 · P6-7 · PR pending · Teams can declare an AI system in a policy file and check its evidence against the ten objectives locally and in CI, with the same evaluator as signed packs.

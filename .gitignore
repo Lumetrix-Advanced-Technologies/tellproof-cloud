@@ -2,6 +2,7 @@
 .env*.local
 .dev/
 .witnessmark-agent/
+.witnessmark-ci/
 /bin/
 *.test
 coverage.out
