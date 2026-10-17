@@ -146,4 +146,6 @@ Done when: a new partner goes from sign-up to first issued pack in under 30 minu
 
 **P6-5 Local dashboard.** (Added 16 Oct 2026 at the founders' request.) `run --local` serves a dashboard of the verified local log on loopback, in the spirit of Sentry or Grafana: totals, calls per model over time, coverage, tokens, models, timeline and the evidence chain. No frameworks.
 
+**P6-7 Governance as code.** (Added 17 Oct 2026 at the founders' request.) A policy file declaring models, regions and registers; `check` evaluating the local log against the ten objectives with the pack evaluator; a dashboard panel; an AI-BOM; a GitHub Action.
+
 **P6-6 The agent from pip and npm.** (Added 16 Oct 2026.) `pip install plumbline-agent` and `npx plumbline-agent`, carrying the release binaries; `run --local` as the documented local-mode command.

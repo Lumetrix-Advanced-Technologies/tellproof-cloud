@@ -1,15 +1,92 @@
-# Plumbline
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
+    <img src="docs/logo-light.svg" alt="Plumbline" width="400">
+  </picture>
+</p>
 
-**Signed, content-free evidence of how your AI system actually runs.**
+<h3 align="center">Signed, content-free evidence of how your AI system actually runs.</h3>
 
-Add one line to an AI app, or to the serving layer of a model you host, and Plumbline keeps a tamper-evident, hour-by-hour record of every model call: which models and regions served it, how many tokens it used, whether a guardrail decided on it, whether personal data was redacted first, what tools an agent called and who approved them, and when a model or prompt changed. It never reads a prompt or a completion.
+<p align="center">
+  Add one line to an AI app, an agent or a model server. Get a tamper-evident, hour-by-hour record of every model call,<br>
+  a local dashboard, governance checks for CI, and evidence a bank, insurer or auditor can verify without trusting you.
+</p>
 
-Run it entirely on your own machine, with a dashboard and nothing leaving your environment. Or connect it to Plumbline's hosted service (early access) to turn that record into monthly **evidence packs** that a bank, insurer or auditor can verify themselves, offline, without trusting you or us.
+<p align="center">
+  <a href="https://github.com/Lumetrix-Advanced-Technologies/plumbline/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Lumetrix-Advanced-Technologies/plumbline/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://pypi.org/project/plumbline-agent/"><img alt="PyPI: plumbline-agent" src="https://img.shields.io/pypi/v/plumbline-agent?label=pip%20install%20plumbline-agent&color=1f56c9"></a>
+  <a href="https://www.npmjs.com/package/plumbline-agent"><img alt="npm: plumbline-agent" src="https://img.shields.io/npm/v/plumbline-agent?label=npx%20plumbline-agent&color=1f56c9"></a>
+  <a href="https://pypi.org/project/plumbline-sdk/"><img alt="PyPI: plumbline-sdk" src="https://img.shields.io/pypi/v/plumbline-sdk?label=plumbline-sdk%20(python)&color=1e6b43"></a>
+  <a href="https://www.npmjs.com/package/plumbline-sdk"><img alt="npm: plumbline-sdk" src="https://img.shields.io/npm/v/plumbline-sdk?label=plumbline-sdk%20(node)&color=1e6b43"></a>
+  <a href="LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-565d69"></a>
+</p>
 
-[![ci](https://github.com/Lumetrix-Advanced-Technologies/plumbline/actions/workflows/ci.yml/badge.svg)](https://github.com/Lumetrix-Advanced-Technologies/plumbline/actions/workflows/ci.yml)
-&nbsp;Apache-2.0 · a Go agent with no runtime dependencies · Python and Node.js SDKs with no dependencies
+<p align="center">
+  <a href="#quick-start-five-minutes-no-account"><b>Quick start</b></a> ·
+  <a href="#instrument-your-app">Instrument</a> ·
+  <a href="#the-dashboard">Dashboard</a> ·
+  <a href="#governance-as-code-policy-check-and-ai-bom">Governance as code</a> ·
+  <a href="#verify-a-pack">Verify a pack</a> ·
+  <a href="#cli-reference">CLI</a> ·
+  <a href="#security-model">Security</a>
+</p>
 
-![The local dashboard: a week of model calls per hour by model, guardrail coverage and tokens](docs/dashboard.png)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/dashboard-dark.png">
+    <img src="docs/dashboard.png" alt="The local dashboard: totals, the ten evidence objectives with pass, attention or fail, and a week of model calls per hour by model" width="900">
+  </picture>
+</p>
+
+> [!IMPORTANT]
+> **No content leaves your machine.** The SDKs never read prompts or completions, the agent drops message attributes the moment they arrive, and what it keeps is counts, short names and salted commitments. In local mode nothing is sent anywhere at all; `plumbline-agent run --dry-run` shows exactly what connected mode would send.
+
+## Why Plumbline
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h4>🔌 One line, any stack</h4>
+      <p><code>plumbline.init()</code> instruments the OpenAI, Anthropic and Bedrock clients you already use, in Python or Node.js, with no dependencies. Model vendors wrap their serving layer with one helper. OpenTelemetry works too.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h4>🔏 Tamper-evident by design</h4>
+      <p>Every hour is a signed, chained batch with a Merkle commitment to its traces. Edit, drop or reorder one and verification fails, in the CLI, the dashboard and the browser verifier alike.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h4>📊 A dashboard, locally</h4>
+      <p>Calls and tokens per model and region, guardrail coverage, personal-data redaction, agent tool use, changes and anomalies, served by the agent on loopback. No account, no SaaS.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top">
+      <h4>📐 Governance as code</h4>
+      <p>Declare models, regions and registers in <code>plumbline.policy.json</code>. <code>plumbline-agent check</code> evaluates the ten evidence objectives and fails CI when one fails. There's a GitHub Action for it.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h4>🧾 An AI bill of materials</h4>
+      <p><code>plumbline-agent aibom</code> writes a CycloneDX 1.6 inventory of every model declared or seen, built from evidence rather than a spreadsheet.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h4>✅ Verifiable by anyone</h4>
+      <p>Packs are DSSE-signed in-toto statements. Three independent verifiers (Go, browser, Python) agree on every published test vector, and the evaluator itself is open source.</p>
+    </td>
+  </tr>
+</table>
+
+### Local or hosted
+
+| | Local mode (open source) | Hosted service (early access) |
+| --- | :---: | :---: |
+| One-line SDKs, agent, content dropped at parse time | ✓ | ✓ |
+| Signed, chained hourly batches with trace commitments | ✓ | ✓ |
+| Dashboard and terminal report | ✓ | ✓ |
+| Policy file, `check` against the ten objectives, CI gating, AI-BOM | ✓ | ✓ |
+| Evidence signed by an **independent issuer** (KMS-held key) | | ✓ |
+| Monthly packs, chained, in a **public daily checkpoint** | | ✓ |
+| Share links for reviewers, with view counts | | ✓ |
+| Registers in an app, Vanta sync | | ✓ |
+| Data leaves your environment | **never** | signed counts only |
 
 ## Contents
 
@@ -21,17 +98,18 @@ Run it entirely on your own machine, with a dashboard and nothing leaving your e
 6. [Run the agent](#run-the-agent)
 7. [The dashboard](#the-dashboard)
 8. [Reports in the terminal](#reports-in-the-terminal)
-9. [Configuration reference](#configuration-reference)
-10. [More evidence sources: Langfuse and provider usage](#more-evidence-sources-langfuse-and-provider-usage)
-11. [What leaves your machine](#what-leaves-your-machine)
-12. [Deploying the agent](#deploying-the-agent)
-13. [Signed evidence packs: the hosted service (early access)](#signed-evidence-packs-the-hosted-service-early-access)
-14. [Verify a pack](#verify-a-pack)
-15. [Security model](#security-model)
-16. [CLI reference](#cli-reference)
-17. [Troubleshooting](#troubleshooting)
-18. [Develop and contribute](#develop-and-contribute)
-19. [Security reports and licence](#security-reports-and-licence)
+9. [Governance as code: policy, check and AI-BOM](#governance-as-code-policy-check-and-ai-bom)
+10. [Configuration reference](#configuration-reference)
+11. [More evidence sources: Langfuse and provider usage](#more-evidence-sources-langfuse-and-provider-usage)
+12. [What leaves your machine](#what-leaves-your-machine)
+13. [Deploying the agent](#deploying-the-agent)
+14. [Signed evidence packs: the hosted service (early access)](#signed-evidence-packs-the-hosted-service-early-access)
+15. [Verify a pack](#verify-a-pack)
+16. [Security model](#security-model)
+17. [CLI reference](#cli-reference)
+18. [Troubleshooting](#troubleshooting)
+19. [Develop and contribute](#develop-and-contribute)
+20. [Security reports and licence](#security-reports-and-licence)
 
 ---
 
@@ -51,6 +129,8 @@ You call OpenAI, Anthropic, Amazon Bedrock or any OpenAI-compatible API, and you
 | **That evaluations are current** | Evaluation runs (suite, model, prompt version, pass rate, time), set against the models and prompt versions that were actually live. |
 | **That an agent's actions are under control** | Agent runs, tool calls and tool errors, high-impact tool calls and how many were approved, hand-offs to a person. |
 | **That nothing was left out** | A Merkle commitment to every trace in every hour, and token totals that can be reconciled with the provider's own billed usage. |
+| **That the system is what you said it is** | A policy file in your repository declares the models and regions it may use and keeps the change, incident and evaluation registers; `plumbline-agent check` evaluates the evidence against the ten evidence objectives and fails CI when one fails. |
+| **An inventory of the AI you actually run** | `plumbline-agent aibom` writes a CycloneDX 1.6 AI bill of materials of every model declared or seen, with regions, volumes and first and last use. |
 | **Operational awareness, privately** | A local dashboard of all of the above, hour by hour, without sending anything to a SaaS. |
 
 ### You are an AI model vendor or inference provider
@@ -65,7 +145,8 @@ A vendor sends you a share link or a pack file. You check it yourself, in your b
 
 - Audit exactly what the agent would send before you allow it: `plumbline-agent run --dry-run` prints every batch, decoded, and sends nothing.
 - Run it with no network egress at all (local mode).
-- Map packs to framework references by ID (each objective lists the references it supports) and, with the hosted service, keep your compliance platform (Vanta) up to date automatically.
+- Keep governance in code review: `plumbline.policy.json` sits next to the code, `plumbline-agent policy validate` checks it in CI, and `plumbline-agent check` (or the [GitHub Action](#in-ci)) gates releases on the ten evidence objectives.
+- Map results to framework references by ID (EU AI Act, ISO/IEC 42001, AIUC-1, CSA AICM and more; each objective lists the references it supports), hand auditors an AI-BOM, and, with the hosted service, keep your compliance platform (Vanta) up to date automatically.
 
 ---
 
@@ -132,7 +213,8 @@ plumbline.init();
 
 **3. Make a model call, then open http://127.0.0.1:4319.** The first batch appears about a minute after the first call, and every hour after that.
 
-That is all for local mode. To share signed packs with reviewers, see [the hosted service](#signed-evidence-packs-the-hosted-service-early-access).
+> [!TIP]
+> Next: declare what the system may use and check the evidence against the ten objectives, in two commands: `plumbline-agent policy init`, then `plumbline-agent check`. See [Governance as code](#governance-as-code-policy-check-and-ai-bom). To share signed packs with reviewers, see [the hosted service](#signed-evidence-packs-the-hosted-service-early-access).
 
 ---
 
@@ -298,7 +380,10 @@ app.post('/v1/chat/completions', (req, res) =>
 
 ### Already on OpenTelemetry?
 
-Skip the SDK and point an OTLP/HTTP **JSON** exporter at `http://127.0.0.1:4318/v1/traces`. The agent reads the OpenTelemetry GenAI conventions (old and new attribute names) and a few `plumbline.*` attributes, as listed in [`spec/semconv-map.json`](spec/semconv-map.json):
+Skip the SDK and point an OTLP/HTTP **JSON** exporter at `http://127.0.0.1:4318/v1/traces`. The agent reads the OpenTelemetry GenAI conventions (old and new attribute names) and a few `plumbline.*` attributes, as listed in [`spec/semconv-map.json`](spec/semconv-map.json).
+
+<details>
+<summary><b>The attributes the agent reads</b></summary>
 
 | Fact | Attributes the agent reads |
 | --- | --- |
@@ -313,6 +398,8 @@ Skip the SDK and point an OTLP/HTTP **JSON** exporter at `http://127.0.0.1:4318/
 | Guardrail | `plumbline.guardrail.decision` (`allow`, `block`, `flag`) |
 | Tools | `plumbline.tool.high_impact`, `plumbline.tool.approved` |
 | Escalation | `plumbline.escalation` |
+
+</details>
 
 Message attributes (`gen_ai.input.messages`, `gen_ai.output.messages`, `gen_ai.prompt*`, `gen_ai.completion*`, `llm.prompts.*`, `llm.completions.*`) are never read: their presence is counted and their values dropped at parse time. Use either the SDK or your exporter for the same calls, not both, or they are counted twice.
 
@@ -331,6 +418,8 @@ Message attributes (`gen_ai.input.messages`, `gen_ai.output.messages`, `gen_ai.p
 | `plumbline-agent run --config agent.json --dry-run` | Print every batch it would send, with its payload decoded; send, queue and store nothing. Works before enrolment. |
 | `plumbline-agent run --config agent.json --dry-run --replay export.jsonl` | Feed an OTLP JSON export through the pipeline, print every window and exit: the fastest way to see what Plumbline would make of traces you already have. |
 | `plumbline-agent report` | Verify and summarise the local log in the terminal. |
+| `plumbline-agent check` | Evaluate the local log against the ten evidence objectives and your policy ([governance as code](#governance-as-code-policy-check-and-ai-bom)). |
+| `plumbline-agent aibom` | Write a CycloneDX AI bill of materials from the log. |
 | `plumbline-agent dashboard --data-dir <dir>` | Serve the dashboard on its own for a data directory (a copied log, or one written elsewhere). |
 | `plumbline-agent version` | Print the version. |
 
@@ -397,13 +486,143 @@ Anomaly         2026-09-01T00:00:00Z to 2026-09-01T01:00:00Z: guardrail_rate
 
 The report checks every batch's signature against `agent.pub`, that the sequence runs from 1 without gaps, that each batch names the previous batch's digest, and that no batch is missing from the end. If any check fails it says where, and exits **1**, so it can gate a CI job or a cron alert. `--since` and `--until` limit the figures, never the checks.
 
-What a local log proves: it has not changed since it was written, relative to `agent.pub`. Keep a copy of `agent.pub` somewhere else, or give it to a reviewer up front. For evidence signed by an independent issuer, see [the hosted service](#signed-evidence-packs-the-hosted-service-early-access).
+> [!NOTE]
+> A local log proves it has not changed since it was written, relative to `agent.pub`. Keep a copy of `agent.pub` somewhere else, or give it to a reviewer up front. For evidence signed by an independent issuer, see [the hosted service](#signed-evidence-packs-the-hosted-service-early-access).
+
+---
+
+## Governance as code: policy, check and AI-BOM
+
+Write down what your AI system is meant to be, next to its code, and check the evidence against it: locally, in CI, and with the same evaluator that issues signed packs, so your own check and a reviewer's pack cannot disagree.
+
+### 1. Declare: `plumbline.policy.json`
+
+```bash
+plumbline-agent policy init --name "Claims Triage Agent" --timezone Australia/Sydney
+```
+
+This writes a policy declaring the models and regions the log has seen.
+
+> [!WARNING]
+> Review it before you rely on it. A declaration says what the system *may* use, so remove anything that should not be there. `policy init` never fills the registers: a change or an incident is something a person records.
+
+<details open>
+<summary><b>An example <code>plumbline.policy.json</code></b></summary>
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/Lumetrix-Advanced-Technologies/plumbline/main/spec/policy.schema.json",
+  "organisation": "Kestrel Insurance",
+  "ai_system": "Claims Triage Agent",
+  "environment": "production",
+  "timezone": "Australia/Sydney",
+  "declared_models": [
+    { "provider": "openai", "model": "gpt-4.1-mini", "role": "triage" },
+    { "provider": "aws.bedrock", "model": "anthropic.claude-sonnet-4-6", "role": "summaries" }
+  ],
+  "declared_regions": ["us-east-1", "ap-southeast-2"],
+  "changes": [
+    { "date": "2026-10-14", "kind": "model", "what": "Summaries moved from Sonnet 4.5 to 4.6 after the regression suite passed" }
+  ],
+  "incidents": [
+    { "id": "INC-42", "opened": "2026-10-13T03:10:00Z", "acknowledged": "2026-10-13T03:25:00Z", "summary": "Guardrail block spike after a prompt deploy" }
+  ],
+  "evals": [
+    { "suite": "triage-regression", "model": "gpt-4.1-mini", "prompt_version": "14", "ran_at": "2026-10-12T00:00:00Z", "pass_rate": 0.96 }
+  ]
+}
+```
+
+</details>
+
+| Field | Used by | Meaning |
+| --- | --- | --- |
+| `ai_system`, `organisation`, `environment` | all | Who and what is being assessed. |
+| `timezone` | all | IANA time zone for periods and change dates (default UTC). |
+| `declared_models` | EO-LIN-01, AI-BOM | Every model the system may use, as the agent reports provider and model; `role` is optional. |
+| `declared_regions` | EO-RES-01 | Every region inference may run in. |
+| `changes` | EO-CHG-01 | The material-change register: each model or prompt change, by local date (`kind` is `model` or `prompt`). A change the telemetry shows matches an entry of the same kind within a day. |
+| `incidents` | EO-INC-01 | The incident register. An anomaly hour is covered by an incident opened within an hour of it and acknowledged within an hour of opening. |
+| `evals` | EO-EVAL-01 | Evaluation runs recorded outside the telemetry, added to those the agent sees (Langfuse scores, SDK spans). |
+
+The [JSON Schema](spec/policy.schema.json) gives editors completion and validation; `plumbline-agent policy validate` checks the file the way `check` reads it (unknown keys are refused, so a typo never silently weakens a declaration). The agent looks for the policy at `--policy`, then `$PLUMBLINE_POLICY`, then `./plumbline.policy.json`, then `<data-dir>/plumbline.policy.json` (where a container keeps it).
+
+### 2. Check: `plumbline-agent check`
+
+```bash
+plumbline-agent check                                   # the last 30 days with data
+plumbline-agent check --since 2026-10-01 --until 2026-10-31 --junit check.xml
+plumbline-agent check --json > october-check.json
+plumbline-agent check --strict                          # attention fails too
+```
+
+```
+Plumbline check: Claims Triage Agent (production), 2026-10-09 to 2026-10-17 (Australia/Sydney)
+  Evidence: 168 batches from agent agt_locald74e27b542973a66bedec4fc, verified (signatures and chain).
+
+! ATTENTION  EO-LOG-01  Trace coverage
+             No provider usage supplied
+             target: >= 98.0% of provider-billed tokens traced
+             supports: EU AI Act Art. 12 Record-keeping (automatic logging); ISO/IEC 42001 A.6.2.8 AI system event logs*; ...
+✓ PASS       EO-LIN-01  Model and provider lineage
+             6 of 6 models observed are declared
+             target: Every model in use is on the declared inventory
+✕ FAIL       EO-CHG-01  Material-change log
+             0 change(s) logged, 2 unlogged transition(s)
+             target: Every model or prompt change seen in telemetry is in the change register
+             missing change: 2026-10-14T03:17:00Z model anthropic.claude-sonnet-4-5 -> anthropic.claude-sonnet-4-6 (add to "changes")
+...
+2 pass, 1 attention, 7 fail.
+* Framework mapping not yet verified against the framework's text.
+```
+
+The log is verified first; a log that fails verification is never evaluated. Each objective shows what was measured, its target, the framework references it supports, and, where a register is short, exactly which entries are missing. Exit status: **0** no objective failed (with `--strict`, none needs attention either), **1** one did or the log failed verification, **2** a usage or policy error. `--junit` writes one test case per objective for any CI test reporter.
+
+The dashboard shows the same check for the selected range in its **Evidence objectives** panel, re-read on every refresh, so a policy edit shows at once:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/objectives-dark.png">
+  <img src="docs/objectives.png" alt="The dashboard's Evidence objectives panel: ten objectives with pass, attention or fail, what was measured and the target">
+</picture>
+
+> [!NOTE]
+> `check` is a self-assessment: the evidence is signed by your own agent's key and evaluated by you. A [pack](#signed-evidence-packs-the-hosted-service-early-access) is the same evaluation, signed by an independent issuer.
+
+### In CI
+
+The repository is also a GitHub Action. Validate the policy on every pull request that changes it:
+
+```yaml
+- uses: Lumetrix-Advanced-Technologies/plumbline@v0.3.0
+  with: { command: validate, policy: plumbline.policy.json }
+```
+
+Or gate a release on the evidence, with a copy of the agent's data directory (from a scheduled job, an artifact or a volume snapshot):
+
+```yaml
+- uses: Lumetrix-Advanced-Technologies/plumbline@v0.3.0
+  with: { command: check, policy: plumbline.policy.json, data-dir: evidence/, strict: "true" }
+```
+
+It installs `plumbline-agent` from PyPI, writes `plumbline-check.xml` (JUnit), puts the result in the job summary, and fails the job when an objective fails.
+
+### 3. Inventory: `plumbline-agent aibom`
+
+```bash
+plumbline-agent aibom --out aibom.cdx.json
+plumbline-agent aibom --since 2026-10-01 --until 2026-10-31 > october.cdx.json
+```
+
+A [CycloneDX 1.6](https://cyclonedx.org/) AI bill of materials, built from the verified log rather than a hand-kept list. The AI system is the root component; every model declared or seen is a `machine-learning-model` component with its provider as supplier and properties for whether it was declared and observed, its regions, calls, input and output tokens, first and last hour seen, and prompt versions. A model that is declared but never seen, or seen but never declared, is visible at a glance. The BOM's metadata names the agent and the latest batch digest it was built from. Any CycloneDX tool can read it (Dependency-Track, the CycloneDX CLI, SBOM platforms).
 
 ---
 
 ## Configuration reference
 
-`run --local` and `connect` need no file. For anything more, write a JSON file and pass `--config agent.json`. A complete file with every source off ([`agent.example.json`](agent.example.json)):
+`run --local` and `connect` need no file. For anything more, write a JSON file and pass `--config agent.json`.
+
+<details>
+<summary><b>A complete config file, with every source off</b> (<a href="agent.example.json"><code>agent.example.json</code></a>)</summary>
 
 ```json
 {
@@ -424,6 +643,8 @@ What a local log proves: it has not changed since it was written, relative to `a
                    "anomaly": { "min_calls": 20, "error_rate": 0.05, "guardrail_block_rate": 0.03 } }
 }
 ```
+
+</details>
 
 | Key | Default | Meaning |
 | --- | --- | --- |
@@ -486,7 +707,10 @@ The agent polls the providers' usage APIs with an admin key (limit it to this sy
 
 ## What leaves your machine
 
-**In local mode, nothing.** In connected mode, one signed batch per hour, defined by [`spec/batch.schema.json`](spec/batch.schema.json). Here is a real batch, trimmed (`plumbline-agent run --dry-run` shows yours):
+**In local mode, nothing.** In connected mode, one signed batch per hour, defined by [`spec/batch.schema.json`](spec/batch.schema.json).
+
+<details>
+<summary><b>A real batch, trimmed</b> (<code>plumbline-agent run --dry-run</code> shows yours)</summary>
 
 ```json
 {
@@ -506,6 +730,8 @@ The agent polls the providers' usage APIs with an admin key (limit it to this sy
   "commit": { "root": "0d98141acd04af7a42b105bc3ea41d751f0e8227e6baa89bcf716dc946dc701a", "leaves": 120 }
 }
 ```
+
+</details>
 
 A full batch also lists evaluation runs, model and prompt changes, anomaly windows, which models and prompt versions were live, late spans and provider usage. It **never** contains:
 
@@ -582,7 +808,10 @@ Call `plumbline.flush()` (in Node.js, `await plumbline.flush()`) before the hand
 
 ## Signed evidence packs: the hosted service (early access)
 
-The local log is signed by your own key. Reviewers usually need evidence signed by someone other than the vendor, evaluated against stated objectives. That is what the hosted Plumbline service adds.
+The local log is signed by your own key, and `plumbline-agent check` is your own evaluation of it. Reviewers usually need evidence signed by someone other than the vendor. That is what the hosted Plumbline service adds: the same evaluation, signed by an independent issuer, chained month to month and listed in a public checkpoint.
+
+> [!NOTE]
+> The hosted service is in early access. [Request access](https://github.com/Lumetrix-Advanced-Technologies/plumbline/issues/new?template=early-access.yml); everything else on this page works today without it.
 
 ### What you get
 
@@ -694,6 +923,10 @@ The full statement is on the [security page](web/security/index.html).
 plumbline-agent run --local [--config <agent.json>]
 plumbline-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
 plumbline-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen <host:port>]
+plumbline-agent policy init [--policy <file>] [--data-dir <dir>] [--name <ai system>] [--timezone <tz>] [--force]
+plumbline-agent policy validate [--policy <file>]
+plumbline-agent check [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json] [--junit <file>] [--strict]
+plumbline-agent aibom [--policy <file>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--out <file>]
 plumbline-agent connect [--config <agent.json>] <token>
 plumbline-agent enrol --config <agent.json> [--token <token>]
 plumbline-agent [run] --config <agent.json> [--dry-run] [--replay <export.jsonl>]
@@ -711,8 +944,13 @@ plumbline-agent version
 | `--since`, `--until` | `report` | The first and last day to sum (UTC dates). Verification always covers the whole log. |
 | `--json` | `report` | Print the summary as JSON. |
 | `--listen <host:port>` | `dashboard` | Where to serve it (default `dashboard_listen`, else `127.0.0.1:4319`). |
+| `--policy <file>` | `policy`, `check`, `aibom` | The policy file (default `$PLUMBLINE_POLICY`, `./plumbline.policy.json`, then `<data-dir>/plumbline.policy.json`). |
+| `--name`, `--timezone`, `--force` | `policy init` | The AI system's name, its IANA time zone (default `$TZ`, else UTC), and replace an existing file. |
+| `--since`, `--until` | `check`, `aibom` | The first and last local day (the policy's time zone). `check` defaults to the last 30 days with data. |
+| `--json`, `--junit <file>`, `--strict` | `check` | Print JSON; also write JUnit XML; fail on attention as well as fail. |
+| `--out <file>` | `aibom` | Write the BOM to a file instead of standard output. |
 
-Exit status: **0** ok, **1** a runtime error (or, for `report`, a verification failure), **2** a usage or configuration error.
+Exit status: **0** ok, **1** a runtime error (for `report`, a verification failure; for `check`, a failed objective or an unverified log; for `policy validate`, an invalid policy), **2** a usage or configuration error.
 
 ### plumbline-verify
 
@@ -739,6 +977,8 @@ Exit status: **0** all verified, **1** a check failed, **2** a usage or input er
 | The dashboard says it "answers only on localhost" | Open it as `http://127.0.0.1:4319` or `http://localhost:4319` (or a `*.localhost` name). |
 | Port 4319 is in use | `PLUMBLINE_DASHBOARD_LISTEN=127.0.0.1:4329`, or `off`. |
 | `report` says FAILED | The message names the first bad batch: edited (signature), missing, or out of order. The figures cover only the batches before it. Restore the data directory from a backup. |
+| `check` says "No policy yet" or a policy error | `plumbline-agent policy init`, then review the file; `plumbline-agent policy validate` names the field at fault. |
+| `check` fails EO-CHG-01 or EO-INC-01 | The output lists each missing change or incident; record the ones you approve in the policy's `changes` or `incidents`. |
 | `connect` refuses the data directory | It holds a local-mode agent. Use a new data directory (or volume) for connected mode. |
 | No agent appears in the Plumbline app | Check the agent's log for an enrolment error. A used or expired token needs a new one. |
 
@@ -769,11 +1009,12 @@ The tests need Go 1.26+, Node.js 22+ and Python 3.10+ with `cryptography`. The G
 | Path | What it is |
 | --- | --- |
 | `cmd/agent`, `cmd/verify` | The two programs. |
-| `internal/` | `otlp` (parsing and content dropping), `aggregate` (hourly windows), `commitment` and `merkle`, `batch` and `batchsign`, `queue`, `enrol`, `langfuse`, `usage`, `agent`, `localreport`, `dashboard`; and the trust core, `jcs`, `dsse`, `pack` and `checkpoint`. |
+| `internal/` | `otlp` (parsing and content dropping), `aggregate` (hourly windows), `commitment` and `merkle`, `batch` and `batchsign`, `queue`, `enrol`, `langfuse`, `usage`, `agent`, `localreport`, `dashboard`, `policy`, `localcheck`, `aibom`; the evaluator, `evaluate` (the same code that issues packs); and the trust core, `jcs`, `dsse`, `pack` and `checkpoint`. |
 | `sdk/python`, `sdk/js` | The SDKs, each with its own README. |
 | `web/verify` | The static verify page; `web/security` and `web/docs` are the site's other pages. |
 | `spec/` | Schemas, objectives, framework references, the attribute map and the test vectors. |
-| `concierge/` | The reference Python verifier, and the ingest it is checked against. |
+| `concierge/` | The reference Python verifier and evaluator, and the ingest they are checked against. |
+| `action.yml` | The GitHub Action for `policy validate` and `check`. |
 | `packaging/` | The pip and npm package builders. |
 | `examples/` | Sample Python and Node.js apps with the one-line integration. |
 
@@ -786,3 +1027,9 @@ Every change keeps two rules: **no content leaves the customer** (no code path i
 ## Security reports and licence
 
 Report vulnerabilities privately, through GitHub's private vulnerability reporting (the Security tab), not in a public issue: see [SECURITY.md](SECURITY.md). Apache License 2.0: see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+---
+
+<p align="center">
+  <sub>Plumbline is built by <b>Lumetrix</b>. ⭐ Star the repository to follow it, <a href="https://github.com/Lumetrix-Advanced-Technologies/plumbline/issues/new?template=early-access.yml">request early access</a> to signed packs, or open an issue with what your reviewers ask for.</sub>
+</p>

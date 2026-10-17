@@ -25,6 +25,7 @@
   <nav class="toc panel" aria-label="On this page">
     <ol>
       <li><a href="#local">Try it locally</a></li>
+      <li><a href="#governance">Governance as code</a></li>
       <li><a href="#quick">Connect to Plumbline</a></li>
       <li><a href="#install">Install</a></li>
       <li><a href="#app">Instrument your app</a></li>
@@ -48,6 +49,15 @@ docker run -d --name plumbline-agent -p 127.0.0.1:4318:4318 -p 127.0.0.1:4319:43
 plumbline-agent report --json --since 2026-10-01</code></pre>
   <p><code>report</code> checks every batch's signature against <code>agent.pub</code> and the chain from the first batch, then sums the calls per model and region, guardrail decisions, personal-data redaction, agent activity, prompt and model changes and anomalies. It exits 1 if a batch was edited or is missing. Keep a copy of <code>agent.pub</code> elsewhere: the log proves it has not changed relative to that key.</p>
   <p>For packs evaluated against Plumbline's evidence objectives and signed by an independent issuer, which a reviewer can verify, <a href="https://github.com/lumetrix-advanced-technologies/plumbline/issues/new?template=early-access.yml">request early access</a> to the hosted service. Connecting starts a new agent with its own data directory; the local log stays local.</p>
+
+  <h2 id="governance">Governance as code</h2>
+  <p>Declare what the AI system may use in <code>plumbline.policy.json</code>, next to its code, and check the evidence against the ten evidence objectives with the same evaluator that issues signed packs:</p>
+<pre><code>plumbline-agent policy init --name "Claims Triage Agent" --timezone Australia/Sydney   # declare what the log has seen; review it
+plumbline-agent policy validate                                                       # in CI, on every policy change
+plumbline-agent check                                                                 # pass, attention or fail per objective
+plumbline-agent check --junit check.xml --strict                                      # gate a release
+plumbline-agent aibom --out aibom.cdx.json                                            # CycloneDX 1.6 AI bill of materials</code></pre>
+  <p>The policy declares models and regions (lineage and residency) and keeps the change, incident and evaluation registers (the change, incident and evaluation-freshness objectives); its JSON Schema is <code>spec/policy.schema.json</code>. <code>check</code> verifies the log first, then shows each objective's measurement, target, the framework references it supports and any register entries that are missing; it exits 1 when an objective fails. The dashboard shows the same results in its Evidence objectives panel. A GitHub Action, <code>Lumetrix-Advanced-Technologies/plumbline</code>, runs <code>policy validate</code> or <code>check</code> in CI.</p>
 
   <h2 id="quick">Connect to Plumbline</h2>
   <ol>

@@ -455,6 +455,47 @@ function render() {
     log.recent_batches.map((b) => [fmt.format(b.seq), b.window_start.replace("T", " ").replace(":00:00Z", ":00"), fmt.format(b.llm_calls), fmt.format(b.traces), el("td", { class: "digest" }, b.digest)]), [0, 2, 3]));
 }
 
+// ---- evidence objectives: the same evaluator as signed packs -------------
+
+const STATUS = { pass: ["pass", "✓", "Pass"], attention: ["attention", "!", "Attention"], fail: ["fail", "✕", "Fail"] };
+function drawObjectives(api) {
+  const box = $("objectives"), sub = $("obj-sub");
+  if (!api || !api.available) {
+    sub.textContent = "Checked against your policy file, with the same evaluator as signed packs.";
+    box.replaceChildren(el("div", { class: "obj-note" },
+      el("p", {}, (api && api.message) || "Objectives are not available."),
+      el("pre", {}, el("code", {}, "plumbline-agent policy init     # declare the models and regions you see\nplumbline-agent check           # the same results in a terminal or CI"))));
+    return;
+  }
+  const r = api.report, s = r.summary;
+  const file = String(api.policy).split(/[\\/]/).pop();
+  sub.textContent = `${r.period.start} to ${r.period.end} (${r.timezone}), against ${file}: ${s.pass} pass, ${s.attention} attention, ${s.fail} fail. ` +
+    "A self-assessment with the same evaluator as signed packs.";
+  box.replaceChildren(...r.objectives.map((o) => {
+    const [cls, sym, word] = STATUS[o.status] || ["neutral", "?", o.status];
+    const card = el("article", { class: `obj ${cls}` },
+      el("div", { class: "head" }, el("span", { class: "id" }, o.id),
+        el("span", { class: `pill ${cls}` }, el("span", { "aria-hidden": "true" }, sym), ` ${word}`)),
+      el("h3", {}, o.title),
+      el("p", { class: "measured" }, o.measured),
+      el("p", { class: "target" }, `Target: ${o.threshold}`));
+    if (o.maps && o.maps.length) {
+      card.append(el("details", {}, el("summary", {}, `Supports ${o.maps.length} framework reference${o.maps.length === 1 ? "" : "s"}`),
+        el("ul", {}, ...o.maps.map((m) => el("li", {}, m)))));
+    }
+    return card;
+  }));
+}
+
+async function refreshObjectives() {
+  try {
+    const r = await fetch(`api/check?range=${encodeURIComponent(state.range)}`, { cache: "no-store" });
+    drawObjectives(r.ok ? await r.json() : null);
+  } catch {
+    drawObjectives(null);
+  }
+}
+
 async function refresh() {
   for (const c of document.querySelectorAll(".chart")) c.classList.add("loading");
   try {
@@ -462,6 +503,7 @@ async function refresh() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     state.data = await r.json();
     render();
+    refreshObjectives();
   } catch (e) {
     $("status").replaceChildren(el("span", { class: "pill fail" }, el("span", { "aria-hidden": "true" }, "✕"), " Agent not reachable"), el("span", {}, String(e.message || e)));
   } finally {
@@ -475,6 +517,7 @@ $("range").addEventListener("click", (e) => {
   state.range = b.dataset.range;
   save("range", state.range);
   render();
+  refreshObjectives();
 });
 let resizeTimer;
 addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 120); });

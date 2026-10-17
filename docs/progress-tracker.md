@@ -55,6 +55,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P6-4 | Local mode, early access, public repository | done | 2026-10-16 | `plumbline-agent local` + `report`; early-access issue form; SDKs renamed `plumbline-sdk`; this repo renamed `plumbline-cloud`; public `plumbline` repo created from the export with v0.1.0 released (attested binaries). Waiting on founders: make the ghcr image public, PyPI/npm publishing (D-052) |
 | P6-5 | Local dashboard | done | 2026-10-16 | `run --local` serves a dashboard on 127.0.0.1:4319 from the verified log: tiles, calls per model, coverage and tokens over time, models table, timeline, evidence chain; plain HTML/SVG, loopback-only, strict CSP (D-053) |
 | P6-6 | Agent from pip and npm | done | 2026-10-16 | `pip install plumbline-agent`, `npx plumbline-agent`: platform wheels and npm packages around the release binary, no install scripts; built and attested in the release, published once the founders set up PyPI and npm (D-054) |
+| P6-7 | Governance as code | done | 2026-10-17 | `plumbline.policy.json` (schema, `policy init`/`validate`), `check` with the pack evaluator (now open source) and JUnit/JSON, the dashboard's Evidence objectives panel, `aibom` (CycloneDX 1.6), a GitHub Action (D-055) |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
@@ -62,6 +63,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-17 · P6-7 · PR pending · Teams can declare an AI system in a policy file and check its evidence against the ten objectives locally and in CI, with the same evaluator as signed packs.
 - 2026-10-16 · P6-6 · PR pending · The agent installs with pip or npx and runs with one command.
 - 2026-10-16 · P6-5 · PR pending · Local mode has a dashboard that shows what an AI system did, hour by hour, from its signed log.
 - 2026-10-16 · P6-4 · PR pending · Plumbline is open source: anyone can run the agent locally with one line of app code, and v0.1.0 is released with signed provenance.

@@ -1,0 +1,63 @@
+name: Plumbline governance check
+description: Validate plumbline.policy.json, or check a Plumbline evidence log against the ten evidence objectives, and fail the job when an objective fails.
+author: Lumetrix
+branding: { icon: shield, color: blue }
+inputs:
+  command:
+    description: "validate (check the policy file only) or check (evaluate an evidence log against it)"
+    default: validate
+  policy:
+    description: The policy file.
+    default: plumbline.policy.json
+  data-dir:
+    description: "check: the agent's data directory (a copy of a local-mode log)"
+    default: .plumbline-agent
+  since:
+    description: "check: first local day (YYYY-MM-DD); default the last 30 days with data"
+    default: ""
+  until:
+    description: "check: last local day (YYYY-MM-DD); default today"
+    default: ""
+  strict:
+    description: "check: fail on attention too"
+    default: "false"
+  junit:
+    description: "check: write JUnit XML here, for test reporters"
+    default: plumbline-check.xml
+  version:
+    description: The plumbline-agent version from PyPI (default the latest).
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Install plumbline-agent
+      shell: bash
+      env: { VERSION: "${{ inputs.version }}" }
+      run: python3 -m pip install --disable-pip-version-check --quiet "plumbline-agent${VERSION:+==$VERSION}"
+    - name: Run
+      shell: bash
+      env:
+        COMMAND: ${{ inputs.command }}
+        POLICY: ${{ inputs.policy }}
+        DATA_DIR: ${{ inputs.data-dir }}
+        SINCE: ${{ inputs.since }}
+        UNTIL: ${{ inputs.until }}
+        STRICT: ${{ inputs.strict }}
+        JUNIT: ${{ inputs.junit }}
+      run: |
+        case "$COMMAND" in
+          validate) plumbline-agent policy validate --policy "$POLICY" ;;
+          check)
+            args=(check --policy "$POLICY" --data-dir "$DATA_DIR" --junit "$JUNIT")
+            [ -n "$SINCE" ] && args+=(--since "$SINCE")
+            [ -n "$UNTIL" ] && args+=(--until "$UNTIL")
+            [ "$STRICT" = "true" ] && args+=(--strict)
+            set +e
+            plumbline-agent "${args[@]}" > plumbline-check.txt 2>&1
+            code=$?
+            set -e
+            cat plumbline-check.txt
+            { echo '### Plumbline governance check'; echo '```'; cat plumbline-check.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            exit "$code" ;;
+          *) echo "command must be validate or check, not $COMMAND" >&2; exit 2 ;;
+        esac

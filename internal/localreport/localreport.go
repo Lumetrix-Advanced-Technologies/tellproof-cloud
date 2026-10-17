@@ -115,18 +115,27 @@ func (r Range) has(start string) bool {
 // Read verifies and sums the local evidence log in dataDir. The whole chain
 // is always checked; r only limits which windows are summed.
 func Read(dataDir string, r Range) (*Summary, error) {
+	s, _, err := ReadBatches(dataDir, r)
+	return s, err
+}
+
+// ReadBatches is Read, also returning the batches that verified, in order
+// (all of them when the summary is Verified; those before the first problem
+// otherwise), for the evaluator and the AI-BOM.
+func ReadBatches(dataDir string, r Range) (*Summary, []batch.Batch, error) {
 	agentID, pub, err := enrol.LoadPublic(dataDir)
 	if err != nil {
-		return nil, fmt.Errorf("localreport: %w (is %s a local-mode data directory?)", err, dataDir)
+		return nil, nil, fmt.Errorf("localreport: %w (is %s a local-mode data directory?)", err, dataDir)
 	}
 	q, err := queue.Open(filepath.Join(dataDir, Dir))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	seqs, err := q.Pending()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	var verified []batch.Batch
 	s := &Summary{AgentID: agentID, Verified: true, Models: []Model{}, Evals: []batch.Eval{}, Transitions: []batch.Transition{},
 		Anomalies: []batch.Anomaly{}, Versions: []batch.ObservedVersion{}, Usage: []batch.Usage{}, Series: []Point{}, Recent: []BatchRow{}}
 	acc := newAccumulator()
@@ -145,6 +154,7 @@ func Read(dataDir string, r Range) (*Summary, error) {
 			break
 		}
 		prev = &digest
+		verified = append(verified, *bt)
 		s.Batches++
 		s.LastSeq, s.LastHash = seq, digest
 		s.Recent = append(s.Recent, BatchRow{Seq: seq, WindowStart: bt.Window.Start, Digest: digest, Traces: bt.Commit.Leaves, LLMCalls: bt.Metrics.Guardrails.LLMCalls})
@@ -161,7 +171,7 @@ func Read(dataDir string, r Range) (*Summary, error) {
 		s.fail(fmt.Sprintf("batch %d is missing (the log has written up to batch %d)", s.LastSeq+1, st.Seq))
 	}
 	acc.finish(s)
-	return s, nil
+	return s, verified, nil
 }
 
 func (s *Summary) fail(problem string) {
