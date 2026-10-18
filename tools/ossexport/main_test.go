@@ -41,7 +41,7 @@ func TestExportIsTheOpenSourceTreeOnly(t *testing.T) {
 	}
 	// Nothing generated locally comes along (bytecode caches, node_modules).
 	_ = filepath.WalkDir(out, func(p string, d os.DirEntry, err error) error {
-		if err == nil && (d.Name() == "__pycache__" || d.Name() == "node_modules" || strings.HasSuffix(p, ".pyc")) {
+		if err == nil && (d.Name() == "__pycache__" || d.Name() == "node_modules" || strings.HasSuffix(p, ".pyc") || strings.HasSuffix(d.Name(), ".egg-info")) {
 			t.Errorf("%s is in the open-source tree", p)
 		}
 		return nil
@@ -83,3 +83,14 @@ func TestCheckCleanRefusesPrivateNames(t *testing.T) {
 		t.Fatalf("leak not refused: %v", err)
 	}
 }
+
+// Local build leftovers never reach the public tree.
+func TestSkipped(t *testing.T) {
+	for name, want := range map[string]bool{"__pycache__": true, "node_modules": true, ".DS_Store": true,
+		"tellproof.egg-info": true, "sdk": false, "egg-info.md": false, "tellproof": false} {
+		if skipped(name) != want {
+			t.Errorf("skipped(%q) = %v, want %v", name, !want, want)
+		}
+	}
+}
+
