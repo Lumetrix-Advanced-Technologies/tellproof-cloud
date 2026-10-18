@@ -2,7 +2,10 @@
 // AI product, turns its telemetry into signed hourly aggregates and sends only
 // those (docs/architecture.md §3).
 //
+//	tellproof-agent init                          # set up the project in the working directory
 //	tellproof-agent run --local                   # no server: keep signed batches locally, with a dashboard
+//	tellproof-agent doctor                        # diagnose the installation, with a fix for each problem
+//	tellproof-agent demo                          # the dashboard on a synthetic, signed week
 //	tellproof-agent report [--json]               # verify and summarise the local evidence log
 //	tellproof-agent dashboard [--data-dir <dir>]  # the dashboard alone, for a copied log
 //	tellproof-agent connect <token>               # enrol once, then run (the one-command install)
@@ -45,6 +48,7 @@ var version = "dev"
 
 const usage = `usage:
   tellproof-agent                    (in a terminal: the welcome banner and first steps)
+  tellproof-agent init | doctor | demo ...   (set up a project, diagnose, a dashboard on synthetic data)
   tellproof-agent run --local [--config <agent.json>]
   tellproof-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
   tellproof-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen <host:port>]
@@ -76,6 +80,9 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 	}
 	if isCI(args) {
 		return ciCommand(ctx, args, getenv, stdout, stderr)
+	}
+	if isSetup(args) {
+		return setupCommand(ctx, args, getenv, stdout, stderr)
 	}
 	if len(args) == 0 && welcome(stdout, getenv) {
 		return 0 // in a terminal, no arguments shows the welcome; elsewhere it still means run
@@ -293,7 +300,7 @@ func local(ctx context.Context, configPath string, getenv func(string) string, s
 		fmt.Fprintln(stderr, err)
 		return 2
 	}
-	stopDash, url, err := startDashboard(cfg.DashboardListen, cfg.DataDir, log)
+	stopDash, url, err := startDashboard(cfg.DashboardListen, cfg.DataDir, policy.Find(envcompat.Get, cfg.DataDir), log)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -317,9 +324,10 @@ func local(ctx context.Context, configPath string, getenv func(string) string, s
 	return 0
 }
 
-// startDashboard serves the dashboard for dataDir on addr ("" or "off": not
-// at all) and returns a stop function and the URL to open.
-func startDashboard(addr, dataDir string, log *slog.Logger) (func(), string, error) {
+// startDashboard serves the dashboard for dataDir, with the policy at
+// policyPath, on addr ("" or "off": not at all) and returns a stop function
+// and the URL to open.
+func startDashboard(addr, dataDir, policyPath string, log *slog.Logger) (func(), string, error) {
 	if addr == "" || addr == "off" {
 		return func() {}, "", nil
 	}
@@ -327,7 +335,7 @@ func startDashboard(addr, dataDir string, log *slog.Logger) (func(), string, err
 	if err != nil {
 		return nil, "", fmt.Errorf("tellproof-agent: dashboard: %w (set TELLPROOF_DASHBOARD_LISTEN, or off)", err)
 	}
-	srv := &http.Server{Handler: dashboard.Handler(dashboard.Options{DataDir: dataDir, Version: version, PolicyPath: policy.Find(envcompat.Get, dataDir)}),
+	srv := &http.Server{Handler: dashboard.Handler(dashboard.Options{DataDir: dataDir, Version: version, PolicyPath: policyPath}),
 		ReadHeaderTimeout: 10 * time.Second}
 	go func() { _ = srv.Serve(ln) }()
 	host, port, _ := net.SplitHostPort(ln.Addr().String())
@@ -360,7 +368,7 @@ func dashboardOnly(ctx context.Context, configPath, dataDir, listen string, gete
 	if listen == "off" || listen == "" {
 		listen = "127.0.0.1:4319"
 	}
-	stop, url, err := startDashboard(listen, dataDir, log)
+	stop, url, err := startDashboard(listen, dataDir, policy.Find(envcompat.Get, dataDir), log)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1

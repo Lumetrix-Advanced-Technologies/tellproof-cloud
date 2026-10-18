@@ -189,6 +189,9 @@ flowchart LR
 
 ## Quick start: five minutes, no account
 
+> [!TIP]
+> In a hurry? Install the agent (step 1), then run `tellproof-agent init` in your app's directory: it recognises a Python or Node.js project, shows the SDK line and the file it goes in, writes `tellproof.policy.json`, offers to add the data directory to `.gitignore`, and starts local mode. It changes no source file. Only looking? `tellproof-agent demo` serves the dashboard on a synthetic, signed week (nothing from your system), with a policy, so you can try `report`, `check` and `check --self-test` on it.
+
 **1. Start the agent in local mode.** Pick whichever you already have:
 
 ```bash
@@ -226,7 +229,7 @@ import * as tellproof from 'tellproof';
 tellproof.init();
 ```
 
-**3. Make a model call, then open http://127.0.0.1:4319.** The first batch appears about a minute after the first call, and every hour after that.
+**3. Make a model call, then open http://127.0.0.1:4319.** The first batch appears about a minute after the first call, and every hour after that. Nothing showing? `tellproof-agent doctor` checks the setup and prints a fix for each problem.
 
 > [!TIP]
 > Next: declare what the system may use and check the evidence against the eleven objectives, in two commands: `tellproof-agent policy init`, then `tellproof-agent check`. See [Governance as code](#governance-as-code-policy-check-and-ai-bom). To share signed packs with reviewers, see [the hosted service](#signed-evidence-packs-the-hosted-service-early-access).
@@ -1075,6 +1078,9 @@ The full statement is on the [security page](web/security/index.html).
 
 ```
 tellproof-agent                                   # in a terminal: the welcome banner and first steps
+tellproof-agent init [--name <ai system>] [--timezone <tz>] [--yes] [--no-start] [--force]
+tellproof-agent doctor [--config <agent.json>] [--data-dir <dir>] [--policy <file>] [--json]
+tellproof-agent demo [--data-dir <new dir>] [--days 7] [--listen <host:port>]
 tellproof-agent run --local [--config <agent.json>]
 tellproof-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
 tellproof-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen <host:port>]
@@ -1097,6 +1103,10 @@ tellproof-agent version
 | Flag | Commands | Meaning |
 | --- | --- | --- |
 | `--config <file>` | all | The agent config file (optional for `run --local`, `connect`, `report` and `dashboard`). |
+| `--name`, `--timezone` | `init` | The AI system's name (default: the directory's) and IANA time zone (default `$TZ`, else UTC); in a terminal, init asks. |
+| `--yes`, `--no-start`, `--force` | `init` | Take every default and ask nothing; do not start the agent (without a terminal it never does); replace an existing `tellproof.policy.json`. |
+| `--json` | `doctor` | Print the checks as JSON (`ok`, and each check's `status`, `detail` and `fix`). |
+| `--data-dir`, `--days`, `--listen` | `demo` | A new or empty directory for the synthetic log (default a temporary one), how many days (1 to 90), and the dashboard's address. |
 | `--local` | `run` | Local mode: no server, signed batches kept in the data directory, dashboard served. |
 | `--dry-run` | `run` | Print every batch with its payload decoded; send, queue and store nothing. |
 | `--replay <file>` | `run` | Feed an OTLP JSON export (one request per line) through the pipeline, then exit. |
@@ -1112,7 +1122,7 @@ tellproof-agent version
 | `--self-test` | `check` | Show that each objective fails on evidence built to fail it and that tampering with the log is detected ([details](#prove-it-can-fail-check---self-test)). |
 | `--out <file>` | `aibom` | Write the BOM to a file instead of standard output. |
 
-Exit status: **0** ok, **1** a runtime error (for `report`, a verification failure; for `check`, a failed objective or an unverified log; for `policy validate`, an invalid policy), **2** a usage or configuration error.
+Exit status: **0** ok, **1** a runtime error (for `doctor`, a failed check; for `report`, a verification failure; for `check`, a failed objective or an unverified log; for `policy validate`, an invalid policy), **2** a usage or configuration error.
 
 ### tellproof-verify
 
@@ -1128,6 +1138,8 @@ Exit status: **0** all verified, **1** a check failed, **2** a usage or input er
 ---
 
 ## Troubleshooting
+
+Start with `tellproof-agent doctor`. It checks the configuration, the data directory and its permissions (and whether git would commit the agent's key), whether the agent answers on its ports or something else holds them, where the SDKs will send (`TELLPROOF_AGENT_URL`), the evidence log's verification, whether spans are still arriving, how many spans arrived with content (dropped at parse time), the clock, and the policy; each problem comes with its fix. It sends no spans and contacts only the agent's own addresses. `--json` for scripts; exit 1 when a check fails. What doctor cannot see is the app's side: `tellproof.stats()` there shows `spans`, `exported`, `dropped` and `export_errors`.
 
 | Symptom | What to check |
 | --- | --- |

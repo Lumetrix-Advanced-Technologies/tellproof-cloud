@@ -44,6 +44,7 @@
 npx tellproof-agent run --local
 docker run -d --name tellproof-agent -p 127.0.0.1:4318:4318 -p 127.0.0.1:4319:4319 \
   -v tellproof-agent:/data ghcr.io/lumetrix-advanced-technologies/tellproof-agent:latest run --local</code></pre>
+  <p>Or, in your app's directory, <code>tellproof-agent init</code>: it recognises a Python or Node.js project, shows the SDK line and the file it goes in, writes <code>tellproof.policy.json</code>, offers to keep the data directory out of git, and starts local mode. It changes no source file. Just looking? <code>tellproof-agent demo</code> serves the dashboard on a synthetic, signed week.</p>
   <p>Add the SDK to your app (<a href="#app">below</a>), make a model call, and about a minute later open the dashboard at <code>http://127.0.0.1:4319</code>: calls and tokens per model and region, guardrail coverage and personal-data redaction over time, tool use, a timeline of changes, anomalies and evaluations, and the evidence chain. The agent serves it on loopback only and it loads nothing from elsewhere. Set <code>TELLPROOF_DASHBOARD_LISTEN</code> (or <code>dashboard_listen</code>) to move it, or to <code>off</code>. The same figures in a terminal:</p>
 <pre><code>tellproof-agent report
 tellproof-agent report --json --since 2026-10-01</code></pre>
@@ -170,6 +171,7 @@ tellproof-agent run --config agent.json --dry-run --replay export.jsonl</code></
   </ul>
 
   <h2 id="trouble">Troubleshooting</h2>
+  <p>Start with <code>tellproof-agent doctor</code>. It checks the configuration, the data directory and its permissions, whether the agent answers on its ports (and whether something else holds them), where the SDKs will send, the evidence log's verification, the clock and the policy, and prints a fix for each problem. It sends no spans and contacts only the agent's own addresses.</p>
   <ul>
     <li><b>No agent on the system page:</b> check the agent's log for an enrolment error. An expired or used token needs a new one from the app. The same <code>connect</code> line works again once the data directory is enrolled.</li>
     <li><b>Agent listed, no batches:</b> check that your app reaches <code>TELLPROOF_AGENT_URL</code>, and run <code>--dry-run</code> to see what the agent is building.</li>
