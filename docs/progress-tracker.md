@@ -63,6 +63,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P7-5 | npm CI/CD and the welcome banner | done | 2026-10-19 | npm publishing back in the release and SDK workflows with trusted publishing, smoke tests of the built pip and npm packages before publishing; a welcome banner for interactive terminals; README npm section (D-061) |
 | P8-1 | Workflow hardening, Scorecard and community files | in review | 2026-10-19 | Every action in both repos pinned to a commit SHA (tag in a comment) and checked by a test; `persist-credentials: false`; per-job permissions; Dependabot; Scorecard workflow and badge; CONTRIBUTING, CODE_OF_CONDUCT, PR template, CODEOWNERS (D-063) |
 | P8-2 | `init`, `doctor` and `demo` | in review | 2026-10-19 | init detects Python/Node (CJS or ESM) and the entry file, prints the SDK line, writes the policy, offers .gitignore, starts local mode; doctor: 12 checks with fixes, probe sends no spans, `--json`; demo: synthetic week + policy (6 pass, 4 fail, 1 attention), `internal/demolog` shared with tools/demolog (D-064) |
+| P8-3 | Content-leak regression suite | in review | 2026-10-19 | `spec/leak-corpus.json` (16 markers, 35 content spellings, 16 read attributes, trace IDs) through the agent end to end, Langfuse, and both SDKs; found that read attributes (model, provider, region, prompt version, canary kind) carried any text into batches: now identifiers only (`spec/identifiers.json`, Go and Python agree on shared vectors), else `invalid`/`other` (D-065); `make leak-test` |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
@@ -70,6 +71,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-19 · P8-3 · PR pending · A shared corpus of prompts, personal data and keys in every position proves nothing of it leaves the agent or the SDKs, and closed the one gap it found: text in a model or region attribute.
 - 2026-10-19 · P8-2 · PR pending · `tellproof-agent init` takes an app from nothing to a batch on the dashboard, `doctor` explains what is wrong and how to fix it, and `demo` shows a full dashboard in seconds.
 - 2026-10-19 · P8-1 · PR pending · Every workflow action is pinned to a reviewed commit, checkouts keep no token, and the public repo has a Scorecard, contribution guide and code of conduct.
 - 2026-10-19 · P7-5 · v0.4.0 released (GitHub, Docker, PyPI; npm staged by CI for approval) · npm releases are automated again behind approval, and the agent greets people in the terminal.

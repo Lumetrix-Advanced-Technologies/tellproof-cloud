@@ -898,6 +898,10 @@ A full batch also lists evaluation runs, model and prompt changes, anomaly windo
 
 Each trace becomes a leaf `sha256(0x00 ‖ salt ‖ trace_id)`, where the salt is derived from a secret that stays with you. The commitment reveals nothing, yet a single trace can later be disclosed and proved to be in it.
 
+The few values a batch copies from a span, the provider, model, region and prompt version, must look like identifiers ([`spec/identifiers.json`](spec/identifiers.json)): letters, digits and `._:/@+-`, at most 128 characters, and not shaped like a credential (AWS, OpenAI, Anthropic, GitHub, Slack, Google, GitLab and Stripe key formats, or a JWT). Anything else, such as a prompt written into `gen_ai.request.model` by mistake, is replaced by `invalid` before it is counted; a guardrail canary's kind becomes `other`. The model inventory check then shows `invalid` as an undeclared model, so the mistake is visible rather than silent.
+
+**Tested on every change.** The content-leak suite (`make leak-test`, part of `make check`) sends [`spec/leak-corpus.json`](spec/leak-corpus.json), synthetic prompts, personal data and example-format credentials, in every position a span can carry text and under every content attribute spelling of the GenAI conventions, OpenInference, Traceloop, Langfuse and the Vercel AI SDK, through the agent and the Langfuse puller, and requires that none of it, and no raw trace ID, appears in the dry-run output, the logs, the receiver's answers, the signed batches, the dashboard API, `report`, `check`, `aibom` or `doctor`. Both SDKs' tests send the same corpus through every instrumented client and helper and require that none of it is exported.
+
 ### The data directory
 
 | File | What it is |

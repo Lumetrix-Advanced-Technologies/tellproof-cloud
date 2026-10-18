@@ -118,7 +118,7 @@ Tellproof's story is unusual and testable: *most AI safety checks can't fail; ou
 1. Fix billing (founders). (npm 0.4.0 is approved.)
 2. P8-1 Workflow hardening + Scorecard (4.3-1, 4.3-2) and community files (section 5): in review (D-063). After it lands: branch protection on the public `main`, Discussions, social preview (founders).
 3. P8-2 `tellproof-agent init` + `doctor` + `demo` (4.1-1, 4.1-2, 4.1-7). In review (D-064); the README screenshots (banner welcome list, dashboard) predate it and could be retaken with `tellproof-agent demo`.
-4. P8-3 Content-leak regression suite (4.3-4).
+4. P8-3 Content-leak regression suite (4.3-4). In review (D-065): it found and closed text in read attributes reaching batches. Follow-up: count unmapped content spellings (OpenInference, Vercel AI SDK) in `content_present_spans`.
 5. P8-4 Shareable HTML/Markdown/SARIF reports (4.2-1) and the CI-evidence Action (4.2-6).
 6. P8-5 Integrations: LiteLLM, LangChain, Vercel AI SDK, OTel Collector (4.1-4).
 7. Launch kit: GIF, Codespaces, social preview, updated Show HN draft; then launch with the founders.

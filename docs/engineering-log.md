@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-19 · P8-3 · Content-leak regression suite
+
+**Built.** `spec/leak-corpus.json`, `spec/identifiers.json` (embedded in `spec/embed.go`), `internal/otlp/identifiers.go` applied in the normaliser to the provider, model, region, prompt version and canary kind, the same rule in `concierge/ingest.py`; tests: `cmd/agent/leak_test.go` (end to end), `internal/otlp/identifiers_test.go` (vectors, Go against Python, the spec file's own checks, content in read attributes), `internal/langfuse/leak_test.go`, `sdk/python/tests/test_leak.py`, a corpus test in `sdk/js/test/instrument.test.mjs`; `make leak-test`; README, architecture, changelog. Choices in D-065.
+
+**Problems.** The first run found a real leak: an AWS key in `tellproof.canary.kind` reached the signed batch, lowercased, because canary kinds accept any short slug; and with the corpus in `gen_ai.request.model` every marker would have reached the batch, the dashboard and the reports. Both are closed by the identifier rule. My first Langfuse test scanned the in-memory span, which keeps the guardrail decision, prompt name and slot for comparisons and keys; what matters is what a batch holds, so it now aggregates and scans the windows. My first agent test stopped at its sanity check before it could show the leaks when I removed the rule; the check is now non-fatal so a regression lists every leak. The batch files nest the envelope, which my first decoder missed. One fact span (the operation) is, correctly, not an LLM call, so the expected count is markers × read attributes.
+
+**Verified.** All new tests pass, and with the identifier rule disabled the agent test reports all sixteen markers leaking into the dry run, the batches, the dashboard and the reports. The Python SDK test fails when a marker is planted in its export. Go and the concierge agree on all 40 identifier vectors; the concierge parity test of the aggregates still passes; `make check` with the database and `make oss-check` (below).
+
 ## 2026-10-19 · P8-2 · `init`, `doctor` and `demo`
 
 **Built.** `cmd/agent/setup.go` (`init`, `demo`, project detection, the `.gitignore` offer), `cmd/agent/doctor.go` (twelve checks with fixes, text and `--json`), `isTTY` per platform for init's questions, `internal/demolog` (the generator, now shared, plus a policy for the demo), `tools/demolog` as a wrapper, `startDashboard` taking the policy path, the welcome screen's commands, README (quick start, troubleshooting, CLI reference), the agent docs page, the home page, changelog. Choices in D-064.
