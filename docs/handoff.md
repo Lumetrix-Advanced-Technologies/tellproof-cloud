@@ -17,7 +17,7 @@ Paste the prompt below into a new session (Claude Code or a person) to continue.
 | GitHub release | [v0.4.0](https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases/tag/v0.4.0), attested binaries for six platforms |
 | Docker | `ghcr.io/lumetrix-advanced-technologies/tellproof-agent:v0.4.0` / `:latest`, public |
 | PyPI | `tellproof-agent` 0.4.0; `tellproof` (SDK) 0.2.0 |
-| npm | `tellproof-agent` + 6 platform packages: 0.4.0 **staged by CI, live only after a founder approves on npmjs.com** (check `npm view tellproof-agent version`); `tellproof` (SDK) 0.2.0 |
+| npm | `tellproof-agent` + 6 platform packages: 0.4.0, approved and live (checked 19 Oct); `tellproof` (SDK) 0.2.0 |
 | Website | https://lumetrix-advanced-technologies.github.io/tellproof/ (GitHub Pages, `web/`, `pages.yml`) |
 
 **Features shipped in Phase 7** (details in the ADRs):
@@ -28,7 +28,6 @@ Paste the prompt below into a new session (Claude Code or a person) to continue.
 - **Releases**: PyPI by trusted publishing behind the `release` environment; npm by **staged publishing only** (D-062): CI runs `npm stage publish`, a founder approves each version with 2FA on npmjs.com. Never switch npm back to direct publishing.
 
 **Open items for the founders**
-- Approve the seven staged `0.4.0` npm versions (platform packages first, then `tellproof-agent`) if not done yet.
 - GitHub billing: the private repo's Actions are blocked ("recent account payments have failed or your spending limit needs to be increased"). Public repo Actions are free and work. Until fixed, merge only on a local `make check` + `make oss-check`.
 - Revoke any npm tokens created during the npm saga (the `NPM_TOKEN` secret is already deleted).
 - Trademark clearance for TELLPROOF (USPTO search: no mark; note the pending TELL application, serial 99159450, classes 9 and 42). Domains deferred until funding (the site lives on GitHub Pages).
@@ -116,8 +115,8 @@ Tellproof's story is unusual and testable: *most AI safety checks can't fail; ou
 
 ## 6. Suggested next tasks, in order
 
-1. Approve npm 0.4.0 (founders), fix billing (founders).
-2. P8-1 Workflow hardening + Scorecard (4.3-1, 4.3-2) and community files (section 5): small, raises trust before any launch.
+1. Fix billing (founders). (npm 0.4.0 is approved.)
+2. P8-1 Workflow hardening + Scorecard (4.3-1, 4.3-2) and community files (section 5): in review (D-063). After it lands: branch protection on the public `main`, Discussions, social preview (founders).
 3. P8-2 `tellproof-agent init` + `doctor` + `demo` (4.1-1, 4.1-2, 4.1-7).
 4. P8-3 Content-leak regression suite (4.3-4).
 5. P8-4 Shareable HTML/Markdown/SARIF reports (4.2-1) and the CI-evidence Action (4.2-6).

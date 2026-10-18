@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-19 · P8-1 · Workflow hardening, Scorecard and community files
+
+**Built.** Every action in `oss/.github/workflows/*` and `.github/workflows/ci.yml` pinned to a commit SHA with its tag in a comment (the latest patch of each major already in use, resolved with `git ls-remote` and dereferenced to the commit), `persist-credentials: false` on every checkout, pages.yml's permissions moved into its job, `contents: read` on this repository's CI; `oss/.github/workflows/scorecard.yml`, `oss/.github/dependabot.yml`, `.github/dependabot.yml`, `oss/.github/CODEOWNERS`, `oss/.github/pull_request_template.md`, `oss/CONTRIBUTING.md`, `oss/CODE_OF_CONDUCT.md` (Contributor Covenant 2.1 from its official source), the Scorecard badge and links in the README. A test that every workflow stays pinned. Choices in D-063.
+
+**Problems.** Docker Hub rate-limited the anonymous manifest lookup, so the Dockerfile's base images stay on tags for now (Dependabot watches them). The project has no contact address for conduct reports, so they go through the private vulnerability form until the founders choose one. Only one maintainer handle is known from the history, so CODEOWNERS names one; add the other founder.
+
+**Verified.** The pin test passes, and fails when a pin is reverted to a tag or a checkout keeps its credentials; actionlint 1.7.7 reports nothing on all eleven workflows; `make check` with the database and `make oss-check` (below).
+
 ## 2026-10-19 · P7-5 · npm CI/CD and the welcome banner
 
 **Built.** npm publishing in `packages.yml` (agent and platform packages) and `sdk-release.yml` (SDK) with trusted publishing behind the `release` environment, smoke tests that install the built wheel and npm packages and run them before attesting or publishing, `cmd/agent/banner.go` with platform helpers for terminal width and colour (`term_unix.go`, `term_windows.go`, `term_other.go`), a status block and a quieter text log for `run --local` under the banner, the README's npm section, banner screenshots, `TELLPROOF_NO_BANNER`, changelog v0.4.0. Choices in D-061. Before that, on 18 Oct: the remaining six npm packages went through staged publishing after `npm publish` kept hitting the account's rate limit; the published tarballs match the release's byte for byte, and the `0.0.0-stage` placeholders are deprecated.

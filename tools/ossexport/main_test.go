@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -34,7 +35,8 @@ func TestExportIsTheOpenSourceTreeOnly(t *testing.T) {
 	}
 	for _, want := range []string{"LICENSE", "NOTICE", "README.md", "SECURITY.md", "CHANGELOG.md", "Makefile", ".github/workflows/release.yml",
 		"web/verify/verify.js", "web/brand.css", "web/security/index.html", "web/docs/agent/index.html", "spec/vectors/manifest.json", "sdk/python/LICENSE", "sdk/js/LICENSE",
-		"concierge/verify.py", "concierge/testdata/otlp-sample.jsonl", "tools/demolog/main.go", "packaging/build_wheels.py", "internal/dashboard/static/dashboard.js", "internal/jcs/testdata", "cmd/agent/Dockerfile", "go.mod"} {
+		"concierge/verify.py", "concierge/testdata/otlp-sample.jsonl", "tools/demolog/main.go", "packaging/build_wheels.py", "internal/dashboard/static/dashboard.js", "internal/jcs/testdata", "cmd/agent/Dockerfile", "go.mod",
+		"CONTRIBUTING.md", "CODE_OF_CONDUCT.md", ".github/CODEOWNERS", ".github/dependabot.yml", ".github/pull_request_template.md", ".github/workflows/scorecard.yml"} {
 		if !exists(filepath.Join(out, want)) {
 			t.Errorf("%s is missing", want)
 		}
@@ -55,6 +57,39 @@ func TestExportIsTheOpenSourceTreeOnly(t *testing.T) {
 	}
 	if info, err := os.Stat(filepath.Join(out, "scripts", "release-notes.sh")); err != nil || info.Mode().Perm()&0o100 == 0 {
 		t.Errorf("release-notes.sh is not executable: %v", err)
+	}
+}
+
+// Every workflow, public and private, pins each action to a full commit SHA
+// with its tag in a comment, and checks out without keeping the token in
+// .git/config (D-063).
+func TestWorkflowsPinActionsToCommits(t *testing.T) {
+	uses := regexp.MustCompile(`^\s*(?:- )?uses:\s*(\S+)(.*)$`)
+	pinned := regexp.MustCompile(`^[\w.-]+/[\w./-]+@[0-9a-f]{40}$`)
+	files, _ := filepath.Glob(filepath.Join("..", "..", "oss", ".github", "workflows", "*.yml"))
+	own, _ := filepath.Glob(filepath.Join("..", "..", ".github", "workflows", "*.yml"))
+	files = append(files, own...)
+	if len(files) < 6 {
+		t.Fatalf("found only %d workflows", len(files))
+	}
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := strings.Split(string(b), "\n")
+		for i, line := range lines {
+			m := uses.FindStringSubmatch(line)
+			if m == nil {
+				continue
+			}
+			if !pinned.MatchString(m[1]) || !regexp.MustCompile(`^ # v\d+\.\d+\.\d+$`).MatchString(m[2]) {
+				t.Errorf("%s:%d: %s is not pinned to a commit with its tag in a comment", f, i+1, strings.TrimSpace(line))
+			}
+			if strings.HasPrefix(m[1], "actions/checkout@") && (i+1 >= len(lines) || !strings.Contains(lines[i+1], "persist-credentials: false")) {
+				t.Errorf("%s:%d: checkout keeps its credentials", f, i+1)
+			}
+		}
 	}
 }
 

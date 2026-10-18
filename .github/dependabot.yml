@@ -1,0 +1,10 @@
+# Weekly updates for this repository's own CI actions. The open-source
+# workflows (oss/.github) are updated from the public repository's Dependabot
+# pull requests (D-063).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions: { patterns: ["*"] }

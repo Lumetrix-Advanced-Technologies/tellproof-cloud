@@ -14,6 +14,7 @@
 
 <p align="center">
   <a href="https://github.com/Lumetrix-Advanced-Technologies/tellproof/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Lumetrix-Advanced-Technologies/tellproof/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/Lumetrix-Advanced-Technologies/tellproof"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/Lumetrix-Advanced-Technologies/tellproof/badge"></a>
   <a href="https://pypi.org/project/tellproof-agent/"><img alt="PyPI: tellproof-agent" src="https://img.shields.io/pypi/v/tellproof-agent?label=pip%20install%20tellproof-agent&color=1f56c9"></a>
   <a href="https://www.npmjs.com/package/tellproof-agent"><img alt="npm: tellproof-agent" src="https://img.shields.io/npm/v/tellproof-agent?label=npx%20tellproof-agent&color=1f56c9"></a>
   <a href="https://pypi.org/project/tellproof/"><img alt="PyPI: tellproof" src="https://img.shields.io/pypi/v/tellproof?label=tellproof%20(python)&color=1e6b43"></a>
@@ -1196,6 +1197,8 @@ The tests need Go 1.26+, Node.js 22+ and Python 3.10+ with `cryptography`. The G
 | `action.yml` | The GitHub Action for `policy validate` and `check`. |
 | `packaging/` | The pip and npm package builders. |
 | `examples/` | Sample Python and Node.js apps with the one-line integration. |
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how pull requests land, and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 Every change keeps two rules: **no content leaves the customer** (no code path in the agent or the SDKs may send prompt or completion text, span content or raw trace IDs), and **the verifiers agree** (test vectors are added, never changed). The SDKs must never break or block the host app.
 

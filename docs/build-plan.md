@@ -161,3 +161,19 @@ A consultancy called Plumbline (plumblinehq.ai) audits AI systems by hand. It ha
 
 **P7-4 Rename to Tellproof.** (Added 17 Oct 2026.) Witnessmark turned out to be the name of a governance and assurance advisory (witnessmark.co) and its domains were taken, so before any public release every Witnessmark name becomes Tellproof. Acceptance: no `witnessmark` identifier left outside history; the v0.2 compatibility of P7-1 unchanged; `make check` and `make oss-check` pass; repositories renamed `tellproof` and `tellproof-cloud`.
 
+## Phase 8: Trust, setup and launch (added 19 Oct 2026 from the handoff roadmap)
+
+The roadmap in `docs/handoff.md` §4–6, in the order the founders chose. Each task is a small PR; the founders pick the next one.
+
+**P8-1 Workflow hardening, Scorecard and community files.** Every action pinned to a commit SHA with its tag in a comment, Dependabot for actions and the agent image, `persist-credentials: false` on every checkout, permissions per job; the OpenSSF Scorecard workflow and badge; CONTRIBUTING, CODE_OF_CONDUCT, a PR template and CODEOWNERS. Acceptance: a test fails on any unpinned action or credential-keeping checkout in either repository's workflows; the export carries the new files; Scorecard's Pinned-Dependencies (for actions) and Token-Permissions pass; the GitHub community profile is complete. Repository settings (branch protection, Discussions, social preview) are the founders'.
+
+**P8-2 `init`, `doctor` and `demo`.** One command from an app's directory to a batch on the dashboard; a diagnosis with a fix for every row of the troubleshooting table; the synthetic week as `tellproof-agent demo` (handoff §4.1-1, 4.1-2, 4.1-7).
+
+**P8-3 Content-leak regression suite.** Spans and SDK calls stuffed with secrets, personal data and prompts across every provider and attribute spelling; nothing of it in batches, dry-run output, logs or the dashboard API, in CI for the agent and both SDKs (§4.3-4).
+
+**P8-4 Shareable reports and the CI-evidence Action.** `check --html`, `--markdown`, `--sarif`; a GitHub Action wrapping `ci run/canary/attest` (§4.2-1, 4.2-6).
+
+**P8-5 Integrations.** LiteLLM, LangChain/LangGraph, Vercel AI SDK and an OpenTelemetry Collector exporter, each with a fake-client test and a README snippet (§4.1-4).
+
+**P8-6 Launch kit.** The README recording, Codespaces, social preview, an updated Show HN draft; the founders launch (§5).
+
