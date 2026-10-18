@@ -4,7 +4,7 @@ Tellproof (by Lumetrix) turns an AI product's runtime telemetry into signed evid
 
 ## Read before any task
 
-1. `docs/progress-tracker.md`: what is done and what is next.
+1. `docs/progress-tracker.md`: what is done and what is next. For the latest handoff (state, routines, roadmap): `docs/handoff.md`.
 2. `docs/build-plan.md`: the task you are about to do, its acceptance tests and dependencies.
 3. `docs/architecture.md`: the section for the component you are touching.
 4. `docs/code-standards.md` and, when calling an external API, `docs/library-docs.md`.
