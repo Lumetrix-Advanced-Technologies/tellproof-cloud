@@ -27,6 +27,7 @@ What must be true before Tellproof is announced (P6-3). Code-side items were don
 - [x] v0.2 published as `plumbline-agent` and `plumbline-sdk`; those packages were deleted from PyPI and npm after the rename (17 Oct 2026).
 - [x] v0.3.0 released as Tellproof: `tellproof-agent` 0.3.0 and `tellproof` 0.2.0 on PyPI (trusted publishing); site on GitHub Pages.
 - [x] npm, by hand (D-060), 18 Oct 2026: `tellproof-agent` 0.3.0 with its six platform packages and `tellproof` 0.2.0. The rate limit blocked `npm publish`, so the last six went through staged publishing (`npm stage publish`, then approval with 2FA on npmjs.com); the published tarballs match the release assets byte for byte. Each package also carries the `0.0.0-stage` placeholder version that staging creates.
+- [ ] npm trusted publishers (D-061), one per package on npmjs.com → package → Settings → Trusted Publisher → GitHub Actions: organisation `Lumetrix-Advanced-Technologies`, repository `tellproof`, environment `release`; workflow `packages.yml` for `tellproof-agent` and the six `tellproof-agent-<os>-<cpu>` packages, `sdk-release.yml` for `tellproof`. Until then the npm jobs fail and npm releases stay manual (staged publishing).
 - [x] `NPM_TOKEN` secret deleted from the public repository (17 Oct 2026). Revoke the token on npmjs.com.
 - [ ] Choose a private contact address for early access and security, or confirm GitHub-only is enough.
 - [ ] Check that the agent snippet in the app works with the published image.

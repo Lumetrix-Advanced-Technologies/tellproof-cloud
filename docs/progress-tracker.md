@@ -60,6 +60,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P7-2 | Falsifiable evidence | done | 2026-10-17 | Guardrail canaries in both SDKs (probes stay in the app; kind and caught only), batch v0.3 only for windows with canaries, EO-CAN-01 in both evaluators, `check --self-test` (each objective must fail on injected violations; vacuous registers flagged; tampering detected), report, dashboard tile and Action (D-057) |
 | P7-3 | Coding-agent evidence | done | 2026-10-17 | `witnessmark-agent ci run/canary/attest/verify/keygen`: gate outcomes per commit (no logs, code or command lines), must-fail canaries on a patched worktree, signed in-toto statements (or GitHub attestations) with coding-agent commit counts, `witnessmark-verify ci`, policy `ci` section (D-058) |
 | P7-4 | Rename to Tellproof | done | 2026-10-17 | Witnessmark collided with a governance advisory (witnessmark.co) and its domains were taken; renamed to Tellproof before any public release, with no Witnessmark aliases (never shipped); v0.2 compatibility unchanged (D-059) |
+| P7-5 | npm CI/CD and the welcome banner | done | 2026-10-19 | npm publishing back in the release and SDK workflows with trusted publishing, smoke tests of the built pip and npm packages before publishing; a welcome banner for interactive terminals; README npm section (D-061) |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
@@ -67,6 +68,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-19 · P7-5 · PR pending · npm releases are automated again behind approval, and the agent greets people in the terminal.
 - 2026-10-18 · P7-4 · All eight npm packages published by hand through staged publishing: `npx tellproof-agent` and `npm install tellproof` work.
 - 2026-10-17 · P7-4 · npm automation removed; the founders publish npm packages by hand once npm lifts the rate limit (D-060).
 - 2026-10-17 · P7-4 · SDK 0.2.0 on PyPI; npm rate-limits new packages, so a temporary npm-first-publish workflow publishes one every three hours until all eight are up.
