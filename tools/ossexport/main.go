@@ -78,6 +78,10 @@ const overlay = "oss"
 // skip are names never copied.
 var skip = map[string]bool{"__pycache__": true, "node_modules": true, ".DS_Store": true}
 
+// skipped reports whether a file or directory name is never copied: the names
+// in skip, and Python build metadata (*.egg-info) a local build leaves behind.
+func skipped(name string) bool { return skip[name] || strings.HasSuffix(name, ".egg-info") }
+
 // forbidden must not appear anywhere in the exported tree: names that would
 // mean control-plane code or configuration slipped in.
 var forbidden = []string{
@@ -178,7 +182,7 @@ func export(src, out, newModule string) (*Result, error) {
 			name := e.Name()
 			rel := filepath.Join(d, name)
 			switch {
-			case skip[name]:
+			case skipped(name):
 			case e.IsDir() && name == "testdata":
 				if err := c.tree(rel); err != nil {
 					return nil, err
@@ -270,7 +274,7 @@ func (c *copier) tree(rel string) error {
 		if err != nil {
 			return err
 		}
-		if skip[d.Name()] {
+		if skipped(d.Name()) {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
@@ -314,7 +318,7 @@ func (c *copier) overlay(dir string) error {
 		if err != nil {
 			return err
 		}
-		if skip[d.Name()] {
+		if skipped(d.Name()) {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
