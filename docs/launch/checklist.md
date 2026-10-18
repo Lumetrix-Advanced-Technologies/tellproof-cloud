@@ -20,12 +20,14 @@ What must be true before Tellproof is announced (P6-3). Code-side items were don
 
 - [x] `make oss-export`, review the tree, push it to the public repository (16 Oct 2026, exported from `p6-4-local`; re-export after the PRs merge).
 - [x] In the public repository: private vulnerability reporting on; a `release` environment with a required reviewer (tags `v*` and `sdk-v*` only); `early-access` label.
-- [ ] Make the ghcr package `tellproof-agent` public (GitHub web settings only; until then the README's `docker run` quick start fails for others).
-- [ ] PyPI: trusted publisher for `tellproof` (repository `Lumetrix-Advanced-Technologies/tellproof`, workflow `sdk-release.yml`, environment `release`). npm: an account that owns `tellproof` and an `NPM_TOKEN` secret in the public repository.
+- [x] Make the ghcr package `tellproof-agent` public (done 17 Oct 2026; the old `plumbline-agent` image is deleted).
+- [x] PyPI: trusted publishers for `tellproof` (`sdk-release.yml`) and `tellproof-agent` (`packages.yml`), repository `Lumetrix-Advanced-Technologies/tellproof`, environment `release`.
 - [x] Tag `v0.1.0`, check the draft release (checksums, attestations, versions, local mode smoke test), publish it.
 - [x] v0.2.0 released (dashboard, pip/npm packages attached to the release, `run --local`).
-- [x] Published: `tellproof-agent` 0.2.0 (PyPI, npm and six npm platform packages) and `tellproof` 0.1.0 (PyPI and npm), all with provenance; PyPI and npm both on trusted publishing.
-- [ ] Delete the `NPM_TOKEN` repository secret and revoke the token on npmjs.com (the workflows no longer use it).
+- [x] v0.2 published as `plumbline-agent` and `plumbline-sdk`; those packages were deleted from PyPI and npm after the rename (17 Oct 2026).
+- [x] v0.3.0 released as Tellproof: `tellproof-agent` 0.3.0 and `tellproof` 0.2.0 on PyPI (trusted publishing); site on GitHub Pages.
+- [ ] npm, by hand (D-060), once npm support lifts the account's publish rate limit: the four remaining platform packages, then `tellproof-agent` (from the v0.3.0 release assets), then `tellproof` (`npm pack` in `sdk/js` at `sdk-v0.2.0`). `tellproof-agent-darwin-arm64` and `-darwin-x64` are already up.
+- [x] `NPM_TOKEN` secret deleted from the public repository (17 Oct 2026). Revoke the token on npmjs.com.
 - [ ] Choose a private contact address for early access and security, or confirm GitHub-only is enough.
 - [ ] Check that the agent snippet in the app works with the published image.
 
