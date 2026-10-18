@@ -465,7 +465,7 @@ Skip the SDK and point an OTLP/HTTP **JSON** exporter at `http://127.0.0.1:4318/
 
 </details>
 
-Message attributes (`gen_ai.input.messages`, `gen_ai.output.messages`, `gen_ai.prompt*`, `gen_ai.completion*`, `llm.prompts.*`, `llm.completions.*`) are never read: their presence is counted and their values dropped at parse time. Use either the SDK or your exporter for the same calls, not both, or they are counted twice.
+Message attributes are never read: their presence is counted (`content_present_spans`, objective EO-CNT-01) and their values dropped at parse time. They are the GenAI and OpenLLMetry names (`gen_ai.input.messages`, `gen_ai.output.messages`, `gen_ai.system_instructions`, `gen_ai.tool.call.arguments`, `gen_ai.tool.call.result`, `gen_ai.prompt*`, `gen_ai.completion*`, `llm.prompts.*`, `llm.completions.*`), OpenInference (`input.value`, `output.value`, `llm.input_messages.*`, `llm.output_messages.*`), Traceloop (`traceloop.entity.input`, `traceloop.entity.output`), Langfuse (`langfuse.observation.input`, `langfuse.observation.output`) and the Vercel AI SDK (`ai.prompt`, `ai.prompt.messages`, `ai.response.text`, `ai.toolCall.args`, `ai.toolCall.result`); the list is `presence_only` in [`spec/semconv-map.json`](spec/semconv-map.json). If EO-CNT-01 fails, turn content capture off in your instrumentation: for example `TRACELOOP_TRACE_CONTENT=false`, `OPENINFERENCE_HIDE_INPUTS=true` and `OPENINFERENCE_HIDE_OUTPUTS=true`, or `recordInputs: false` and `recordOutputs: false` in the Vercel AI SDK's `experimental_telemetry`. Use either the SDK or your exporter for the same calls, not both, or they are counted twice.
 
 ---
 
@@ -1174,7 +1174,7 @@ Start with `tellproof-agent doctor`. It checks the configuration, the data direc
 | `npm install plumbline-sdk` | `npm install tellproof` | Yes. |
 | `plumbline-agent` (pip, npm, binary, image) | `tellproof-agent` | Yes. The new agent picks up the old data directory, identity and hash chain. The v0.1 and v0.2 release binaries stay on the Releases page. |
 | `PLUMBLINE_*` environment variables | `TELLPROOF_*` | No: the old names are read when the new ones are unset. |
-| `plumbline.*` span attributes | `tellproof.*` | No: both are mapped (`spec/semconv-map.json` v3). |
+| `plumbline.*` span attributes | `tellproof.*` | No: both are mapped (`spec/semconv-map.json` since v3). |
 | `plumbline.policy.json`, `./.plumbline-agent` | `tellproof.policy.json`, `./.tellproof-agent` | No: the old names are used when the new ones do not exist. |
 | Batches (`plumbline-batch/v0.2`), packs, signatures | the same | No: the wire formats are frozen, so every existing batch and pack still verifies. |
 

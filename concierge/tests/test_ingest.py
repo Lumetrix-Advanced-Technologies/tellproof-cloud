@@ -131,6 +131,31 @@ class IngestTest(unittest.TestCase):
                 self.assertNotIn(needle, text, f"{kind} {files}: {needle!r} leaked")
             self.assertIn(make_samples.MARKER, Path(files[0]).read_text(encoding="utf-8"))  # the input really has it
 
+    def test_leak_corpus_content_spellings_count(self):
+        # D-066: a span carrying any content spelling of the leak corpus counts
+        # towards content_present_spans unless the corpus lists it as uncounted,
+        # and its value is never read; the batch records the map version.
+        corpus = json.loads((ROOT / "spec" / "leak-corpus.json").read_text(encoding="utf-8"))
+        semconv = ingest.load_semconv()
+        needle = corpus["markers"][0]["text"]
+        for attr in corpus["content_attributes"]:
+            want = attr not in corpus["uncounted_content_attributes"]
+            for in_event in (False, True):
+                kv = [{"key": attr, "value": {"stringValue": needle}}]
+                span = {"traceId": "7e1a" * 8, "spanId": "00000000000000a1", "startTimeUnixNano": "1790000000000000000",
+                        "attributes": [{"key": "gen_ai.operation.name", "value": {"stringValue": "chat"}}] + ([] if in_event else kv),
+                        "events": [{"name": "content", "attributes": kv}] if in_event else []}
+                doc = {"resourceSpans": [{"scopeSpans": [{"spans": [span]}]}]}
+                with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as f:
+                    f.write(json.dumps(doc) + "\n")
+                try:
+                    out, _ = ingest.ingest("otlp", [f.name], SECRET)
+                finally:
+                    os.unlink(f.name)
+                self.assertEqual(out["semconv_map"], semconv["version"])
+                self.assertEqual(out["windows"][0]["metrics"]["content_present_spans"], int(want), (attr, in_event))
+                self.assertNotIn(corpus["markers"][0]["needle"], json.dumps(out, ensure_ascii=False), attr)
+
     def test_metrics_match_the_batch_schema(self):
         schema = json.loads((ROOT / "spec" / "batch.schema.json").read_text())
         for w in self.otlp["windows"]:
@@ -253,7 +278,7 @@ class ObservedTest(unittest.TestCase):
         self.assertEqual(canary["metrics"]["canaries"], [{"kind": "pii", "run": 2, "caught": 1}, {"kind": "prompt_injection", "run": 1, "caught": 1}])
         for w, good, bad in ((plain, v02, v03), (canary, v03, v02)):
             batch = {"schema": good["properties"]["schema"]["const"], "agent_id": "agt_abcdef12", "seq": 1, "prev": None,
-                     "window": w["window"], "semconv_map": "v3", "metrics": w["metrics"], "observed": w["observed"],
+                     "window": w["window"], "semconv_map": "v4", "metrics": w["metrics"], "observed": w["observed"],
                      "usage": [], "commit": w["commit"]}
             self.assertEqual(schema.errors(batch, good), [])
             batch["schema"] = bad["properties"]["schema"]["const"]

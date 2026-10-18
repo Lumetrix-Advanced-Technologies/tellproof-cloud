@@ -10,6 +10,7 @@ Each release's section is its release notes: the release workflow publishes the 
 - The welcome screen lists `init`, `demo` and `doctor`.
 - **A content-leak regression suite** (`make leak-test`, run by `make check` and CI): a shared corpus of synthetic prompts, personal data and example-format credentials, in every position and attribute spelling, through the agent, the Langfuse puller and both SDKs; nothing of it, and no raw trace ID, may appear in batches, dry-run output, logs, the dashboard, reports or SDK exports.
 - **Values copied into a batch must be identifiers.** A provider, model, region or prompt version that is not one (spaces, punctuation, more than 128 characters) or that looks like a credential is recorded as `invalid`, and such a canary kind as `other`. The suite found that a prompt or key put in one of these attributes by mistake would otherwise have been signed into a batch. Normal names are unaffected.
+- **More content spellings count towards EO-CNT-01** (semconv map v4, recorded in each batch): prompts and completions under OpenInference (`input.value`, `llm.input_messages.*`, …), Traceloop, Langfuse and Vercel AI SDK names, and the newer GenAI `gen_ai.system_instructions` and `gen_ai.tool.call.*`. They were never read and still are not; spans carrying them are now counted. An app that exports content through one of these libraries will see the content objective fail until capture is turned off. Tool definitions, prompt templates and generic fields such as `exception.message` do not count.
 
 ## v0.4.0
 
