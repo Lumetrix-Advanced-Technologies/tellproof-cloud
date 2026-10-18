@@ -312,8 +312,10 @@ func welcomeText(p palette, width int) string {
 	var b strings.Builder
 	b.WriteString("\n" + renderBanner(p, width, version, "Evidence agent") + "\n")
 	cmds := [][2]string{
+		{"tellproof-agent init", "set up the app in this directory"},
 		{"tellproof-agent run --local", "a signed local log and a dashboard"},
-		{"tellproof-agent report", "verify the log and summarise it"},
+		{"tellproof-agent demo", "the dashboard on a synthetic week"},
+		{"tellproof-agent doctor", "diagnose the setup, with a fix for each"},
 		{"tellproof-agent check", "evaluate it against tellproof.policy.json"},
 		{"tellproof-agent --help", "every command and option"},
 	}

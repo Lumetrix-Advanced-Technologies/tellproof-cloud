@@ -6,7 +6,7 @@ GO_PKGS := ./...
 STATICCHECK := honnef.co/go/tools/cmd/staticcheck@2026.2.2
 GOVULNCHECK := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
-.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test test-db agent-binaries agent-image oss-export oss-check e2e run-server run-worker agent-dry concierge-verify
+.PHONY: check fmt-check vet staticcheck vuln test vectors concierge-test sdk-test db db-test test-db agent-binaries agent-image oss-export oss-check e2e run-server run-worker agent-dry concierge-verify leak-test
 
 check: fmt-check vet staticcheck vuln test vectors concierge-test sdk-test
 
@@ -68,6 +68,14 @@ concierge-test:
 sdk-test:
 	python3 -m unittest discover -s sdk/python/tests
 	node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs sdk/js/test/real-libs.test.mjs
+
+# The content-leak regression suite alone (D-065): spec/leak-corpus.json through the
+# agent (dry run, receiver, signed log, dashboard, reports), Langfuse, the identifier
+# rules (Go and Python) and both SDKs. make check runs it too.
+leak-test:
+	go test -count=1 -run 'Leak|Identifier|ContentInReadAttributes' ./cmd/agent ./internal/otlp ./internal/langfuse
+	python3 -m unittest discover -s sdk/python/tests -p 'test_leak.py'
+	node --test --test-name-pattern 'leak corpus' sdk/js/test/instrument.test.mjs
 
 concierge-verify:
 	python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/*.dsse.json

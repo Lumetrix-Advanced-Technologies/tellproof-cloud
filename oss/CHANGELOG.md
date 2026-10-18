@@ -2,6 +2,15 @@
 
 Each release's section is its release notes: the release workflow publishes the section whose heading is the tag, and attests it with the binaries.
 
+## Unreleased
+
+- **`tellproof-agent init`**: run it in your app's directory. It recognises a Python or Node.js project (and CommonJS or ES modules), shows the SDK line and the file it goes in, writes `tellproof.policy.json` from two questions (or `--yes`), offers to add the data directory to `.gitignore` because it holds the agent's private key, and starts local mode. It changes no source file, and without a terminal it never starts or waits for anything.
+- **`tellproof-agent doctor`**: checks the configuration, the data directory and its permissions, the identity against the mode, the salt secret, whether the agent answers on its ports or something else holds them, where the SDKs will send, the dashboard and its version, the evidence log's verification, stale spans, the clock and the policy, with a fix for each problem. It sends no spans and contacts only the agent's own addresses. `--json`; exit 1 when a check fails.
+- **`tellproof-agent demo`**: the dashboard on a synthetic, signed week of an imaginary claims assistant, with a policy for it: most objectives pass, and the ones that fail show what the checks catch (a night deploy without the guardrail, missed canaries, no incident, an unrecorded prompt change). Nothing in it comes from your system.
+- The welcome screen lists `init`, `demo` and `doctor`.
+- **A content-leak regression suite** (`make leak-test`, run by `make check` and CI): a shared corpus of synthetic prompts, personal data and example-format credentials, in every position and attribute spelling, through the agent, the Langfuse puller and both SDKs; nothing of it, and no raw trace ID, may appear in batches, dry-run output, logs, the dashboard, reports or SDK exports.
+- **Values copied into a batch must be identifiers.** A provider, model, region or prompt version that is not one (spaces, punctuation, more than 128 characters) or that looks like a credential is recorded as `invalid`, and such a canary kind as `other`. The suite found that a prompt or key put in one of these attributes by mistake would otherwise have been signed into a batch. Normal names are unaffected.
+
 ## v0.4.0
 
 - **A welcome in the terminal.** `tellproof-agent` on its own shows the Tellproof banner and the first commands to run, and `run --local` starts with the banner and a short status block (where spans go, the dashboard, where the signed evidence is kept, the agent ID) instead of the JSON log. Only in an interactive terminal: pipes, files, CI, `TERM=dumb` and `TELLPROOF_NO_BANNER=1` get exactly the output they got before; `NO_COLOR` keeps the banner without colour. It adapts to narrow terminals.
