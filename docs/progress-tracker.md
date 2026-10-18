@@ -68,7 +68,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
-- 2026-10-19 · P7-5 · PR pending · npm releases are automated again behind approval, and the agent greets people in the terminal.
+- 2026-10-19 · P7-5 · v0.4.0 released (GitHub, Docker, PyPI; npm staged by CI for approval) · npm releases are automated again behind approval, and the agent greets people in the terminal.
 - 2026-10-18 · P7-4 · All eight npm packages published by hand through staged publishing: `npx tellproof-agent` and `npm install tellproof` work.
 - 2026-10-17 · P7-4 · npm automation removed; the founders publish npm packages by hand once npm lifts the rate limit (D-060).
 - 2026-10-17 · P7-4 · SDK 0.2.0 on PyPI; npm rate-limits new packages, so a temporary npm-first-publish workflow publishes one every three hours until all eight are up.
