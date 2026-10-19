@@ -28,7 +28,7 @@ jobs:
           [ "$py" = "$v" ] && [ "$js" = "$v" ] || { echo "tag $v, pyproject $py, package.json $js"; exit 1; }
           echo "version=$v" >> "$GITHUB_OUTPUT"
       - run: python -m unittest discover -s sdk/python/tests
-      - run: node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs sdk/js/test/cli.test.mjs
+      - run: node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs sdk/js/test/cli.test.mjs sdk/js/test/simple.test.mjs
       - name: Smoke test (build both packages, install them, import them)
         env: { V: "${{ steps.v.outputs.version }}" }
         run: |

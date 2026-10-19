@@ -57,6 +57,8 @@ class LeakCorpusTest(unittest.TestCase):
                 exp.shutdown(1)
         blob = b"".join(exports).decode("utf-8")
         self.assertGreaterEqual(blob.count('"spanId"'), 20)
+        self.assertIn("pmpt_1", blob)  # the D-069 section ran: the stored prompt's ID, never its variables
+        self.assertIn('"lookup"', blob)
         low = blob.lower()
         for n in NEEDLES:
             i = low.find(n.lower())
@@ -107,6 +109,39 @@ class LeakCorpusTest(unittest.TestCase):
         result = tellproof.run_canaries(lambda probe: seen.append(probe) or True)
         self.assertEqual(len(seen), len(PROBES))
         self.assertTrue(all(result.values()))
+
+        # The simpler usage (D-069): a decorated check and redactor that take
+        # and return content, decorated tools and agent runs that raise it,
+        # detected guardrails, Azure filter results and a stored prompt's variables.
+        saved = list(_core._checks)
+        _core.configure(agent="triage", prompt="claims", prompt_version="14", personal_data=True)
+        try:
+            check = tellproof.guardrail_check(lambda text: TEXT, canaries=False)
+            redact = tellproof.redactor(lambda text: TEXT)
+
+            @tellproof.tool(high_impact=True)
+            def lookup(q):
+                tellproof.approve()
+                raise RuntimeError(TEXT)
+
+            @tellproof.agent_run
+            def refund(q):
+                lookup(q)
+
+            with tellproof.trace():
+                redact(TEXT)
+                check(TEXT)
+                o.moderations.create(input=TEXT)
+                b.apply_guardrail(guardrailIdentifier="g", guardrailVersion="1", source="INPUT", content=[{"text": {"text": TEXT}}])
+                o.responses.create(model="gpt-5", input=TEXT, prompt={"id": "pmpt_1", "version": "2", "variables": {"x": TEXT}})
+                m["openai"].AzureOpenAI().chat.completions.create(model="gpt-4.1-mini", messages=msgs)
+                with self.assertRaises(RuntimeError):
+                    refund(TEXT)
+            check(TEXT)  # outside a request
+            redact(TEXT)
+        finally:
+            _core._checks[:] = saved
+            _core.configure()
 
 
 if __name__ == "__main__":

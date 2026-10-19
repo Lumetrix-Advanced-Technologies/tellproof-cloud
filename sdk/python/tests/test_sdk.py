@@ -365,12 +365,15 @@ class TransportTest(unittest.TestCase):
         for s in (target, redirect):
             threading.Thread(target=s.serve_forever, daemon=True).start()
         try:
-            with self.assertRaises(Exception):
+            with self.assertRaises(Exception) as ctx:
                 http_transport(f"http://127.0.0.1:{redirect.server_address[1]}/v1/traces")(b"{}")
+            if hasattr(ctx.exception, "close"):
+                ctx.exception.close()  # an HTTPError holds the 307 response
             self.assertEqual(hits, [], "the spans followed a redirect")
         finally:
-            target.shutdown()
-            redirect.shutdown()
+            for srv in (target, redirect):
+                srv.shutdown()
+                srv.server_close()
         for u in ("file:///etc/passwd", "ftp://127.0.0.1/", "gopher://x/"):
             with self.assertRaises(ValueError):
                 http_transport(u)

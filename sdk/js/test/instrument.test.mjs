@@ -333,10 +333,38 @@ test('nothing of the leak corpus reaches an export', async () => {
   const caught = await tellproof.runCanaries((probe) => { seen.push(probe); return true; });
   assert.equal(seen.length, probes.length);
   assert.ok(Object.values(caught).every(Boolean));
+  // The simpler usage (D-069): a check and a redactor that take and return
+  // content, wrapped tools and agent runs that throw it, detected guardrails,
+  // Azure filter results and a stored prompt's variables.
+  core.configure({ agent: 'triage', prompt: 'claims', promptVersion: '14', personalData: true });
+  const saved = core.checks.splice(0);
+  try {
+    const check = tellproof.guardrailCheck(async () => TEXT, { canaries: false });
+    const redact = tellproof.redactor(() => TEXT);
+    const lookup = tellproof.tool(async function lookup() { tellproof.approve(); throw new Error(TEXT); }, { highImpact: true });
+    const refund = tellproof.agentRun(async function refund(q) { await lookup(q); });
+    const o = new cjs.openai.OpenAI();
+    const B = cjs.bedrock;
+    await tellproof.trace(async () => {
+      redact(TEXT);
+      await check(TEXT);
+      await o.moderations.create({ input: TEXT });
+      await new B.BedrockRuntimeClient().send(new B.ApplyGuardrailCommand({ guardrailIdentifier: 'g', guardrailVersion: '1', source: 'INPUT', content: [{ text: { text: TEXT } }] }));
+      await o.responses.create({ model: 'gpt-5', input: TEXT, prompt: { id: 'pmpt_1', version: '2', variables: { x: TEXT } } });
+      await new cjs.openai.AzureOpenAI().chat.completions.create({ model: 'gpt-4.1-mini', messages: [{ role: 'user', content: TEXT }] });
+      await assert.rejects(refund(TEXT));
+    });
+    await check(TEXT); // outside a request
+    redact(TEXT);
+  } finally {
+    core.checks.splice(0, core.checks.length, ...saved);
+    core.configure();
+  }
   await new Promise((r) => setImmediate(r));
   assert.equal(await exp.flush(5000), true);
   const blob = exports.join('');
   assert.ok(blob.split('"spanId"').length - 1 >= 30);
+  assert.ok(blob.includes('pmpt_1') && blob.includes('"lookup"'), 'the D-069 section ran');
   const low = blob.toLowerCase();
   for (const n of needles) {
     const i = low.indexOf(n.toLowerCase());
