@@ -76,6 +76,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-19 · Repo settings · public `main` protected (CI checks, code-owner review, no force pushes), Discussions on, a social preview card; npm tokens revoked by the founder.
 - 2026-10-19 · Release · v0.5.0 released (GitHub, Docker, PyPI, npm) and SDK 0.3.0 (PyPI; npm staged for approval) · `pip install "tellproof[agent]"` from PyPI gives the SDK and agent v0.5.0 with a working `tellproof` command. #82's CI failure was a timing flake in the agent leak test (the early first batch on a slow runner), fixed by flushing on stop.
 - 2026-10-19 · P8-10 · PR #82 merged · An app now needs `init()` and, at most, one mark on its own guardrail and redaction functions: request scopes, canaries and common guardrails are automatic.
 - 2026-10-19 · P8-9 · PR #81 merged · A web page can no longer post spans into a developer's evidence, a cloned repository cannot plant the agent the launcher runs, spans never follow a redirect, and every surface an adopter takes on is in a published threat model.

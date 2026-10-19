@@ -28,8 +28,6 @@ Paste the prompt below into a new session (Claude Code or a person) to continue.
 - **Releases**: PyPI by trusted publishing behind the `release` environment; npm by **staged publishing only** (D-062): CI runs `npm stage publish`, a founder approves each version with 2FA on npmjs.com. Never switch npm back to direct publishing.
 
 **Open items for the founder** (Lumetrix has one founder; "the founders" elsewhere in the docs means them)
-- Revoke any npm tokens created during the npm saga (the `NPM_TOKEN` secret is already deleted).
-- Repository settings on the public repo: branch protection on `main`, Discussions, social preview (P8-1 left these to the founder).
 - Trademark clearance for TELLPROOF (USPTO search: no mark; note the pending TELL application, serial 99159450, classes 9 and 42). Domains deferred until funding (the site lives on GitHub Pages).
 - M1 (the trials) is **not** passed. Never write `M1: PASSED` until its criteria are met.
 
@@ -119,7 +117,9 @@ Tellproof's story is unusual and testable: *most AI safety checks can't fail; ou
 
 Updated 19 Oct 2026, after the v0.5.0 release: P8-1 to P8-3a, P8-7 to P8-10 and the release are done (#72 to #83). Pushing the public repo needs SSH (`git push git@github.com:Lumetrix-Advanced-Technologies/tellproof.git`): the `gh` token has no `workflow` scope. Merge a stack by pointing every PR at `main` first, then merging bottom-up: deleting a base branch closes the PRs on it.
 
-1. Approve `tellproof` 0.3.0 on npmjs.com (staged by sdk-release) if not done. Then: branch protection on the public `main`, Discussions, social preview (founder); retake the README screenshots with `tellproof-agent demo`.
+1. Approve `tellproof` 0.3.0 on npmjs.com (staged by sdk-release) if not done. Retake the README screenshots with `tellproof-agent demo`.
+
+Done on 19 Oct 2026: npm tokens revoked (founder). On the public repo: Discussions on; the social preview (`docs/launch/social-preview.html`, rendered to 1280x640 with headless Chrome); and branch protection on `main`: PRs need the CI checks `check`, `sdk-python (3.10)`, `sdk-python (3.13)`, `sdk-js (18)`, `sdk-js (24)`, one approving review from the code owner and resolved conversations; no force pushes or deletion. Admins are not enforced, on purpose: the founder pushes the release export straight to `main` and cannot approve their own PRs.
 2. P8-4 Shareable HTML/Markdown/SARIF reports (4.2-1) and the CI-evidence Action (4.2-6).
 3. P8-5 Integrations: LiteLLM, LangChain, Vercel AI SDK, OTel Collector (4.1-4); OpenTelemetry trace-context reuse in the SDKs (D-069, not done).
 4. P8-6 Launch kit: GIF, Codespaces, social preview, updated Show HN draft (lead with `pip install "tellproof[agent]"`, `tellproof init` and the decorators); then the founder launches.
