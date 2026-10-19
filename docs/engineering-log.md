@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-19 · P8-8 · README split
+
+**Built.** `oss/README.md` (1,233 lines to about 1,040): a short "What you get", a two-minute quick start on the one install (`init`, then `stop`), install (together and the agent alone, with the Docker line), instrumenting, running the agent (start, stop, status, restart, logs, run --local; connected modes), dashboard, reports, governance as code, CI evidence, configuration, sources, deploying, a short hosted-service section, verifying, the CLI reference with the new commands, troubleshooting rows for them, development. `oss/HOW-IT-WORKS.md` (new, exported to the public root): why, who it is for, the parts, local or hosted, the path from a call to a signed batch, what leaves, the data directory (with `run.json`, `agent.stop`, `agent.log`), the objectives, canaries and the self-test, coding-agent evidence, packs, verification, the security model, wire formats and the name. The site's home and agent pages show the one install and `stop`.
+
+**Problems.** A line-by-line comparison with the old README found three things my first cut lost: the name's explanation, the one-line `docker run`, and the container volume as the data directory's home. All restored.
+
+**Verified.** Every non-trivial line of the old README is in one of the two documents or deliberately rewritten (the comparison listed each). A link checker over the exported tree resolves every relative file, in-page anchor and cross-document anchor in both (GitHub's slug rules), and catches planted broken links. Fences and `<details>` balance. `make oss-check`.
+
 ## 2026-10-19 · P8-7 · One install and the background agent
 
 **Built.** `cmd/agent/background.go` (`start`, `stop`, `restart`, `status`, `logs`, the run record and stop file), `proc_unix.go`, `proc_windows.go`, `proc_other.go` (detaching, liveness, `--force`), `Agent.OnListening` so the record is written only once the receiver listens, `run --local` refusing a second agent on its data directory and watching for a stop request, `init` starting in the background, the welcome screen, doctor's fixes and the usage naming `start`. SDKs 0.3.0: `tellproof._cli` and the `[agent]` extra; `bin/tellproof.js` and the optional `tellproof-agent` dependency. Agent package READMEs, SDK READMEs, the SDK release smoke test (the extra and `npx tellproof version`), `CLAUDE.md`. Choices in D-067.
