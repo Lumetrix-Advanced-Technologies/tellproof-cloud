@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -289,7 +290,9 @@ func TestNothingOfTheLeakCorpusLeavesTheAgent(t *testing.T) {
 	done := make(chan int, 1)
 	logs := &lockedBuffer{}
 	go func() { done <- run(ctx, []string{"run", "--local", "--config", cfg}, lenv, logs, logs) }()
-	defer func() { cancel(); <-done }()
+	var stopOnce sync.Once
+	stop := func() { stopOnce.Do(func() { cancel(); <-done }) }
+	defer stop()
 	waitFor(t, listen, logs)
 
 	var answers strings.Builder
@@ -324,26 +327,32 @@ func TestNothingOfTheLeakCorpusLeavesTheAgent(t *testing.T) {
 		post([]byte(`{"resourceSpans": []} {"trailing": "`+m.Text+`"}`), false)
 	}
 
-	// Wait until a batch holds every LLM span.
+	// Stop the agent: it signs every open window on the way out. The early
+	// first batch (first_batch_seconds) may have caught only the spans posted
+	// in its first second, on a slow runner; the rest of the hour would wait
+	// for the window to close. Windows are additive, so the batches together
+	// must hold every LLM span.
+	stop()
 	var batches string
 	var batchContent, batchLLM int64
-	for i := 0; ; i++ {
-		files, _ := filepath.Glob(filepath.Join(dataDir, "local", "*.batch.json"))
-		batches, batchContent, batchLLM = "", 0, 0
-		for _, f := range files {
-			b, _ := os.ReadFile(f)
-			batches += decodedEnvelopes(t, b) + "\n"
-			n, l := payloadMetrics(t, b)
-			batchContent, batchLLM = batchContent+n, batchLLM+l
-		}
-		if batchLLM == int64(llmSpans) {
-			break
-		}
-		if i == 200 {
-			t.Fatalf("no batch with all %d LLM calls: %s\n%s", llmSpans, logs, batches)
-		}
-		time.Sleep(50 * time.Millisecond)
+	files, _ := filepath.Glob(filepath.Join(dataDir, "local", "*.batch.json"))
+	for _, f := range files {
+		b, _ := os.ReadFile(f)
+		batches += decodedEnvelopes(t, b) + "\n"
+		n, l := payloadMetrics(t, b)
+		batchContent, batchLLM = batchContent+n, batchLLM+l
 	}
+	if batchLLM != int64(llmSpans) {
+		t.Fatalf("the batches hold %d LLM calls, want %d: %s\n%s", batchLLM, llmSpans, logs, batches)
+	}
+	// The dashboard, for the same log, now that the agent has stopped.
+	dctx, dcancel := context.WithCancel(context.Background())
+	ddone := make(chan int, 1)
+	go func() {
+		ddone <- run(dctx, []string{"dashboard", "--data-dir", dataDir, "--listen", dash}, lenv, logs, logs)
+	}()
+	defer func() { dcancel(); <-ddone }()
+	waitFor(t, dash, logs)
 	if batchContent != int64(contentSpans) {
 		t.Errorf("signed batches: content_present_spans = %d, want %d (every span that carried a counted content attribute)", batchContent, contentSpans)
 	}
