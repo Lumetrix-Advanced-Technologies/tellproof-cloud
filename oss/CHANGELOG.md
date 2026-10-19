@@ -4,6 +4,8 @@ Each release's section is its release notes: the release workflow publishes the 
 
 ## Unreleased
 
+- **Supply chain**: every release now carries its signed provenance as a `.intoto.jsonl` asset (added to v0.1.0 to v0.5.0 too); the Python tools the release workflows install are pinned by hash, the agent image's base images by digest, and npm runs at an exact version. `SECURITY.md` gives the private report link, timelines and supported versions.
+
 ## v0.5.0
 
 Tellproof is now one install and one line: `pip install "tellproof[agent]"` or `npm install tellproof`, then `tellproof init`. Web requests are scoped automatically, your own guardrail and redaction functions are marked once, and the agent runs in the background with `tellproof start` and `tellproof stop`. This release also closes a content gap the new leak suite found and hardens everything an adopting project runs.

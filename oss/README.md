@@ -173,6 +173,8 @@ gh attestation verify oci://ghcr.io/lumetrix-advanced-technologies/tellproof-age
 npm audit signatures            # in a project that installed tellproof-agent or tellproof
 ```
 
+Each release also carries its provenance as `tellproof-<version>.intoto.jsonl`, the same Sigstore bundle, for verifiers that read release assets.
+
 ### The verifier
 
 `tellproof-verify-<os>-<arch>` from [Releases](https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases), or `go install github.com/lumetrix-advanced-technologies/tellproof/cmd/verify@latest`.
