@@ -2,6 +2,12 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-20 · Scorecard, `--version` and v0.5.1
+
+**Built.** `tellproof --version` (#86), the Scorecard work (#87, D-070), and the port of the public repository's Dependabot pull request #1 (13 action updates, merged there directly) into `oss/.github/workflows`, so the next export does not undo it.
+
+**Problems.** Dependabot pull requests on the public repository change files the export owns; merged there, the next export would silently downgrade them. Check the public history before every export (`git log` in the clone) and port anything new first. The public CI, Pages and Scorecard had already passed with the new versions; the release workflows ran them for the first time in v0.5.1.
+
 ## 2026-10-19 · P8-10 · Simpler usage
 
 **Built.** Python: `_core` (`Request` on the frame, `configure`, `decide`, `mark_redacted`, `trace()` as a request scope with an implicit guardrail when checks are registered, `guardrail_check`, `redactor`, `_Tool`/`tool()` and `_AgentRun`/`agent_run()` factories, `approve`), `_canary` (automatic canaries: daemon threads for sync checks, the app's loop for async ones), `_instrument` (Flask, Starlette, Django scopes; OpenAI moderation, Bedrock ApplyGuardrail, Azure content filter results and refusals, OpenAI stored prompts), `init()` options and `stats()["unscoped"]`. Node.js: the same in `core.cjs`, `canary.cjs`, `instrument.cjs` (`Server#emit('request')` on `node:http` and `node:https`), `index.cjs`, types and ESM exports. Fakes for moderation, Azure filters and ApplyGuardrail in both SDKs; `test_simple.py`, `simple.test.mjs`, real-framework tests in `test_real_libs.py`; both leak suites extended; CI installs Flask, FastAPI, httpx and Django in the real-libraries job. README usage section rewritten around `init()` and marked functions (scopes moved to a collapsed reference), both SDK READMEs, HOW-IT-WORKS, the threat model, `tellproof-agent init`'s output. Choices in D-069.
