@@ -76,6 +76,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-19 · Release · PR pending · v0.5.0 prepared: the changelog section, the Action pinned to 0.5.0, SDKs 0.3.0; the public push and the tags wait for the founder.
 - 2026-10-19 · P8-10 · PR pending · An app now needs `init()` and, at most, one mark on its own guardrail and redaction functions: request scopes, canaries and common guardrails are automatic.
 - 2026-10-19 · P8-9 · PR pending · A web page can no longer post spans into a developer's evidence, a cloned repository cannot plant the agent the launcher runs, spans never follow a redirect, and every surface an adopter takes on is in a published threat model.
 - 2026-10-19 · P8-8 · PR pending · The README is now the setup and usage guide, and how Tellproof works has its own document.
