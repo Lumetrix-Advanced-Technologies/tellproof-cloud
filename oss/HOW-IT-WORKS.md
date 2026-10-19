@@ -276,12 +276,13 @@ The three must agree on every case in [`spec/vectors/`](spec/vectors/README.md):
 - **One destination.** In connected mode the agent sends batches only to the server you configure; the only other outbound calls are the read-only Langfuse and provider usage APIs you turn on. In local mode it sends nothing.
 - **Keys stay where they are made.** The agent's Ed25519 key is generated on your machine (mode 0600); the issuer's signing key never leaves AWS KMS. Secrets are never written in the config file: each `*_env` key names the environment variable that holds one.
 - **Tamper-evident at every step.** Batches are signed and chained. Packs are signed, chained and listed in a public daily checkpoint. Keys are published with validity dates and a revocation list.
-- **The receiver has no authentication**, so it listens on loopback unless you allow otherwise (`otlp_allow_remote`), on a network you control. With one agent serving several pods, restrict who can reach port 4318 with a NetworkPolicy.
+- **The receiver has no authentication**, so it listens on loopback unless you allow otherwise (`otlp_allow_remote`), on a network you control. On loopback it also answers only under a local Host name, so a web page cannot post spans into your evidence by rebinding its domain to 127.0.0.1. With one agent serving several pods, restrict who can reach port 4318 with a NetworkPolicy.
 - **The dashboard** is loopback-only and read-only: it answers only GET requests, refuses any request whose Host is not a local name (so a web page cannot read it through DNS rebinding), loads nothing from anywhere else, and stores nothing but your chosen range.
+- **The SDK's transport** uses no proxy, follows no redirect with spans, and accepts only `http(s)` agent URLs. The `tellproof` launcher runs the installed agent and never one from the working directory, where a cloned repository could plant one.
 - **The packages** carry signed build provenance (SLSA, through GitHub artifact attestations); the pip and npm packages hold the release's own static binary and run nothing at install time; npm versions are staged by the release workflow and published only after a maintainer approves them with two-factor authentication.
 - **What we do not claim.** A pack shows what your telemetry shows: calls that bypass the agent are not in it (trace coverage measures that gap against billed usage). A signature proves who signed and that nothing changed since; it does not prove the telemetry was complete or truthful.
 
-The full statement is on the [security page](web/security/index.html). Report vulnerabilities privately: see [SECURITY.md](SECURITY.md).
+Every surface a project takes on by adopting Tellproof, with its threats, mitigations, the tests that hold them and what is left, is in the [threat model](docs/threat-model.md). The full statement is on the [security page](web/security/index.html). Report vulnerabilities privately: see [SECURITY.md](SECURITY.md).
 
 ## Wire formats and names
 

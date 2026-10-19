@@ -67,6 +67,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P8-3a | Content spellings counted | done | 2026-10-19 | Semconv map v4: OpenInference, Traceloop, Langfuse, Vercel AI SDK and newer GenAI prompt/completion names count towards `content_present_spans` (still never read); tool definitions, prompt templates and generic OTel fields deliberately not (corpus `uncounted_content_attributes`); leak test requires every span with a counted spelling to count; agent/concierge parity over every spelling (D-066) |
 | P8-7 | One install and the background agent | in review | 2026-10-19 | `pip install "tellproof[agent]"` / `npm install tellproof` (agent as an extra / optional dependency, never imported by the SDK) and a `tellproof` command in both SDKs; `start`, `stop`, `restart`, `status`, `logs`; a run record and a stop file in the data directory (no signals, no endpoint); init starts in the background; SDKs 0.3.0 (D-067) |
 | P8-8 | README split | in review | 2026-10-19 | `README.md` keeps install, setup and usage (one-install quick start, start/stop, CLI reference); `HOW-IT-WORKS.md` takes the use cases, the parts, the path from a model call to a signed batch, what leaves the machine, the data directory, objectives, canaries and self-test, coding-agent evidence, packs, verification, security model and wire formats; every old line accounted for, every link and anchor checked; site install copy updated |
+| P8-9 | Security hardening of what adopters run | in review | 2026-10-19 | Review of every surface an adopter takes on; fixed: receiver Host check on loopback (DNS rebinding could post fake spans), launchers never run an agent from the working directory, SDK transport follows no redirect and takes http(s) only (Node re-posted on 307/308), Langfuse URL must be https, the Action installs its own release by default (checked at release); `oss/docs/threat-model.md` (D-068) |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
@@ -74,6 +75,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-19 · P8-9 · PR pending · A web page can no longer post spans into a developer's evidence, a cloned repository cannot plant the agent the launcher runs, spans never follow a redirect, and every surface an adopter takes on is in a published threat model.
 - 2026-10-19 · P8-8 · PR pending · The README is now the setup and usage guide, and how Tellproof works has its own document.
 - 2026-10-19 · P8-7 · PR pending · One install gives the SDK, the agent and a `tellproof` command, and the local agent starts and stops in the background like any dev server.
 - 2026-10-19 · P8-3a · PR #77 merged · EO-CNT-01 now sees prompts and completions exported under OpenInference, Traceloop, Langfuse and Vercel AI SDK names, so an app that exports content can no longer pass it by using another library.

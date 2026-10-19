@@ -581,20 +581,20 @@ Is tampering with the log detected?
 The repository is also a GitHub Action. Validate the policy on every pull request that changes it:
 
 ```yaml
-- uses: Lumetrix-Advanced-Technologies/tellproof@v0.3.0
+- uses: Lumetrix-Advanced-Technologies/tellproof@v0.5.0
   with: { command: validate, policy: tellproof.policy.json }
 ```
 
 Or gate a release on the evidence, with a copy of the agent's data directory (from a scheduled job, an artifact or a volume snapshot):
 
 ```yaml
-- uses: Lumetrix-Advanced-Technologies/tellproof@v0.3.0
+- uses: Lumetrix-Advanced-Technologies/tellproof@v0.5.0
   with: { command: check, policy: tellproof.policy.json, data-dir: evidence/, strict: "true" }
 ```
 
 Add `command: self-test` as a second step to show the check could have failed.
 
-It installs `tellproof-agent` from PyPI, writes `tellproof-check.xml` (JUnit), puts the result in the job summary, and fails the job when an objective fails.
+It installs the `tellproof-agent` release it belongs to from PyPI (so pinning the Action pins the agent; `version:` picks another, `latest` the newest), writes `tellproof-check.xml` (JUnit), puts the result in the job summary, and fails the job when an objective fails.
 
 ### 3. Inventory: `tellproof-agent aibom`
 

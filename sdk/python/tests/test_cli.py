@@ -15,9 +15,16 @@ RUN = ("import sys; sys.path.insert(0, %r); sys.modules['tellproof_agent'] = Non
        "from tellproof._cli import main; sys.exit(main(sys.argv[1:]))") % SRC
 
 
-def tellproof(args, path):
+def tellproof(args, path, cwd=None):
     env = dict(os.environ, PATH=path)
-    return subprocess.run([sys.executable, "-c", RUN, *args], env=env, capture_output=True, text=True, timeout=30)
+    return subprocess.run([sys.executable, "-c", RUN, *args], env=env, cwd=cwd, capture_output=True, text=True, timeout=30)
+
+
+def fake_agent(d, marker=None):
+    fake = os.path.join(d, "tellproof-agent")
+    with open(fake, "w") as f:
+        f.write('#!/bin/sh\n' + (f'touch {marker}\n' if marker else '') + 'echo "agent: $*"\nexit 7\n')
+    os.chmod(fake, os.stat(fake).st_mode | stat.S_IXUSR)
 
 
 class CLITest(unittest.TestCase):
@@ -30,13 +37,23 @@ class CLITest(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "a shell script stands in for the agent")
     def test_it_runs_the_agent_with_the_same_arguments(self):
         with tempfile.TemporaryDirectory() as d:
-            fake = os.path.join(d, "tellproof-agent")
-            with open(fake, "w") as f:
-                f.write('#!/bin/sh\necho "agent: $*"\nexit 7\n')
-            os.chmod(fake, os.stat(fake).st_mode | stat.S_IXUSR)
+            fake_agent(d)
             r = tellproof(["stop", "--force"], d + os.pathsep + os.environ.get("PATH", ""))
         self.assertEqual(r.returncode, 7, r.stderr)
         self.assertEqual(r.stdout.strip(), "agent: stop --force")
+
+    @unittest.skipIf(os.name == "nt", "a shell script stands in for the agent")
+    def test_an_agent_in_the_working_directory_is_never_run(self):
+        # A cloned repository could carry a tellproof-agent: neither the
+        # working directory nor a relative PATH entry may reach it.
+        with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as empty:
+            marker = os.path.join(empty, "ran")
+            fake_agent(repo, marker)
+            for path in (".", "", os.pathsep.join(["", empty]), "." + os.pathsep + empty):
+                r = tellproof(["start"], path, cwd=repo)
+                self.assertEqual(r.returncode, 1, (path, r.stdout))
+                self.assertIn("not installed", r.stderr)
+            self.assertFalse(os.path.exists(marker), "the planted agent ran")
 
     def test_importing_the_sdk_does_not_load_the_command(self):
         r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, %r); import tellproof; "

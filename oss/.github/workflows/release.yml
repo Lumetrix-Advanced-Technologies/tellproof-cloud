@@ -34,6 +34,10 @@ jobs:
       - run: make check
       - name: The tag has release notes
         run: scripts/release-notes.sh "$GITHUB_REF_NAME" > /dev/null
+      - name: The Action installs this release by default
+        run: |
+          got=$(sed -n '/^  version:/,/default:/s/^ *default: *"\(.*\)"$/\1/p' action.yml)
+          [ "$got" = "${GITHUB_REF_NAME#v}" ] || { echo "action.yml's version default is '$got', the tag is $GITHUB_REF_NAME" >&2; exit 1; }
 
   build:
     needs: check
