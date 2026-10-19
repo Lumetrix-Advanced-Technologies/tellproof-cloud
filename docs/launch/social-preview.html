@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tellproof social preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Mono:wght@500&family=Public+Sans:wght@400;500;600&display=block" rel="stylesheet">
+<style>
+  :root {
+    --surface: #f4f5f3; --raised: #ffffff; --ink: #15181d; --muted: #565d69; --hairline: #d5d9de;
+    --chalk: #1f56c9; --chalk-tint: #e2e9f8; --brass: #e2ad45;
+    --pass: #1e6b43; --pass-tint: #e1f1e7; --fail: #b3261e; --fail-tint: #fbe4e1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 640px; background: var(--surface); overflow: hidden; }
+  body { font-family: "Public Sans", sans-serif; color: var(--ink); position: relative; }
+  /* the torque stripe, as a band across the card */
+  .stripe { position: absolute; right: -120px; top: -60px; width: 120px; height: 820px; background: var(--brass);
+    transform: rotate(35deg); opacity: .18; }
+  .wrap { position: absolute; inset: 64px 72px; display: grid; grid-template-columns: 1fr 360px; gap: 56px; align-items: center; }
+  .brand { display: flex; align-items: center; gap: 22px; margin-bottom: 34px; }
+  .brand svg { width: 88px; height: 88px; }
+  .name { font-family: "Archivo", sans-serif; font-weight: 800; font-size: 76px; letter-spacing: -1.5px; line-height: 1; }
+  h1 { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 44px; line-height: 1.12; letter-spacing: -.5px; margin-bottom: 18px; }
+  h1 em { font-style: normal; color: var(--chalk); }
+  p.lede { font-size: 23px; line-height: 1.45; color: var(--muted); max-width: 640px; margin-bottom: 34px; }
+  .install { display: inline-flex; align-items: center; gap: 14px; background: var(--ink); color: #fff; border-radius: 10px;
+    padding: 14px 22px; font-family: "IBM Plex Mono", monospace; font-size: 22px; }
+  .install .dollar { color: var(--brass); }
+  .foot { position: absolute; left: 72px; bottom: 36px; font-size: 17px; color: var(--muted); letter-spacing: .2px; }
+  .foot b { color: var(--ink); font-weight: 600; }
+  /* the evidence chain: hourly batches, one edited */
+  .chain { background: var(--raised); border: 1px solid var(--hairline); border-radius: 14px; padding: 22px 24px; box-shadow: 0 14px 40px rgba(21,24,29,.08); }
+  .chain h2 { font-size: 15px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .row { display: grid; grid-template-columns: 58px 1fr auto; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--hairline); font-size: 17px; }
+  .row:first-of-type { border-top: 0; }
+  .t { font-family: "IBM Plex Mono", monospace; color: var(--muted); font-size: 16px; }
+  .d { font-family: "IBM Plex Mono", monospace; font-size: 15px; color: var(--ink); }
+  .s { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 15px; padding: 4px 10px; border-radius: 999px; }
+  .ok { color: var(--pass); background: var(--pass-tint); }
+  .bad { color: var(--fail); background: var(--fail-tint); }
+</style>
+</head>
+<body>
+  <div class="stripe"></div>
+  <div class="wrap">
+    <div>
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#1f56c9"/><path d="M25.5 17l-4.75 8.23h-9.5L6.5 17l4.75-8.23h9.5z" fill="#fff"/><path d="M16 17L26.6 6.4" stroke="#e2ad45" stroke-width="3.4" stroke-linecap="round"/><circle cx="16" cy="17" r="3.6" fill="#1f56c9"/></svg>
+        <span class="name">Tellproof</span>
+      </div>
+      <h1>Evidence of how your AI system runs, <em>that tells on itself.</em></h1>
+      <p class="lede">Signed, content-free, hour by hour. Verifiable by a bank, an insurer or an auditor without trusting you.</p>
+      <div class="install"><span class="dollar">$</span>pip install "tellproof[agent]"</div>
+    </div>
+    <div class="chain" aria-label="An evidence chain of hourly batches, one edited">
+      <h2>Evidence chain</h2>
+      <div class="row"><span class="t">09:00</span><span class="d">sha256:4f1c…</span><span class="s ok">✓ Verified</span></div>
+      <div class="row"><span class="t">10:00</span><span class="d">sha256:a83e…</span><span class="s ok">✓ Verified</span></div>
+      <div class="row"><span class="t">11:00</span><span class="d">sha256:07bd…</span><span class="s bad">✕ Edited</span></div>
+      <div class="row"><span class="t">12:00</span><span class="d">sha256:c25a…</span><span class="s ok">✓ Verified</span></div>
+      <div class="row"><span class="t">13:00</span><span class="d">sha256:9e60…</span><span class="s ok">✓ Verified</span></div>
+    </div>
+  </div>
+  <div class="foot"><b>Open source</b> · Python and Node.js · one line: <b>tellproof.init()</b> · github.com/Lumetrix-Advanced-Technologies/tellproof</div>
+</body>
+</html>
