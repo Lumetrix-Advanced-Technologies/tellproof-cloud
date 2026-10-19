@@ -14,10 +14,10 @@ Paste the prompt below into a new session (Claude Code or a person) to continue.
 
 | Channel | State |
 | --- | --- |
-| GitHub release | [v0.4.0](https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases/tag/v0.4.0), attested binaries for six platforms |
-| Docker | `ghcr.io/lumetrix-advanced-technologies/tellproof-agent:v0.4.0` / `:latest`, public |
-| PyPI | `tellproof-agent` 0.4.0; `tellproof` (SDK) 0.2.0 |
-| npm | `tellproof-agent` + 6 platform packages: 0.4.0, approved and live (checked 19 Oct); `tellproof` (SDK) 0.2.0 |
+| GitHub release | [v0.5.0](https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases/tag/v0.5.0), attested binaries for six platforms |
+| Docker | `ghcr.io/lumetrix-advanced-technologies/tellproof-agent:v0.5.0` / `:latest`, public |
+| PyPI | `tellproof-agent` 0.5.0; `tellproof` (SDK) 0.3.0 |
+| npm | `tellproof-agent` + 6 platform packages: 0.5.0, approved and live; `tellproof` (SDK) 0.3.0 staged for approval (check `npm view tellproof version`) |
 | Website | https://lumetrix-advanced-technologies.github.io/tellproof/ (GitHub Pages, `web/`, `pages.yml`) |
 
 **Features shipped in Phase 7** (details in the ADRs):
@@ -117,10 +117,9 @@ Tellproof's story is unusual and testable: *most AI safety checks can't fail; ou
 
 ## 6. Suggested next tasks, in order
 
-Updated 19 Oct 2026. Done and in review as a stack of PRs (merge in order, each into main once its base has merged): #78 docs, #79 P8-7 one install and the background agent, #80 P8-8 README split, #81 P8-9 security hardening, #82 P8-10 simpler usage, then the v0.5.0 release prep.
+Updated 19 Oct 2026, after the v0.5.0 release: P8-1 to P8-3a, P8-7 to P8-10 and the release are done (#72 to #83). Pushing the public repo needs SSH (`git push git@github.com:Lumetrix-Advanced-Technologies/tellproof.git`): the `gh` token has no `workflow` scope. Merge a stack by pointing every PR at `main` first, then merging bottom-up: deleting a base branch closes the PRs on it.
 
-1. Merge the stack (the founder reviews each; CI is green again).
-2. Release v0.5.0, in this order: export and push the public repo; tag `v0.5.0` (release.yml refuses it unless `action.yml`'s default version is 0.5.0); approve the image job; publish the draft; approve PyPI in `packages.yml`, and the seven staged npm versions on npmjs.com; then tag `sdk-v0.3.0` (its smoke test installs the `[agent]` extra and `npx tellproof`, so the agent must be live first) and approve its PyPI job and staged npm version. Then: branch protection on the public `main`, Discussions, social preview (founder); retake the README screenshots with `tellproof-agent demo`.
-3. P8-4 Shareable HTML/Markdown/SARIF reports (4.2-1) and the CI-evidence Action (4.2-6).
-4. P8-5 Integrations: LiteLLM, LangChain, Vercel AI SDK, OTel Collector (4.1-4); OpenTelemetry trace-context reuse in the SDKs (D-069, not done).
-5. P8-6 Launch kit: GIF, Codespaces, social preview, updated Show HN draft (lead with `pip install "tellproof[agent]"`, `tellproof init` and the decorators); then the founder launches.
+1. Approve `tellproof` 0.3.0 on npmjs.com (staged by sdk-release) if not done. Then: branch protection on the public `main`, Discussions, social preview (founder); retake the README screenshots with `tellproof-agent demo`.
+2. P8-4 Shareable HTML/Markdown/SARIF reports (4.2-1) and the CI-evidence Action (4.2-6).
+3. P8-5 Integrations: LiteLLM, LangChain, Vercel AI SDK, OTel Collector (4.1-4); OpenTelemetry trace-context reuse in the SDKs (D-069, not done).
+4. P8-6 Launch kit: GIF, Codespaces, social preview, updated Show HN draft (lead with `pip install "tellproof[agent]"`, `tellproof init` and the decorators); then the founder launches.
