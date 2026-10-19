@@ -39,7 +39,7 @@ Open-source launch (agent, verifier, verify page) is planned for 5–6 Jan 2027.
 
 ## Team
 
-Two founders, both part-time. Founder A leads go-to-market; Founder B leads the build. Claude Code is the pair engineer; every PR is reviewed by the other founder.
+One founder (since 19 Oct 2026), leading both go-to-market and the build. Claude Code is the pair engineer. The founder reviews every PR; Claude runs `/guard-review` and `/code-review` first, because there is no second human reviewer. Older documents say "the founders"; read it as the founder.
 
 ## Glossary
 

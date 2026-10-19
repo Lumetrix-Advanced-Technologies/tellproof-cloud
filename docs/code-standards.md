@@ -62,5 +62,5 @@ Concierge: Python 3.12, `cryptography` and `boto3` only. Frozen after M1: bug fi
 ## Git
 
 - Branch per task: `p1-2-dsse`, `p4-5-pack-signing`. Conventional commit messages (`feat(dsse): …`, `fix(jcs): …`).
-- One PR per build-plan task, reviewed by the other founder. The PR description lists the acceptance tests and how they were run.
+- One PR per build-plan task, reviewed by the founder after `/guard-review` (and `/code-review` for non-trivial changes) has run, since there is no second reviewer. The PR description lists the acceptance tests and how they were run.
 - Never commit secrets, `.env*` files, private keys other than the clearly named test key in `spec/vectors/`, or customer data.
