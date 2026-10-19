@@ -14,10 +14,10 @@ Paste the prompt below into a new session (Claude Code or a person) to continue.
 
 | Channel | State |
 | --- | --- |
-| GitHub release | [v0.5.0](https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases/tag/v0.5.0), attested binaries for six platforms |
-| Docker | `ghcr.io/lumetrix-advanced-technologies/tellproof-agent:v0.5.0` / `:latest`, public |
-| PyPI | `tellproof-agent` 0.5.0; `tellproof` (SDK) 0.3.0 |
-| npm | `tellproof-agent` + 6 platform packages: 0.5.0, approved and live; `tellproof` (SDK) 0.3.0 staged for approval (check `npm view tellproof version`) |
+| GitHub release | [v0.5.1](https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases/tag/v0.5.1), attested binaries for six platforms, provenance attached as `tellproof-v0.5.1.intoto.jsonl` |
+| Docker | `ghcr.io/lumetrix-advanced-technologies/tellproof-agent:v0.5.1` / `:latest`, public |
+| PyPI | `tellproof-agent` 0.5.1; `tellproof` (SDK) 0.3.2 |
+| npm | `tellproof-agent` + 6 platform packages: 0.5.1, live; `tellproof` (SDK) 0.3.1 live, 0.3.2 staged for approval (check `npm view tellproof version`) |
 | Website | https://lumetrix-advanced-technologies.github.io/tellproof/ (GitHub Pages, `web/`, `pages.yml`) |
 
 **Features shipped in Phase 7** (details in the ADRs):
@@ -117,7 +117,7 @@ Tellproof's story is unusual and testable: *most AI safety checks can't fail; ou
 
 Updated 19 Oct 2026, after the v0.5.0 release: P8-1 to P8-3a, P8-7 to P8-10 and the release are done (#72 to #83). Pushing the public repo needs SSH (`git push git@github.com:Lumetrix-Advanced-Technologies/tellproof.git`): the `gh` token has no `workflow` scope. Merge a stack by pointing every PR at `main` first, then merging bottom-up: deleting a base branch closes the PRs on it.
 
-1. Approve `tellproof` 0.3.0 on npmjs.com (staged by sdk-release) if not done. Retake the README screenshots with `tellproof-agent demo`.
+1. Approve `tellproof` 0.3.2 on npmjs.com (staged by sdk-release) if not done. Register the project at bestpractices.dev (the last Scorecard item we can move; 7.7 on 20 Oct 2026). Retake the README screenshots with `tellproof-agent demo`. Before every export, check the public repository for commits made there (Dependabot) and port them first.
 
 Done on 19 Oct 2026: npm tokens revoked (founder). On the public repo: Discussions on; the social preview (`docs/launch/social-preview.html`, rendered to 1280x640 with headless Chrome); and branch protection on `main`: PRs need the CI checks `check`, `sdk-python (3.10)`, `sdk-python (3.13)`, `sdk-js (18)`, `sdk-js (24)`, one approving review from the code owner and resolved conversations; no force pushes or deletion. Admins are not enforced, on purpose: the founder pushes the release export straight to `main` and cannot approve their own PRs.
 2. P8-4 Shareable HTML/Markdown/SARIF reports (4.2-1) and the CI-evidence Action (4.2-6).
