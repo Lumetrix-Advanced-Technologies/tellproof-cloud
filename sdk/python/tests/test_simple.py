@@ -196,8 +196,18 @@ class Checks(Base):
         self.assertEqual(a["attrs"][GUARD], "allow")
 
 
+def canary_kinds(cap):
+    return sorted(s["attrs"][_canary.CANARY_KIND] for s in cap.spans if _canary.CANARY_KIND in s["attrs"])
+
+
+def wait_canaries(cap, n=len(_canary.PROBES)):
+    deadline = time.time() + 5
+    while len(canary_kinds(cap)) < n and time.time() < deadline:
+        time.sleep(0.01)
+
+
 class Canaries(Base):
-    def test_a_decorated_check_gets_canaries_after_init(self):
+    def test_a_check_gets_canaries_from_its_first_call(self):
         seen = []
 
         @tellproof.guardrail_check
@@ -207,43 +217,107 @@ class Canaries(Base):
 
         @tellproof.guardrail_check(canaries=False)
         def output_only(text):
-            raise AssertionError("no canaries for this one")
+            return False
 
         _canary.start_auto(3600)
-        deadline = time.time() + 5
-        while len([s for s in self.cap.spans if _canary.CANARY_KIND in s["attrs"]]) < len(_canary.PROBES) and time.time() < deadline:
-            time.sleep(0.01)
-        kinds = sorted(s["attrs"][_canary.CANARY_KIND] for s in self.cap.spans if _canary.CANARY_KIND in s["attrs"])
-        self.assertEqual(kinds, sorted(_canary.PROBES))
+        time.sleep(0.05)
+        self.assertEqual(canary_kinds(self.cap), [], "canaries before the check ever ran")
+        with tellproof.trace():
+            check(MARK)
+            output_only(MARK)
+        wait_canaries(self.cap)
+        self.assertEqual(canary_kinds(self.cap), sorted(_canary.PROBES))
         self.assertTrue(all(s["attrs"][_canary.CANARY_CAUGHT] for s in self.cap.spans if _canary.CANARY_KIND in s["attrs"]))
-        self.assertEqual(self.llm(), [], "a canary counted as a model call or a decision")
-        self.assertEqual(sorted(seen), sorted(_canary.PROBES.values()))
+        self.assertEqual(sorted(t for t in seen if t != MARK), sorted(_canary.PROBES.values()))
+        self.assertEqual([s["attrs"][GUARD] for s in self.llm()], ["block"], "a canary became a decision")
 
-    def test_an_async_check_runs_its_canaries_on_the_apps_loop(self):
+    def test_a_method_check_gets_its_instance(self):
+        class Guard:
+            def __init__(self):
+                self.blocked = ("Ignore", "game", "card", "AWS")
+
+            @tellproof.guardrail_check
+            def check(self, text):
+                return any(w in text for w in self.blocked)
+
+        _canary.start_auto(3600)
+        Guard().check(MARK)
+        wait_canaries(self.cap)
+        caught = {s["attrs"][_canary.CANARY_KIND]: s["attrs"][_canary.CANARY_CAUGHT] for s in self.cap.spans
+                  if _canary.CANARY_KIND in s["attrs"]}
+        self.assertEqual(caught, {k: True for k in _canary.PROBES}, "probes went to an unbound method and were missed")
+
+    def test_an_async_check_runs_its_canaries_on_the_apps_loop_and_again_after_a_restart(self):
         @tellproof.guardrail_check
         async def check(text):
             await asyncio.sleep(0)
             return "block"
 
-        _canary.start_auto(3600)
-
         async def app():
             async with tellproof.trace():
-                await check(MARK)  # the first call starts the canaries on this loop
+                await check(MARK)
             for _ in range(100):
-                if len([s for s in self.cap.spans if _canary.CANARY_KIND in s["attrs"]]) == len(_canary.PROBES):
+                if len(canary_kinds(self.cap)) >= len(_canary.PROBES):
                     break
                 await asyncio.sleep(0.01)
+
+        _canary.start_auto(3600)
         asyncio.run(app())
-        kinds = [s["attrs"][_canary.CANARY_KIND] for s in self.cap.spans if _canary.CANARY_KIND in s["attrs"]]
-        self.assertEqual(sorted(kinds), sorted(_canary.PROBES))
+        self.assertEqual(canary_kinds(self.cap), sorted(_canary.PROBES))
+        _canary.stop_auto()  # shutdown(), then init() again
+        _canary.start_auto(3600)
+        self.cap.spans.clear()
+        asyncio.run(app())  # a new loop: the old one closed
+        self.assertEqual(canary_kinds(self.cap), sorted(_canary.PROBES))
 
     def test_canaries_off(self):
         @tellproof.guardrail_check
         def check(text):
             return True
-        time.sleep(0.1)  # never started: init(canaries=False) does not call start_auto
-        self.assertEqual(self.cap.spans, [])
+        with tellproof.trace():
+            check(MARK)
+        time.sleep(0.1)  # start_auto never ran: init(canaries=False)
+        self.assertEqual(canary_kinds(self.cap), [])
+
+    def test_a_check_is_registered_once_and_at_most_32(self):
+        def check(text):
+            return False
+        a, b = tellproof.guardrail_check(check), tellproof.guardrail_check(check)
+        self.assertEqual(len(_core._checks), 1)
+        for _ in range(40):
+            tellproof.guardrail_check(lambda t: False)  # a check wrapped per call: the leak this guards against
+        self.assertEqual(len(_core._checks), _core.MAX_CHECKS)
+        with tellproof.trace():
+            tellproof.guardrail_check(lambda t: True)(MARK)  # unregistered, its decision still counts
+        self.assertEqual([s["attrs"][GUARD] for s in self.llm()], ["block"])
+
+
+class Awaitables(Base):
+    def test_a_sync_check_that_returns_an_awaitable_keeps_it_and_decides_when_it_resolves(self):
+        async def scan(text):
+            await asyncio.sleep(0)
+            return "FLAG" in text
+
+        @tellproof.guardrail_check(canaries=False)
+        def check(text):
+            return scan(text)  # a coroutine from a plain def
+
+        @tellproof.guardrail_check(canaries=False)
+        def check_task(text):
+            return asyncio.ensure_future(scan(text))
+
+        async def app():
+            async with tellproof.trace():
+                self.assertFalse(await check(MARK))
+                self.chat()
+            async with tellproof.trace():
+                t = check_task("FLAG")
+                self.assertIsInstance(t, asyncio.Task)  # the app's own object comes back
+                self.assertTrue(await t)
+                await asyncio.sleep(0)
+                self.chat()
+        asyncio.run(app())
+        self.assertEqual([s["attrs"].get(GUARD) for s in self.llm()], ["allow", "block"])
 
 
 class Tools(Base):
@@ -371,12 +445,12 @@ class Frameworks(Base):
         return fake_frameworks(calls)
 
     def setUp(self):
+        super().setUp()
+
         @tellproof.guardrail_check(canaries=False)
         def check(text):
             return "flag" if "FLAG" in text else False
         self.check = check
-        super().setUp()
-        _core._checks.append((check, False))  # Base cleared the registry
 
     def test_every_request_is_its_own_scope(self):
         self.assertEqual(_instrument.install(requests=True)[-3:], ["flask", "starlette", "django"])
@@ -407,6 +481,50 @@ class Frameworks(Base):
             self.assertFalse(hasattr(m["flask.app"].Flask.wsgi_app, _instrument._MARK))
         finally:
             mods.__exit__()
+
+
+class Streaming(Base):
+    def frameworks(self):
+        test = self
+
+        class Flask:
+            def wsgi_app(self, environ, start_response):
+                def body():  # a streamed response: the check and the call happen while it is sent
+                    test.check("FLAG")
+                    test.chat()
+                    yield b"chunk"
+                return body()
+        return {"flask": fakes._module("flask", Flask=Flask), "flask.app": fakes._module("flask.app", Flask=Flask)}
+
+    def setUp(self):
+        super().setUp()
+        self.check = tellproof.guardrail_check(lambda t: "flag" if "FLAG" in t else False, canaries=False)
+
+    def test_a_streamed_flask_response_stays_in_its_request(self):
+        body = self.m["flask.app"].Flask().wsgi_app({}, None)
+        self.assertEqual(next(body), b"chunk")
+        self.assertEqual(self.llm(), [], "the call left before the response was sent")
+        self.assertEqual(list(body), [])  # sent in full: the request ends here, close() or not
+        self.assertEqual([s["attrs"].get(GUARD) for s in self.llm()], ["flag"])
+        body.close()
+        self.assertEqual(len(self.llm()), 1)
+        self.assertEqual(_core.current_client().stats.unscoped, 0)
+
+
+class Compatibility(Base):
+    def test_the_helpers_are_still_classes(self):
+        class AuditedTool(tellproof.tool):
+            pass
+
+        with AuditedTool("audited") as t:
+            self.assertIsInstance(t, tellproof.tool)
+        self.assertIsInstance(tellproof.trace(), tellproof.trace)
+        self.assertIsInstance(tellproof.agent_run("a"), tellproof.agent_run)
+
+        @tellproof.trace
+        def job():
+            return 7
+        self.assertEqual(job(), 7)
 
 
 class Init(unittest.TestCase):

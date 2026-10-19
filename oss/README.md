@@ -230,7 +230,7 @@ def issue_refund(claim):
 ```
 
 ```js
-const check = tellproof.guardrailCheck(myGuardrail.check);
+const check = tellproof.guardrailCheck((text) => myGuardrail.check(text));
 const redact = tellproof.redactor(redactPII);
 const issueRefund = tellproof.tool(async function issueRefund(claim) {
   if (approvedByPolicy(claim)) tellproof.approve();
@@ -285,7 +285,7 @@ Other functions: `flush()` sends buffered spans now (in Node.js, `await tellproo
 
 Guardrail coverage (EO-GRD-01) shows a guardrail *ran* on every call; it cannot show the guardrail *works*. Canaries close that gap: the SDK passes a few synthetic, known-bad probes (a prompt injection, a jailbreak, made-up personal data, a documented example AWS key) to **your own guardrail check**, and records only the kind and whether it was caught. EO-CAN-01 passes when every canary was caught; a missed one fails it and names the kind. ([Why](HOW-IT-WORKS.md#evidence-that-can-fail-canaries-and-the-self-test).)
 
-With `@tellproof.guardrail_check` (`guardrailCheck`) they run on their own: now, then hourly (a sync Python check on a daemon thread, an async one on your app's event loop from its first call; in Node.js on an unref'd timer). To run them yourself instead:
+With `@tellproof.guardrail_check` (`guardrailCheck`) they run on their own, from the check's first call and then hourly, through the same function (a method gets its own instance): a sync Python check on a daemon thread, an async one on your app's event loop, in Node.js on an unref'd timer. Decorate or wrap a check once, where it is defined (at most 32 are registered). To run them yourself instead:
 
 ```python
 tellproof.schedule_canaries(guardrail_check, every=3600)   # now, then hourly, on a daemon thread

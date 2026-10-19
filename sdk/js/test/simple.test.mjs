@@ -151,23 +151,80 @@ test('tool(fn) and agentRun(fn) are named after the function; approve()', async 
   noContent();
 });
 
-test('a guardrailCheck gets canaries once they start, and not when off', async () => {
+const canarySpans = () => cap.spans.filter((s) => canaries.CANARY_KIND in s.attrs);
+async function waitCanaries(n = Object.keys(canaries.PROBES).length) {
+  for (let i = 0; i < 200 && canarySpans().length < n; i++) await new Promise((r) => setTimeout(r, 10));
+}
+
+test('a guardrailCheck gets canaries from its first call, and not when off', async () => {
   const seen = [];
-  tellproof.guardrailCheck(async (t) => {
+  const check = tellproof.guardrailCheck(async (t) => {
     seen.push(t);
     return 'block';
   });
-  tellproof.guardrailCheck(() => {
-    throw new Error('no canaries for this one');
-  }, { canaries: false });
+  const outputOnly = tellproof.guardrailCheck(() => false, { canaries: false });
   canaries.startAuto(3_600_000);
-  for (let i = 0; i < 100 && cap.spans.length < Object.keys(canaries.PROBES).length; i++) await new Promise((r) => setTimeout(r, 10));
-  const kinds = cap.spans.map((s) => s.attrs[canaries.CANARY_KIND]).sort();
-  assert.deepEqual(kinds, Object.keys(canaries.PROBES).sort());
-  assert.ok(cap.spans.every((s) => s.attrs[canaries.CANARY_CAUGHT] === true));
-  assert.deepEqual(llm(), [], 'a canary counted as a model call');
-  assert.deepEqual(seen.sort(), Object.values(canaries.PROBES).sort());
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(canarySpans(), [], 'canaries before the check ever ran');
+  await tellproof.trace(async () => {
+    await check(MARKER);
+    outputOnly(MARKER);
+  });
+  await waitCanaries();
+  assert.deepEqual(canarySpans().map((s) => s.attrs[canaries.CANARY_KIND]).sort(), Object.keys(canaries.PROBES).sort());
+  assert.ok(canarySpans().every((s) => s.attrs[canaries.CANARY_CAUGHT] === true));
+  assert.deepEqual(decisions(), ['block'], 'a canary became a decision');
+  assert.deepEqual(seen.filter((t) => t !== MARKER).sort(), Object.values(canaries.PROBES).sort());
   canaries.stopAuto();
+  cap.spans.length = 0;
+  await check(MARKER); // stopped (shutdown, or init({ canaries: false })): no canaries
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(canarySpans(), []);
+  canaries.startAuto(3_600_000); // init() again: they start again
+  await check(MARKER);
+  await waitCanaries();
+  assert.equal(canarySpans().length, Object.keys(canaries.PROBES).length);
+  canaries.stopAuto();
+});
+
+test('a method gets its canaries with its own this', async () => {
+  class Guard {
+    constructor() {
+      this.words = ['Ignore', 'game', 'card', 'AWS'];
+    }
+    check(text) {
+      return this.words.some((w) => text.includes(w));
+    }
+  }
+  Guard.prototype.check = tellproof.guardrailCheck(Guard.prototype.check);
+  canaries.startAuto(3_600_000);
+  new Guard().check(MARKER);
+  await waitCanaries();
+  assert.ok(canarySpans().length === 4 && canarySpans().every((s) => s.attrs[canaries.CANARY_CAUGHT] === true), 'probes went to a method without its this');
+  canaries.stopAuto();
+});
+
+test('the check\'s own promise object comes back, and checks register once and at most 32', async () => {
+  class Special extends Promise {
+    extra() {
+      return 'kept';
+    }
+  }
+  const check = tellproof.guardrailCheck(() => Special.resolve(true), { canaries: false });
+  await tellproof.trace(async () => {
+    const r = check(MARKER);
+    assert.equal(r.extra(), 'kept');
+    assert.equal(await r, true);
+    await new Promise((res) => setImmediate(res));
+    await chat();
+  });
+  assert.deepEqual(decisions(), ['block']);
+  const fn = () => false;
+  tellproof.guardrailCheck(fn);
+  tellproof.guardrailCheck(fn);
+  assert.equal(core.checks.filter((c) => c.fn === fn).length, 1);
+  for (let i = 0; i < 40; i++) tellproof.guardrailCheck(() => false); // a check wrapped per call: the leak this guards against
+  assert.equal(core.checks.length, core.MAX_CHECKS);
 });
 
 test('OpenAI moderation, Bedrock ApplyGuardrail and Azure content filters are guardrails', async () => {

@@ -147,60 +147,79 @@ def schedule_canaries(check: Callable[[str], Any], every: float = 3600.0, kinds:
         return None
 
 
-# Canaries through the checks decorated with @guardrail_check (D-069): started
-# by init() unless canaries=False, stopped by shutdown(). A sync check runs on
-# a daemon thread; an async one on the app's own event loop, from its first
-# call, since it may depend on that loop.
-_auto: dict = {"every": None, "schedules": [], "handles": [], "tasks": set()}
+# Canaries through the checks decorated with @guardrail_check (D-069): on
+# while init() says so, from each check's first call, through the callable
+# that call used (a method's bound instance), then every `every` seconds. A
+# sync check runs on a daemon thread; an async one on the event loop it was
+# called on, since it may depend on that loop, moving to the next loop that
+# calls it if that one closes.
+import functools  # noqa: E402
+import time  # noqa: E402
 
 
-def _start_sync(fn: Callable, canaries: bool) -> None:
-    if not canaries or _auto["every"] is None or inspect.iscoroutinefunction(fn):
+class _Auto:
+    """One check's automatic canaries."""
+
+    def __init__(self) -> None:
+        self.target: Callable | None = None
+        self.last = 0.0  # time.monotonic() of the last run
+        self.schedule: Schedule | None = None
+        self.loop: asyncio.AbstractEventLoop | None = None
+        self.handle: asyncio.Handle | None = None
+
+
+_auto: dict = {"every": None, "checks": {}, "tasks": set()}
+
+
+def _ensure(check, target: Callable) -> None:
+    every = _auto["every"]
+    if every is None:
         return
-    s = schedule_canaries(fn, _auto["every"])
-    if s is not None:
-        _auto["schedules"].append(s)
-
-
-def _start_async(fn: Callable) -> None:
-    if _auto["every"] is None or not any(f is fn and c for f, c in _core._checks):
+    st = _auto["checks"].get(check)
+    if st is None:
+        st = _auto["checks"][check] = _Auto()
+    st.target = target
+    if not check.is_async:
+        if st.schedule is None:
+            st.schedule = schedule_canaries(lambda text: st.target(text), every)
         return
     loop = asyncio.get_running_loop()
-    every = max(float(_auto["every"]), MIN_EVERY)
+    if st.loop is loop or (st.loop is not None and not st.loop.is_closed()):
+        return  # already on this loop, or on another one still running
+    st.loop = loop
+    delay = max(0.0, st.last + every - time.monotonic()) if st.last else 0.0
+    st.handle = loop.call_later(delay, functools.partial(_tick, st, loop))
 
-    def tick() -> None:
-        if _auto["every"] is None or loop.is_closed():
-            return
-        try:
-            t = loop.create_task(arun_canaries(fn))
-            _auto["tasks"].add(t)
-            t.add_done_callback(_auto["tasks"].discard)
-            _auto["handles"].append(loop.call_later(every, tick))
-        except Exception:
-            _core._fail("canary tick")
 
-    _auto["handles"].append(loop.call_soon(tick))
+def _tick(st: _Auto, loop: asyncio.AbstractEventLoop) -> None:
+    every = _auto["every"]
+    if every is None or st.loop is not loop or loop.is_closed():
+        return
+    try:
+        st.last = time.monotonic()
+        t = loop.create_task(arun_canaries(lambda text: st.target(text)))
+        _auto["tasks"].add(t)
+        t.add_done_callback(_auto["tasks"].discard)
+        st.handle = loop.call_later(every, functools.partial(_tick, st, loop))  # only the latest is kept
+    except Exception:
+        _core._fail("canary tick")
 
 
 def start_auto(every: float) -> None:
     stop_auto()
-    _auto["every"] = every
-    _core._on_register.append(_start_sync)
-    _core._on_first_async_call.append(_start_async)
-    for fn, canaries in list(_core._checks):
-        _start_sync(fn, canaries)
+    _auto["every"] = max(float(every), MIN_EVERY)
+    _core._ensure_canaries = _ensure
 
 
 def stop_auto() -> None:
+    _core._ensure_canaries = None
     _auto["every"] = None
-    for s in _auto["schedules"]:
-        s.stop()
-    for h in _auto["handles"]:
-        try:
-            h.cancel()
-        except Exception:
-            pass
-    _auto["schedules"], _auto["handles"] = [], []
-    for hooks, fn in ((_core._on_register, _start_sync), (_core._on_first_async_call, _start_async)):
-        while fn in hooks:
-            hooks.remove(fn)
+    for st in _auto["checks"].values():
+        if st.schedule is not None:
+            st.schedule.stop()
+        if st.handle is not None:
+            try:
+                st.handle.cancel()
+            except Exception:
+                pass
+    _auto["checks"] = {}

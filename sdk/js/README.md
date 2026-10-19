@@ -45,7 +45,7 @@ Per call it reads the request's model and stream flag, and from the response onl
 `init()` takes the facts that hold for every call: `{ agent: 'triage', prompt: 'claims-triage', promptVersion: '14', personalData: true }` (or `TELLPROOF_AGENT_NAME`, `TELLPROOF_PROMPT`, `TELLPROOF_PROMPT_VERSION`, `TELLPROOF_PERSONAL_DATA=1`). Every request to a Node.js HTTP server is scoped for you (Express, Fastify, Koa, Nest, Next.js; `requests: false` turns that off), so for the rest, wrap the functions you already have:
 
 ```js
-const check = tellproof.guardrailCheck(myGuardrail.check); // true (or "block"/"flag") stops the text: decides for this request's calls, and gets canaries hourly
+const check = tellproof.guardrailCheck((text) => myGuardrail.check(text)); // true (or "block"/"flag") stops the text: decides for this request's calls, and gets canaries hourly
 const redact = tellproof.redactor(redactPII);              // this request's calls handle personal data, redacted
 const issueRefund = tellproof.tool(async function issueRefund(claim) {
   tellproof.approve();                                      // a person or a policy approved it

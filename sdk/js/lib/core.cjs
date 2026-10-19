@@ -109,9 +109,13 @@ function configure({ agent = null, prompt = null, promptVersion = null, personal
   defaults = d;
 }
 
-// Guardrail checks registered with guardrailCheck(): { fn, canaries }.
+// Guardrail checks registered with guardrailCheck(): { fn, canaries }. More
+// than MAX_CHECKS means a check is wrapped per call (a leak): not registered.
+const MAX_CHECKS = 32;
 const checks = [];
-const onRegister = []; // set by the canary module: canaries for a check registered after init()
+// Set by the canary module while automatic canaries run: ensureCanaries(check,
+// target) starts them for a check from its first call, with the callable they use.
+const hooks = { ensureCanaries: null };
 
 // What happened in one request (or trace): shared by every async context the
 // request runs in. Never content: flags, a decision and a count.
@@ -163,9 +167,27 @@ function modelCallFacts(a, parent) {
   }
 }
 
+// One blocked call: a guardrail blocked a request before any model call.
+function blockedSpan(frame, start, provider = null, model = null) {
+  const end = client.clock();
+  const attrs = { ...(frame ? frame.attrs : {}), [A.OPERATION]: 'chat', [A.PROVIDER]: provider || 'unknown', [A.REQUEST_MODEL]: model || 'unknown' };
+  modelCallFacts(attrs, frame);
+  attrs[A.GUARDRAIL] = 'block';
+  return {
+    traceId: frame ? frame.traceId : client.ids(16),
+    spanId: client.ids(8),
+    parent: frame ? frame.spanId : null,
+    name: 'chat',
+    kind: KIND_CLIENT,
+    start,
+    end: end > start ? end : start,
+    attrs,
+    error: false,
+  };
+}
+
 function blockedCall() {
-  const now = client.clock();
-  record('chat', KIND_CLIENT, now, now, { [A.OPERATION]: 'chat', [A.PROVIDER]: 'unknown', [A.REQUEST_MODEL]: 'unknown', [A.GUARDRAIL]: 'block' }, false, { llm: true });
+  client.emit(blockedSpan(currentFrame(), client.clock()));
 }
 
 // A guardrail decision for the current request's model calls, from a
@@ -411,20 +433,7 @@ class Guardrail {
   _leave() {
     this._closed = true;
     const frame = this._frame;
-    if (this._calls === 0 && this._decision === 'block') {
-      const end = client.clock();
-      this._pending.push({
-        traceId: frame.traceId,
-        spanId: client.ids(8),
-        parent: frame.spanId,
-        name: 'chat',
-        kind: KIND_CLIENT,
-        start: this._start,
-        end: end > this._start ? end : this._start,
-        attrs: { ...frame.attrs, [A.OPERATION]: 'chat', [A.PROVIDER]: this._provider || 'unknown', [A.REQUEST_MODEL]: this._model || 'unknown' },
-        error: false,
-      });
-    }
+    if (this._calls === 0 && this._decision === 'block') this._pending.push(blockedSpan(frame, this._start, this._provider, this._model));
     for (const span of this._pending) {
       if (this._decision && !(A.GUARDRAIL in span.attrs)) span.attrs[A.GUARDRAIL] = this._decision;
       if (!this._outer || !this._outer._defer(span)) client.emit(span);
@@ -467,9 +476,10 @@ function spanScope(handle, name, kind, llm, attrsOf, inherit, fn, isTool = false
   );
 }
 
-// A function that runs fn, sync or async, and then after(result); the app's
-// result and errors pass through unchanged.
-function decorate(fn, after) {
+// A function that runs before(thisArg) and fn, sync or async, and then
+// after(result); the app's result, promise object and errors pass through
+// unchanged (a promise's result is observed on a side branch).
+function decorate(fn, after, before = null) {
   if (typeof fn !== 'function') {
     fail('decorate', new TypeError('not a function'));
     return fn;
@@ -480,12 +490,26 @@ function decorate(fn, after) {
     } catch (e) {
       fail('decorated', e);
     }
-    return v;
   };
   const wrapped = function (...args) {
+    if (before) {
+      try {
+        before(this);
+      } catch (e) {
+        fail('decorated', e);
+      }
+    }
     const r = fn.apply(this, args);
-    if (r !== null && typeof r === 'object' && typeof r.then === 'function') return r.then(note);
-    return note(r);
+    if (r !== null && typeof r === 'object' && typeof r.then === 'function') {
+      try {
+        r.then(note, () => {});
+      } catch (e) {
+        fail('decorated', e);
+      }
+      return r;
+    }
+    note(r);
+    return r;
   };
   Object.defineProperty(wrapped, 'name', { value: fn.name, configurable: true });
   return wrapped;
@@ -506,19 +530,29 @@ function decisionOf(r) {
 // of the text that returns true (or "block" or "flag") when it would stop it.
 // Each call's decision counts for the current request's model calls, and,
 // unless canaries is false (an output-only check), the SDK sends it the canary
-// probes hourly. Its argument and result are never recorded.
+// probes from its first call, then hourly, with the same `this`. Its argument
+// and result are never recorded. Wrap it once, where it is defined: at most
+// 32 checks are registered.
 function guardrailCheck(fn, { canaries = true } = {}) {
   if (typeof fn !== 'function') {
     fail('guardrailCheck', new TypeError('not a function'));
     return fn;
   }
+  let check = null;
   try {
-    checks.push({ fn, canaries: !!canaries });
-    for (const start of [...onRegister]) start(fn, !!canaries);
+    check = checks.find((c) => c.fn === fn) || null;
+    if (!check && checks.length < MAX_CHECKS) {
+      check = { fn, canaries: !!canaries };
+      checks.push(check);
+    } else if (!check) fail('guardrailCheck', new RangeError('more than 32 registered; wrap a check once, where it is defined'));
   } catch (e) {
     fail('guardrailCheck', e);
   }
-  return decorate(fn, (r) => decide(decisionOf(r)));
+  const before = (thisArg) => {
+    const ensure = hooks.ensureCanaries;
+    if (check && check.canaries && ensure) ensure(check, thisArg === undefined || thisArg === globalThis ? fn : fn.bind(thisArg));
+  };
+  return decorate(fn, (r) => decide(decisionOf(r)), before);
 }
 
 // redactor(fn): the app's own redaction function; once it has returned, the
@@ -635,7 +669,8 @@ module.exports = {
   SEVERITY,
   configure,
   checks,
-  onRegister,
+  hooks,
+  MAX_CHECKS,
   decide,
   markRedacted,
   requestScope,

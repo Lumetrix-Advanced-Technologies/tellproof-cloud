@@ -209,10 +209,22 @@ class RealFrameworks(unittest.TestCase):
         def c():
             self.handle(flask.request.get_data(as_text=True))
             return "ok"
+        @app.post("/stream")
+        def stream():
+            text = flask.request.get_data(as_text=True)
+
+            def body():  # the check and the call run while the response is sent
+                yield "a"
+                self.handle(text)
+                yield "b"
+            return flask.Response(flask.stream_with_context(body()))
         client = app.test_client()
-        for body in (MARK, "FLAG " + MARK):
-            self.assertEqual(client.post("/c", data=body).status_code, 200)
-        self.assertEqual(self.decisions(), ["allow", "block"])
+        for path, body in (("/c", MARK), ("/c", "FLAG " + MARK), ("/stream", "FLAG")):
+            r = client.post(path, data=body)
+            self.assertEqual(r.status_code, 200)
+            r.get_data()  # read, as a server sends it: the request ends then
+        self.assertEqual(self.decisions(), ["allow", "block", "block"])
+        self.assertEqual(_core.current_client().stats.unscoped, 0)
 
     @unittest.skipUnless(has("fastapi") and has("httpx"), "fastapi not installed")
     def test_fastapi(self):

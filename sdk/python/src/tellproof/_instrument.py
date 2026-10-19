@@ -14,6 +14,7 @@ Messages, inputs, outputs, tool arguments and error messages are never read.
 
 from __future__ import annotations
 
+import contextvars
 import functools
 import importlib
 import importlib.util
@@ -751,13 +752,74 @@ def _asgi_scoped(orig: Callable) -> Callable:
     return call
 
 
+class _ScopedBody:
+    """A WSGI response body that keeps its request's scope open until the
+    server closes it, so a streamed response's checks and model calls count
+    for their request. Iteration runs in the request's context."""
+
+    def __init__(self, body: Any, ctx: contextvars.Context, scope: Any) -> None:
+        self._body, self._ctx, self._scope = body, ctx, scope
+        self._it = ctx.run(iter, body)
+        self._ended = self._closed = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            return self._ctx.run(next, self._it)
+        except StopIteration:
+            self._end()  # sent in full: the request is over, even if the server never calls close()
+            raise
+
+    def _end(self) -> None:
+        if not self._ended:
+            self._ended = True
+            self._ctx.run(self._scope.__exit__, None, None, None)
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            c = getattr(self._body, "close", None)
+            if c is not None:
+                self._ctx.run(c)
+        finally:
+            self._end()
+
+
+def _wsgi_scoped(orig: Callable) -> Callable:
+    """A WSGI app (Flask's wsgi_app): one scope per request, open until the
+    server closes the response body. A file sent with wsgi.file_wrapper is
+    returned as it is (the server may send it with sendfile)."""
+    @functools.wraps(orig)
+    def wsgi_app(self, environ, start_response):
+        if not _core.current_client().enabled:
+            return orig(self, environ, start_response)
+        ctx = contextvars.copy_context()
+        scope = _core.trace()
+        ctx.run(scope.__enter__)
+        try:
+            body = ctx.run(orig, self, environ, start_response)
+        except BaseException as e:
+            ctx.run(scope.__exit__, type(e), e, e.__traceback__)
+            raise
+        fw = environ.get("wsgi.file_wrapper") if isinstance(environ, dict) else None
+        if isinstance(body, (list, tuple)) or (isinstance(fw, type) and isinstance(body, fw)):
+            ctx.run(scope.__exit__, None, None, None)
+            return body
+        return _ScopedBody(body, ctx, scope)
+    return wsgi_app
+
+
 def instrument_flask() -> bool:
     if not _available("flask"):
         return False
     cls = getattr(importlib.import_module("flask.app"), "Flask", None)
     if cls is None:
         return False
-    _patch(cls, "wsgi_app", _scoped)
+    _patch(cls, "wsgi_app", _wsgi_scoped)
     return True
 
 

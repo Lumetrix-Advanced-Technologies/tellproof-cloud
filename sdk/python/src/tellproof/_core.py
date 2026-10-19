@@ -8,6 +8,7 @@ Every SDK internal is wrapped so that it cannot raise into the app.
 
 from __future__ import annotations
 
+import asyncio
 import collections
 import contextvars
 import functools
@@ -70,8 +71,26 @@ def configure(agent: Any = None, prompt: Any = None, prompt_version: Any = None,
     _defaults = d
 
 
-# Guardrail checks registered with @guardrail_check: (the app's function, run canaries through it).
-_checks: list = []
+MAX_CHECKS = 32  # registered guardrail checks; more means a check is decorated per call (a leak)
+
+
+class _Check:
+    """A function registered with @guardrail_check."""
+    __slots__ = ("fn", "canaries", "is_async", "method", "__weakref__")
+
+    def __init__(self, fn: Callable, canaries: bool) -> None:
+        self.fn, self.canaries, self.is_async = fn, canaries, inspect.iscoroutinefunction(fn)
+        try:
+            params = list(inspect.signature(fn).parameters)
+        except (TypeError, ValueError):
+            params = []
+        self.method = bool(params) and params[0] in ("self", "cls")  # canaries need the bound instance
+
+
+_checks: list = []  # _Check
+# Set by the canary module while automatic canaries run: ensure(check, target)
+# starts them for a check from its first call, with the callable they use.
+_ensure_canaries: Callable | None = None
 
 
 class Client:
@@ -222,6 +241,17 @@ def _model_call_facts(a: dict, parent: _Frame | None) -> None:
         a[REDACTED] = bool(req is not None and req.redacted)
 
 
+def _blocked_span(frame: _Frame | None, start: int, provider: str | None = None, model: str | None = None) -> dict:
+    """One blocked call: a guardrail blocked a request before any model call."""
+    a = dict(frame.attrs) if frame else {}
+    a.update({OPERATION: "chat", PROVIDER: provider or "unknown", REQUEST_MODEL: model or "unknown"})
+    _model_call_facts(a, frame)
+    a[GUARDRAIL] = "block"
+    return {"trace_id": frame.trace_id if frame else _client.ids(16), "span_id": _client.ids(8),
+            "parent": frame.span_id if frame else None, "name": "chat", "kind": 3,
+            "start": start, "end": max(_client.clock(), start), "attrs": a, "error": False}
+
+
 def decide(decision: str) -> None:
     """A guardrail decision for the current request's model calls, from a
     @guardrail_check or a detected guardrail (moderation, ApplyGuardrail).
@@ -238,9 +268,7 @@ def decide(decision: str) -> None:
         if r.decision is None or SEVERITY[decision] > SEVERITY[r.decision]:
             r.decision = decision
     elif decision == "block":
-        now = _client.clock()
-        record("chat", 3, now, now, {OPERATION: "chat", PROVIDER: "unknown", REQUEST_MODEL: "unknown",
-                                     GUARDRAIL: "block"}, False, llm=True)
+        _client.emit(_blocked_span(f, _client.clock()))
     else:
         _client.stats.unscoped += 1
 
@@ -316,16 +344,26 @@ class _Scope:
         return wrapper
 
 
-class _Trace(_Scope):
+class trace(_Scope):
     """One request, or one unit of work: a trace of its own, the request's
     redaction, and, when guardrail checks are registered, a guardrail scope
-    whose strictest decision its model calls carry."""
+    whose strictest decision its model calls carry. `with tellproof.trace():`,
+    or `@tellproof.trace` on a worker's handler. Web requests in Flask,
+    FastAPI, Starlette, Django and Node.js HTTP servers get one automatically."""
 
     _guard: Guardrail | None = None
     _req: Request | None = None
 
-    def _clone(self) -> _Trace:
-        return _Trace()
+    def __new__(cls, fn: Callable | None = None):
+        if callable(fn):  # @tellproof.trace, without parentheses
+            return super().__new__(cls)(fn)
+        return super().__new__(cls)
+
+    def __init__(self, fn: Callable | None = None) -> None:
+        pass
+
+    def _clone(self) -> trace:
+        return trace()
 
     def _enter(self) -> None:
         if _client.enabled:
@@ -341,19 +379,7 @@ class _Trace(_Scope):
         if self._guard is not None:
             self._guard._exit(error)
         elif self._req is not None and self._req.decision == "block" and self._req.calls == 0 and _client.enabled:
-            now = _client.clock()
-            record("chat", 3, now, now, {OPERATION: "chat", PROVIDER: "unknown", REQUEST_MODEL: "unknown",
-                                         GUARDRAIL: "block"}, False, llm=True)
-
-
-def trace(fn: Callable | None = None):
-    """Group everything inside into one trace and request: `with
-    tellproof.trace():`, or `@tellproof.trace` on a worker's handler. Web
-    requests in Flask, FastAPI, Starlette, Django and Node.js HTTP servers
-    get one automatically."""
-    if callable(fn):
-        return _Trace()(fn)
-    return _Trace()
+            _client.emit(_blocked_span(_frame.get(), _client.clock()))
 
 
 class _AttrScope(_Scope):
@@ -459,12 +485,7 @@ class Guardrail(_Scope):
         frame = _frame.get()
         outer = self._outer
         if self._calls == 0 and self._decision == "block":
-            attrs = {OPERATION: "chat", PROVIDER: self._provider or "unknown", REQUEST_MODEL: self._model or "unknown"}
-            span = {"trace_id": frame.trace_id if frame else _client.ids(16), "span_id": _client.ids(8),
-                    "parent": frame.span_id if frame else None, "name": "chat", "kind": 3,
-                    "start": self._start, "end": max(_client.clock(), self._start),
-                    "attrs": {**(frame.attrs if frame else {}), **attrs}, "error": False}
-            self._pending.append(span)
+            self._pending.append(_blocked_span(frame, self._start, self._provider, self._model))
         for span in self._pending:
             if self._decision and GUARDRAIL not in span["attrs"]:
                 span["attrs"][GUARDRAIL] = self._decision
@@ -501,7 +522,7 @@ class _SpanScope(_Scope):
             self._start = _client.clock()
             self._span_id = _client.ids(8)
             # Nested spans are children of this one.
-            frame = _child(self._inherit(), span_id=self._span_id, tool=self if isinstance(self, _Tool) else None)
+            frame = _child(self._inherit(), span_id=self._span_id, tool=self if isinstance(self, tool) else None)
             self._trace_id = frame.trace_id  # a root span starts the trace its children join
             self._push(frame)
 
@@ -516,19 +537,29 @@ class _SpanScope(_Scope):
                llm=self._llm, span_id=self._span_id, trace_id=self._trace_id)
 
 
-class _Tool(_SpanScope):
-    """A tool call. high_impact marks actions with real-world effect (payments,
+class tool(_SpanScope):
+    """A tool call: `with tellproof.tool("refund") as t:`, or a decorator,
+    `@tellproof.tool` or `@tellproof.tool(high_impact=True)`, named after the
+    function. high_impact marks actions with real-world effect (payments,
     account changes); approved records a human or policy approval and may be
-    set inside the block (t.approved = True, or tellproof.approve())."""
+    set inside (t.approved = True, or tellproof.approve()). An exception marks
+    it failed."""
 
-    def __init__(self, name: Any, *, high_impact: bool = False, approved: bool = False) -> None:
+    def __new__(cls, name: Any = None, **kwargs: Any):
+        if callable(name):  # @tellproof.tool, without parentheses
+            t = super().__new__(cls)
+            t.__init__(None)
+            return t(name)
+        return super().__new__(cls)
+
+    def __init__(self, name: Any = None, *, high_impact: bool = False, approved: bool = False) -> None:
         super().__init__()
         self.name = clean(name)
         self.high_impact = bool(high_impact)
         self.approved = bool(approved)
 
-    def _clone(self) -> _Tool:
-        return _Tool(self.name, high_impact=self.high_impact, approved=self.approved)
+    def _clone(self) -> tool:
+        return tool(self.name, high_impact=self.high_impact, approved=self.approved)
 
     def __call__(self, fn: Callable) -> Callable:
         if self.name is None:  # @tellproof.tool(high_impact=True): named after the function
@@ -544,15 +575,6 @@ class _Tool(_SpanScope):
         return a
 
 
-def tool(name: Any = None, *, high_impact: bool = False, approved: bool = False):
-    """A tool call: `with tellproof.tool("refund") as t:`, or a decorator,
-    `@tellproof.tool` or `@tellproof.tool(high_impact=True)`, named after the
-    function. An exception marks it failed."""
-    if callable(name):
-        return _Tool(None)(name)
-    return _Tool(name, high_impact=high_impact, approved=approved)
-
-
 def approve() -> None:
     """The tool call in progress was approved by a person or a policy."""
     f = _frame.get()
@@ -560,18 +582,27 @@ def approve() -> None:
         f.tool.approved = True
 
 
-class _AgentRun(_SpanScope):
-    """One run of an agent. Calls inside count toward this agent's model
-    history (model transitions are tracked per agent)."""
+class agent_run(_SpanScope):
+    """One run of an agent: `with tellproof.agent_run("triage"):`, or a
+    decorator, `@tellproof.agent_run` or `@tellproof.agent_run("triage")`.
+    Calls inside count toward this agent's model history (model transitions
+    are tracked per agent)."""
 
     _name = "invoke_agent"
 
-    def __init__(self, name: Any) -> None:
+    def __new__(cls, name: Any = None):
+        if callable(name):  # @tellproof.agent_run, without parentheses
+            r = super().__new__(cls)
+            r.__init__(None)
+            return r(name)
+        return super().__new__(cls)
+
+    def __init__(self, name: Any = None) -> None:
         super().__init__()
         self.name = clean(name)
 
-    def _clone(self) -> _AgentRun:
-        return _AgentRun(self.name)
+    def _clone(self) -> agent_run:
+        return agent_run(self.name)
 
     def __call__(self, fn: Callable) -> Callable:
         if self.name is None:  # @tellproof.agent_run(): named after the function
@@ -586,14 +617,6 @@ class _AgentRun(_SpanScope):
         if self.name:
             a[AGENT_NAME] = self.name
         return a
-
-
-def agent_run(name: Any = None):
-    """One run of an agent: `with tellproof.agent_run("triage"):`, or a
-    decorator, `@tellproof.agent_run` or `@tellproof.agent_run("triage")`."""
-    if callable(name):
-        return _AgentRun(None)(name)
-    return _AgentRun(name)
 
 
 class llm_call(_SpanScope):
@@ -663,18 +686,29 @@ def _decision_of(result: Any) -> str:
     return "allow"
 
 
-def _decorate(fn: Callable, after: Callable[[Any], None]) -> Callable:
-    """Wrap fn (sync or async) so after(result) runs once it returns; the
-    app's result and exceptions pass through unchanged."""
+def _decorate(fn: Callable, after: Callable[[Any], None], before: Callable[[tuple], None] | None = None) -> Callable:
+    """Wrap fn so before(args) runs first and after(result) once it has its
+    result; the app's arguments, result and exceptions pass through
+    unchanged. A sync function that returns an awaitable keeps returning it:
+    a Future or Task gets a done callback, a coroutine is awaited inside one
+    that returns the same value; any other awaitable records nothing."""
     def note(result: Any) -> None:
         try:
             after(result)
         except Exception:
             _fail("decorated")
 
+    def first(args: tuple) -> None:
+        if before is not None:
+            try:
+                before(args)
+            except Exception:
+                _fail("decorated")
+
     if inspect.iscoroutinefunction(fn):
         @functools.wraps(fn)
         async def awrapper(*args, **kwargs):
+            first(args)
             result = await fn(*args, **kwargs)
             note(result)
             return result
@@ -682,45 +716,53 @@ def _decorate(fn: Callable, after: Callable[[Any], None]) -> Callable:
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
+        first(args)
         result = fn(*args, **kwargs)
-        note(result)
+        if not inspect.isawaitable(result):
+            note(result)
+            return result
+        if isinstance(result, asyncio.Future):
+            result.add_done_callback(lambda f: None if f.cancelled() or f.exception() is not None else note(f.result()))
+            return result
+        if inspect.iscoroutine(result):
+            async def awaited(coro=result):
+                value = await coro
+                note(value)
+                return value
+            return awaited()
         return result
     return wrapper
 
 
-_on_register: list = []  # set by the canary module: start canaries for a check registered after init()
-_on_first_async_call: list = []  # set by the canary module: an async check's canaries run on the app's loop
-
-
 def guardrail_check(fn: Callable | None = None, *, canaries: bool = True):
     """Decorate the app's own guardrail check, a function of the text that
-    returns True (or "block" or "flag") when it would stop it. Each time it
-    runs, its decision counts for the current request's model calls, and,
-    unless canaries=False (an output-only check, say), the SDK sends it the
-    canary probes hourly. Its argument and result are never recorded."""
+    returns True (or "block" or "flag") when it would stop it; a method is
+    fine. Each time it runs, its decision counts for the current request's
+    model calls, and, unless canaries=False (an output-only check, say), the
+    SDK sends it the canary probes, from its first call and then hourly. Its
+    argument and result are never recorded. Decorate it once, where it is
+    defined: the SDK registers at most 32 checks."""
     if fn is None:
         return lambda f: guardrail_check(f, canaries=canaries)
+    check = None
     try:
-        _checks.append((fn, bool(canaries)))
-        for start in list(_on_register):
-            start(fn, bool(canaries))
+        check = next((c for c in _checks if c.fn is fn), None)
+        if check is None:
+            if len(_checks) < MAX_CHECKS:
+                check = _Check(fn, bool(canaries))
+                _checks.append(check)
+            else:
+                _fail("guardrail_check: more than 32 registered; decorate a check once, where it is defined")
     except Exception:
         _fail("guardrail_check")
-    first = []
 
-    def after(result: Any) -> None:
-        decide(_decision_of(result))
-        if not first and inspect.iscoroutinefunction(fn):
-            first.append(True)
-            for hook in list(_on_first_async_call):
-                hook(fn)
+    def before(args: tuple) -> None:
+        ensure = _ensure_canaries
+        if check is not None and check.canaries and ensure is not None:
+            target = functools.partial(fn, args[0]) if check.method and args else fn
+            ensure(check, target)
 
-    wrapped = _decorate(fn, after)
-    try:
-        wrapped.__tellproof_check__ = fn  # the canaries call the app's function, not this wrapper
-    except Exception:
-        pass
-    return wrapped
+    return _decorate(fn, lambda result: decide(_decision_of(result)), before)
 
 
 def redactor(fn: Callable) -> Callable:
