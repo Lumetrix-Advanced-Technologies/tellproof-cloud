@@ -43,7 +43,7 @@ python3 concierge/verify.py spec/vectors/test-public-key.pem spec/vectors/pass/*
 3. Implement in the smallest set of files. Keep packages small and dependency-free.
 4. Run `make check`. All green, or say exactly what fails and why.
 5. Update `docs/progress-tracker.md` (status, date, notes) and, if a design choice was made, append an ADR to `docs/decisions.md`.
-6. Summarise for the human reviewer: what changed, how it was tested, anything uncertain. Every PR is reviewed by the other founder.
+6. Summarise for the human reviewer: what changed, how it was tested, anything uncertain. Lumetrix has one founder, who reviews every PR; with no second reviewer, run `/guard-review` (and `/code-review` for non-trivial changes) before asking for the merge.
 
 ## Where things live
 

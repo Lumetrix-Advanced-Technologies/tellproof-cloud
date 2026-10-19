@@ -163,7 +163,7 @@ A consultancy called Plumbline (plumblinehq.ai) audits AI systems by hand. It ha
 
 ## Phase 8: Trust, setup and launch (added 19 Oct 2026 from the handoff roadmap)
 
-The roadmap in `docs/handoff.md` §4–6, in the order the founders chose. Each task is a small PR; the founders pick the next one.
+The roadmap in `docs/handoff.md` §4–6, in the order the founder chose (Lumetrix has one founder since 19 Oct 2026; "the founders" in older text means them). Each task is a small PR; the founder picks the next one.
 
 **P8-1 Workflow hardening, Scorecard and community files.** Every action pinned to a commit SHA with its tag in a comment, Dependabot for actions and the agent image, `persist-credentials: false` on every checkout, permissions per job; the OpenSSF Scorecard workflow and badge; CONTRIBUTING, CODE_OF_CONDUCT, a PR template and CODEOWNERS. Acceptance: a test fails on any unpinned action or credential-keeping checkout in either repository's workflows; the export carries the new files; Scorecard's Pinned-Dependencies (for actions) and Token-Permissions pass; the GitHub community profile is complete. Repository settings (branch protection, Discussions, social preview) are the founders'.
 
