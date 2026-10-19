@@ -117,10 +117,10 @@ Tellproof's story is unusual and testable: *most AI safety checks can't fail; ou
 
 ## 6. Suggested next tasks, in order
 
-Updated 19 Oct 2026. Done: billing fixed, npm 0.4.0 approved, P8-1 to P8-3a merged (#72 to #77).
+Updated 19 Oct 2026. Done and in review as a stack of PRs (merge in order, each into main once its base has merged): #78 docs, #79 P8-7 one install and the background agent, #80 P8-8 README split, #81 P8-9 security hardening, #82 P8-10 simpler usage, then the v0.5.0 release prep.
 
-1. Ease of use, at the founder's request: one install for the SDK and the agent, a background local agent with `stop`, and a README split into setup and usage, with how it works in its own document.
-2. Release v0.5.0: everything since v0.4.0, including the D-065 fix (text in read attributes no longer reaches batches). After it: branch protection on the public `main`, Discussions, social preview (founder); retake the README screenshots with `tellproof-agent demo`.
+1. Merge the stack (the founder reviews each; CI is green again).
+2. Release v0.5.0, in this order: export and push the public repo; tag `v0.5.0` (release.yml refuses it unless `action.yml`'s default version is 0.5.0); approve the image job; publish the draft; approve PyPI in `packages.yml`, and the seven staged npm versions on npmjs.com; then tag `sdk-v0.3.0` (its smoke test installs the `[agent]` extra and `npx tellproof`, so the agent must be live first) and approve its PyPI job and staged npm version. Then: branch protection on the public `main`, Discussions, social preview (founder); retake the README screenshots with `tellproof-agent demo`.
 3. P8-4 Shareable HTML/Markdown/SARIF reports (4.2-1) and the CI-evidence Action (4.2-6).
-4. P8-5 Integrations: LiteLLM, LangChain, Vercel AI SDK, OTel Collector (4.1-4).
-5. P8-6 Launch kit: GIF, Codespaces, social preview, updated Show HN draft; then the founder launches.
+4. P8-5 Integrations: LiteLLM, LangChain, Vercel AI SDK, OTel Collector (4.1-4); OpenTelemetry trace-context reuse in the SDKs (D-069, not done).
+5. P8-6 Launch kit: GIF, Codespaces, social preview, updated Show HN draft (lead with `pip install "tellproof[agent]"`, `tellproof init` and the decorators); then the founder launches.
