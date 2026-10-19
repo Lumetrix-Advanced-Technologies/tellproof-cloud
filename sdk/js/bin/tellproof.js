@@ -6,6 +6,7 @@
 // name. The SDK never loads this file, so the app is unaffected by it.
 'use strict';
 const { spawn } = require('node:child_process');
+const fs = require('node:fs');
 const { createRequire } = require('node:module');
 const path = require('node:path');
 
@@ -19,13 +20,14 @@ function bundledAgent() {
     const req = createRequire(agentPkg);
     const plat = `tellproof-agent-${process.platform}-${process.arch}`;
     const exe = process.platform === 'win32' ? 'tellproof-agent.exe' : 'tellproof-agent';
-    return path.join(path.dirname(req.resolve(`${plat}/package.json`)), 'bin', exe);
+    const bin = path.join(path.dirname(req.resolve(`${plat}/package.json`)), 'bin', exe);
+    return fs.existsSync(bin) ? bin : null;
   } catch {
     return null;
   }
 }
 
-function run(bin, onMissing) {
+function run(bin) {
   // argv0 "tellproof" and TELLPROOF_COMMAND: the agent then suggests
   // `npx tellproof ...` commands, which is how they run from a project.
   const env = { ...process.env, TELLPROOF_COMMAND: 'npx tellproof' };
@@ -33,7 +35,6 @@ function run(bin, onMissing) {
   const forward = (sig) => () => child.kill(sig);
   for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, forward(sig));
   child.on('error', (err) => {
-    if (err.code === 'ENOENT' && onMissing) return onMissing();
     console.error(`tellproof: ${err.message}`);
     process.exit(1);
   });
@@ -43,15 +44,28 @@ function run(bin, onMissing) {
   });
 }
 
-const bundled = bundledAgent();
-if (bundled) {
-  run(bundled);
+// An agent on the PATH (a release binary, pip, Homebrew), looked up in
+// absolute directories only. Never the working directory: Windows searches it
+// first, so a tellproof-agent planted in a cloned repository would run.
+function onPath(name) {
+  const exe = process.platform === 'win32' ? `${name}.exe` : name;
+  for (const dir of (process.env.PATH || '').split(path.delimiter)) {
+    if (!dir || !path.isAbsolute(dir)) continue;
+    const file = path.join(dir, exe);
+    try {
+      fs.accessSync(file, fs.constants.X_OK);
+      if (fs.statSync(file).isFile()) return file;
+    } catch { /* not here */ }
+  }
+  return null;
+}
+
+const agent = bundledAgent() || onPath('tellproof-agent');
+if (agent) {
+  run(agent);
 } else {
-  // Else an agent on the PATH (a release binary, pip, Homebrew).
-  run(process.platform === 'win32' ? 'tellproof-agent.exe' : 'tellproof-agent', () => {
-    console.error('tellproof: the Tellproof agent is not installed. Install it with the SDK:\n\n' +
-      `    ${INSTALL}\n\n` +
-      'or download it from https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases');
-    process.exit(1);
-  });
+  console.error('tellproof: the Tellproof agent is not installed. Install it with the SDK:\n\n' +
+    `    ${INSTALL}\n\n` +
+    'or download it from https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases');
+  process.exit(1);
 }

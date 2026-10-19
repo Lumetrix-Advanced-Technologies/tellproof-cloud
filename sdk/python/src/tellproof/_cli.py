@@ -6,11 +6,24 @@ they are the `tellproof-agent` commands under a shorter name. The SDK never
 imports this module, so the app is unaffected by it.
 """
 import os
-import shutil
 import subprocess
 import sys
 
 INSTALL = 'pip install "tellproof[agent]"'
+
+
+def on_path(name):
+    """name on the PATH, looked up in absolute directories only. Never the
+    working directory: shutil.which and Windows search it first, so a
+    tellproof-agent planted in a cloned repository would run."""
+    exe = name + ".exe" if os.name == "nt" else name
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        if not d or not os.path.isabs(d):
+            continue
+        path = os.path.join(d, exe)
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    return None
 
 
 def agent_binary():
@@ -23,7 +36,7 @@ def agent_binary():
             return path
     except Exception:
         pass
-    return shutil.which("tellproof-agent")
+    return on_path("tellproof-agent")
 
 
 def main(argv=None):
