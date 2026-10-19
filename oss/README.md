@@ -173,6 +173,8 @@ gh attestation verify oci://ghcr.io/lumetrix-advanced-technologies/tellproof-age
 npm audit signatures            # in a project that installed tellproof-agent or tellproof
 ```
 
+Each release also carries its provenance as `tellproof-<version>.intoto.jsonl`, the same Sigstore bundle, for verifiers that read release assets.
+
 ### The verifier
 
 `tellproof-verify-<os>-<arch>` from [Releases](https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases), or `go install github.com/lumetrix-advanced-technologies/tellproof/cmd/verify@latest`.
@@ -609,14 +611,14 @@ Is tampering with the log detected?
 The repository is also a GitHub Action. Validate the policy on every pull request that changes it:
 
 ```yaml
-- uses: Lumetrix-Advanced-Technologies/tellproof@v0.5.0
+- uses: Lumetrix-Advanced-Technologies/tellproof@v0.5.1
   with: { command: validate, policy: tellproof.policy.json }
 ```
 
 Or gate a release on the evidence, with a copy of the agent's data directory (from a scheduled job, an artifact or a volume snapshot):
 
 ```yaml
-- uses: Lumetrix-Advanced-Technologies/tellproof@v0.5.0
+- uses: Lumetrix-Advanced-Technologies/tellproof@v0.5.1
   with: { command: check, policy: tellproof.policy.json, data-dir: evidence/, strict: "true" }
 ```
 

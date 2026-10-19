@@ -76,6 +76,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-20 · Scorecard · PR pending · Provenance attached to every release, workflow tools pinned by hash and digest, a fuller security policy, and branch protection as a ruleset Scorecard can read (D-070).
 - 2026-10-20 · `--version` · PR pending · `tellproof --version` shows the agent and SDK versions (with the banner in a terminal); the founder's `command not found` was an npm install run without `npx`, in a folder whose path contains `:`, which breaks `npx` itself.
 - 2026-10-19 · Repo settings · public `main` protected (CI checks, code-owner review, no force pushes), Discussions on, a social preview card; npm tokens revoked by the founder.
 - 2026-10-19 · Release · v0.5.0 released (GitHub, Docker, PyPI, npm) and SDK 0.3.0 (PyPI; npm staged for approval) · `pip install "tellproof[agent]"` from PyPI gives the SDK and agent v0.5.0 with a working `tellproof` command. #82's CI failure was a timing flake in the agent leak test (the early first batch on a slow runner), fixed by flushing on stop.
