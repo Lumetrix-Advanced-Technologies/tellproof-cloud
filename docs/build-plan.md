@@ -179,6 +179,8 @@ The roadmap in `docs/handoff.md` §4–6, in the order the founder chose (Lumetr
 
 **P8-9 Security hardening of what adopters run.** (Added 19 Oct 2026 at the founder's request.) Review every surface a project takes on by adopting Tellproof and fix what makes it easier to attack. Acceptance: a threat model lists each surface with its threats, mitigations, tests and residual risk; each fix has a test that fails without it (D-068).
 
+**P8-10 Simpler usage.** (Added 19 Oct 2026 at the founder's request.) The least code for setup and usage: what the helpers record comes from `init()`, from request scopes the SDK opens itself, from the app's own functions marked once, or from guardrails the SDK can see. Acceptance: a Flask, FastAPI, Django or Node.js HTTP app records per-request guardrail decisions and redaction with no code in its handlers; decisions never reach another request's calls, and outside a request nothing is attributed but a block; the leak suites cover every new path; every existing helper still works (D-069).
+
 **P8-4 Shareable reports and the CI-evidence Action.** `check --html`, `--markdown`, `--sarif`; a GitHub Action wrapping `ci run/canary/attest` (§4.2-1, 4.2-6).
 
 **P8-5 Integrations.** LiteLLM, LangChain/LangGraph, Vercel AI SDK and an OpenTelemetry Collector exporter, each with a fake-client test and a README snippet (§4.1-4).

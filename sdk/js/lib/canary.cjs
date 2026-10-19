@@ -109,4 +109,28 @@ function scheduleCanaries(check, { every = 3_600_000, kinds } = {}) {
   };
 }
 
-module.exports = { PROBES, canary, runCanaries, scheduleCanaries, CANARY_KIND, CANARY_CAUGHT };
+// Canaries through the checks wrapped with guardrailCheck() (D-069): started
+// by init() unless canaries is false, stopped by shutdown().
+const auto = { every: null, schedules: [] };
+
+function startOne(fn, on) {
+  if (!on || auto.every === null) return;
+  auto.schedules.push(scheduleCanaries(fn, { every: auto.every }));
+}
+
+function startAuto(every) {
+  stopAuto();
+  auto.every = every;
+  core.onRegister.push(startOne);
+  for (const { fn, canaries: on } of core.checks) startOne(fn, on);
+}
+
+function stopAuto() {
+  auto.every = null;
+  for (const s of auto.schedules) s.stop();
+  auto.schedules = [];
+  const i = core.onRegister.indexOf(startOne);
+  if (i >= 0) core.onRegister.splice(i, 1);
+}
+
+module.exports = { PROBES, canary, runCanaries, scheduleCanaries, startAuto, stopAuto, CANARY_KIND, CANARY_CAUGHT };

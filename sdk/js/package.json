@@ -21,6 +21,6 @@
   "sideEffects": false,
   "dependencies": {},
   "optionalDependencies": { "tellproof-agent": ">=0.5.0 <1" },
-  "scripts": { "test": "node --test test/sdk.test.mjs test/instrument.test.mjs test/real-libs.test.mjs test/cli.test.mjs" },
+  "scripts": { "test": "node --test test/sdk.test.mjs test/instrument.test.mjs test/real-libs.test.mjs test/cli.test.mjs test/simple.test.mjs" },
   "repository": { "type": "git", "url": "git+https://github.com/Lumetrix-Advanced-Technologies/tellproof.git", "directory": "sdk/js" }
 }

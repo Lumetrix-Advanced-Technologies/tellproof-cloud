@@ -321,7 +321,14 @@ func initProject(ctx context.Context, o initOptions, getenv func(string) string,
 			fmt.Fprintf(stdout, "         const tellproof = require('tellproof');\n         tellproof.init({ service: '%s' });\n\n", service)
 		}
 	}
-	fmt.Fprintln(stdout, "  With the openai, anthropic or AWS Bedrock client libraries, every call is then recorded, without its content.")
+	fmt.Fprintln(stdout, "  With the openai, anthropic or AWS Bedrock client libraries, every call is then recorded, without its content,")
+	fmt.Fprintln(stdout, "  and each web request is its own trace. Have a guardrail check or a redaction step? Mark it once:")
+	if p.python {
+		fmt.Fprintln(stdout, "      @tellproof.guardrail_check   on the check     @tellproof.redactor   on the redaction")
+	}
+	if p.node {
+		fmt.Fprintln(stdout, "      tellproof.guardrailCheck(check)                 tellproof.redactor(redact)")
+	}
 	fmt.Fprintln(stdout, "  The SDKs send to http://127.0.0.1:4318; set TELLPROOF_AGENT_URL in the app if the agent listens elsewhere.")
 	fmt.Fprintln(stdout)
 

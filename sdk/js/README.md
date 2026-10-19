@@ -38,46 +38,36 @@ Per call it reads the request's model and stream flag, and from the response onl
 - **Streams** are recorded once, when they end, error, or are left early (`break`). A stream dropped half-read is recorded after it is garbage-collected. Streams split with `tee()` or `toReadableStream()` are counted without tokens.
 - **OpenAI streamed chat completions** report usage only if asked. `tellproof.init({ streamUsage: true })` asks for it (`stream_options.include_usage`) when the app has not set `stream_options`; the stream then ends with one extra chunk with no `choices`. The app's own request object is never changed.
 - **Bedrock guardrails**: a Converse call with `guardrailConfig` is a guarded call, `block` when the stop reason is `guardrail_intervened`, else `allow`. `InvokeModelWithResponseStream` reports token counts only inside the streamed body, which the SDK never reads, so those calls are counted without tokens. Callback-style `send(command, callback)` is not instrumented.
-- `tellproof.init({ instrument: false })` turns automatic instrumentation off; the helpers still work.
+- `tellproof.init({ instrument: false })` turns automatic instrumentation off; the wrappers and scopes still work.
 
-## What the helpers record
+## Tell it the rest
 
-Each helper runs a function inside a scope and returns whatever it returns (a promise for async functions). Context follows `await`, timers and callbacks, so concurrent requests never mix.
+`init()` takes the facts that hold for every call: `{ agent: 'triage', prompt: 'claims-triage', promptVersion: '14', personalData: true }` (or `TELLPROOF_AGENT_NAME`, `TELLPROOF_PROMPT`, `TELLPROOF_PROMPT_VERSION`, `TELLPROOF_PERSONAL_DATA=1`). Every request to a Node.js HTTP server is scoped for you (Express, Fastify, Koa, Nest, Next.js; `requests: false` turns that off), so for the rest, wrap the functions you already have:
+
+```js
+const check = tellproof.guardrailCheck(myGuardrail.check); // true (or "block"/"flag") stops the text: decides for this request's calls, and gets canaries hourly
+const redact = tellproof.redactor(redactPII);              // this request's calls handle personal data, redacted
+const issueRefund = tellproof.tool(async function issueRefund(claim) {
+  tellproof.approve();                                      // a person or a policy approved it
+}, { highImpact: true });                                   // a tool call, named after the function; a throw marks it failed
+```
+
+OpenAI moderation, Bedrock `ApplyGuardrailCommand` and `guardrailConfig`, Azure OpenAI's content filter and OpenAI stored prompts (their ID and version) are recorded without code. A check's decision counts for its request, before or after the calls; the strictest wins; a request blocked before any call is one blocked call. Outside an HTTP request (a queue consumer, a Lambda handler, a script), run each unit of work in `tellproof.trace(() => ...)`; until then decisions are not attributed (`stats().unscoped` counts them).
+
+## Scopes
+
+Scopes say the same explicitly for a block of code and win over the above. Each runs a function inside a scope and returns whatever it returns (a promise for async functions). Context follows `await`, timers and callbacks, so concurrent requests never mix.
 
 | Helper | Records |
 | --- | --- |
+| `trace(fn)` | one request (a trace, its decisions and redaction); automatic for HTTP requests |
 | `prompt(name, version, fn)` | the prompt (name and version, never its text) used by calls inside |
 | `personalData({ redacted }, fn)` | spans inside handle personal data; `redacted`: removed or masked before the model saw it |
 | `guardrail(decision?, fn)` | the guardrail decision (`allow`, `block`, `flag`) for calls inside; `fn` gets `g`: `g.allow()`, `g.block()`, `g.flag()` |
-| `tool(name, { highImpact, approved }, fn)` | a tool call; a throw or rejection marks it failed; `fn` gets `t`: set `t.approved = true` once approved |
-| `agentRun(name, fn)` | one agent run; model changes are tracked per agent |
+| `tool(name, { highImpact, approved }, fn)` | a tool call; a throw or rejection marks it failed; `fn` gets `t`: set `t.approved = true` (or call `approve()`) once approved |
+| `agentRun(name, fn)` | one agent run; model changes are tracked per agent (`agentRun(fn)` wraps a function, named after it) |
 | `escalation()` | the request was handed to a person |
-| `trace(fn)` | groups everything inside into one trace (for example one web request) |
 | `llmCall({ provider, model, operation, region }, fn)` | a model call the SDK does not instrument; `fn` gets `c`: `c.usage(inputTokens, outputTokens)` |
-
-```js
-app.post('/claims/:id/triage', (req, res) =>
-  tellproof.trace(() =>
-    tellproof.prompt('claims-triage', '14', () =>
-      tellproof.personalData({ redacted: true }, () =>
-        tellproof.guardrail(async (g) => {
-          if (!inputPolicyOk(req.body)) {
-            g.block(); // recorded as one blocked call; the model was never called
-            return res.status(422).end();
-          }
-          const r = await tellproof.llmCall({ provider: 'openai', model: 'gpt-4.1-mini' }, async (c) => {
-            const r = await callModel(req.body);
-            c.usage(r.usage.prompt_tokens, r.usage.completion_tokens);
-            return r;
-          });
-          needsReview(r) ? g.flag() : g.allow();
-          res.json(r);
-        }),
-      ),
-    ),
-  ),
-);
-```
 
 Names and versions are capped at 128 characters; anything that is not a string or an integer is ignored. Calls inside a `guardrail` scope are held until it ends, so a decision made after the call still applies.
 

@@ -43,10 +43,35 @@ APPROVED = "tellproof.tool.approved"
 ESCALATION = "tellproof.escalation"
 
 
+SEVERITY = {"allow": 0, "flag": 1, "block": 2}
+
+
 class Stats:
     def __init__(self) -> None:
         self.spans = 0
         self.instrumentation_errors = 0
+        self.unscoped = 0  # decisions and redactions outside any request, so not recorded
+
+
+# What init() sets for every model call (D-069): agent, prompt and whether
+# calls handle personal data. A scope or a span's own attribute wins.
+_defaults: dict = {}
+
+
+def configure(agent: Any = None, prompt: Any = None, prompt_version: Any = None, personal_data: bool = False) -> None:
+    d = {}
+    for key, v in ((AGENT_NAME, agent), (PROMPT_NAME, prompt), (PROMPT_VERSION, prompt_version)):
+        c = clean(v)
+        if c:
+            d[key] = c
+    if personal_data:
+        d[DATA_CLASS] = "personal"
+    global _defaults
+    _defaults = d
+
+
+# Guardrail checks registered with @guardrail_check: (the app's function, run canaries through it).
+_checks: list = []
 
 
 class Client:
@@ -97,21 +122,39 @@ def clean(v: Any) -> str | None:
     return s[:MAX_VALUE] if s else None
 
 
+class Request:
+    """What happened in one request (or trace): shared by every context the
+    request runs in (threads, tasks), so a redaction in one counts for the
+    calls in another. Never content: flags, a decision and a count."""
+    __slots__ = ("personal", "redacted", "decision", "calls")
+
+    def __init__(self) -> None:
+        self.personal = False
+        self.redacted = False
+        self.decision: str | None = None  # the strictest guardrail decision so far, for later calls
+        self.calls = 0
+
+
 class _Frame:
-    """Immutable context: the trace, the enclosing span and inherited attributes."""
-    __slots__ = ("trace_id", "span_id", "attrs", "guard")
+    """Immutable context: the trace, the enclosing span, inherited attributes,
+    the guardrail scope, the request and the tool call in progress."""
+    __slots__ = ("trace_id", "span_id", "attrs", "guard", "req", "tool")
 
-    def __init__(self, trace_id: str, span_id: str | None, attrs: dict, guard: Guardrail | None) -> None:
+    def __init__(self, trace_id: str, span_id: str | None, attrs: dict, guard: Guardrail | None,
+                 req: Request | None = None, tool: Any = None) -> None:
         self.trace_id, self.span_id, self.attrs, self.guard = trace_id, span_id, attrs, guard
+        self.req, self.tool = req, tool
 
 
-def _child(attrs: dict | None = None, span_id: str | None = None, guard: Guardrail | None = None) -> _Frame:
+def _child(attrs: dict | None = None, span_id: str | None = None, guard: Guardrail | None = None,
+           tool: Any = None) -> _Frame:
     parent = _frame.get()
     if parent is None:
-        return _Frame(_client.ids(16), span_id, dict(attrs or {}), guard)
+        return _Frame(_client.ids(16), span_id, dict(attrs or {}), guard, None, tool)
     merged = dict(parent.attrs)
     merged.update(attrs or {})
-    return _Frame(parent.trace_id, span_id or parent.span_id, merged, guard or parent.guard)
+    return _Frame(parent.trace_id, span_id or parent.span_id, merged, guard or parent.guard, parent.req,
+                  tool or parent.tool)
 
 
 _CURRENT = object()
@@ -152,12 +195,65 @@ def record(name: str, kind: int, start: int, end: int, attrs: dict, error: bool,
     parent = _frame.get() if frame is _CURRENT else frame
     a = dict(parent.attrs) if parent else {}
     a.update(attrs)
+    if llm:
+        _model_call_facts(a, parent)
     span = {"trace_id": parent.trace_id if parent else (trace_id or c.ids(16)), "span_id": span_id or c.ids(8),
             "parent": parent.span_id if parent else None, "name": name, "kind": kind,
             "start": start, "end": max(end, start), "attrs": a, "error": bool(error)}
     if llm and parent is not None and parent.guard is not None and parent.guard._defer(span):
         return
     c.emit(span)
+
+
+def _model_call_facts(a: dict, parent: _Frame | None) -> None:
+    """init()'s defaults and the request's redaction, for a model call."""
+    for k, v in _defaults.items():
+        if k != DATA_CLASS and k not in a:
+            a[k] = v
+    req = parent.req if parent else None
+    if req is not None:
+        req.calls += 1
+        if req.decision and GUARDRAIL not in a:
+            a[GUARDRAIL] = req.decision
+    if DATA_CLASS in a:
+        return  # a personal_data() scope decided
+    if (req is not None and req.personal) or DATA_CLASS in _defaults:
+        a[DATA_CLASS] = "personal"
+        a[REDACTED] = bool(req is not None and req.redacted)
+
+
+def decide(decision: str) -> None:
+    """A guardrail decision for the current request's model calls, from a
+    @guardrail_check or a detected guardrail (moderation, ApplyGuardrail).
+    Several decisions in one request keep the strictest. Outside a request
+    nothing is attributed, except a block, which is one blocked call."""
+    if decision not in SEVERITY or not _client.enabled:
+        return
+    f = _frame.get()
+    g = f.guard if f is not None else None
+    if g is not None and not g._closed:
+        g._escalate(decision)
+    elif f is not None and f.req is not None:
+        r = f.req  # applies to the request's later calls; a block with none is one blocked call at its end
+        if r.decision is None or SEVERITY[decision] > SEVERITY[r.decision]:
+            r.decision = decision
+    elif decision == "block":
+        now = _client.clock()
+        record("chat", 3, now, now, {OPERATION: "chat", PROVIDER: "unknown", REQUEST_MODEL: "unknown",
+                                     GUARDRAIL: "block"}, False, llm=True)
+    else:
+        _client.stats.unscoped += 1
+
+
+def mark_redacted() -> None:
+    """The current request's personal data was redacted (a @redactor ran)."""
+    if not _client.enabled:
+        return
+    f = _frame.get()
+    if f is not None and f.req is not None:
+        f.req.personal = f.req.redacted = True
+    else:
+        _client.stats.unscoped += 1
 
 
 class _Scope:
@@ -220,16 +316,44 @@ class _Scope:
         return wrapper
 
 
-class trace(_Scope):
-    """Group everything inside into one trace (for example one web request)."""
+class _Trace(_Scope):
+    """One request, or one unit of work: a trace of its own, the request's
+    redaction, and, when guardrail checks are registered, a guardrail scope
+    whose strictest decision its model calls carry."""
 
-    def _clone(self) -> trace:
-        return trace()
+    _guard: Guardrail | None = None
+    _req: Request | None = None
+
+    def _clone(self) -> _Trace:
+        return _Trace()
 
     def _enter(self) -> None:
         if _client.enabled:
             parent = _frame.get()
-            self._push(_Frame(_client.ids(16), None, dict(parent.attrs) if parent else {}, None))
+            g = None
+            if _checks:  # a check may decide after a call: hold the request's calls until it ends
+                g = Guardrail()
+                g._start = _client.clock()
+            self._guard, self._req = g, Request()
+            self._push(_Frame(_client.ids(16), None, dict(parent.attrs) if parent else {}, g, self._req))
+
+    def _exit(self, error: bool) -> None:
+        if self._guard is not None:
+            self._guard._exit(error)
+        elif self._req is not None and self._req.decision == "block" and self._req.calls == 0 and _client.enabled:
+            now = _client.clock()
+            record("chat", 3, now, now, {OPERATION: "chat", PROVIDER: "unknown", REQUEST_MODEL: "unknown",
+                                         GUARDRAIL: "block"}, False, llm=True)
+
+
+def trace(fn: Callable | None = None):
+    """Group everything inside into one trace and request: `with
+    tellproof.trace():`, or `@tellproof.trace` on a worker's handler. Web
+    requests in Flask, FastAPI, Starlette, Django and Node.js HTTP servers
+    get one automatically."""
+    if callable(fn):
+        return _Trace()(fn)
+    return _Trace()
 
 
 class _AttrScope(_Scope):
@@ -291,6 +415,10 @@ class Guardrail(_Scope):
         else:
             _client.stats.instrumentation_errors += 1
             log.debug("tellproof: guardrail decision must be one of %s", DECISIONS)
+
+    def _escalate(self, d: str) -> None:
+        if self._decision is None or SEVERITY[d] > SEVERITY[self._decision]:
+            self._decision = d
 
     def allow(self) -> None:
         self.decision = "allow"
@@ -373,7 +501,7 @@ class _SpanScope(_Scope):
             self._start = _client.clock()
             self._span_id = _client.ids(8)
             # Nested spans are children of this one.
-            frame = _child(self._inherit(), span_id=self._span_id)
+            frame = _child(self._inherit(), span_id=self._span_id, tool=self if isinstance(self, _Tool) else None)
             self._trace_id = frame.trace_id  # a root span starts the trace its children join
             self._push(frame)
 
@@ -388,10 +516,10 @@ class _SpanScope(_Scope):
                llm=self._llm, span_id=self._span_id, trace_id=self._trace_id)
 
 
-class tool(_SpanScope):
+class _Tool(_SpanScope):
     """A tool call. high_impact marks actions with real-world effect (payments,
     account changes); approved records a human or policy approval and may be
-    set inside the block (t.approved = True)."""
+    set inside the block (t.approved = True, or tellproof.approve())."""
 
     def __init__(self, name: Any, *, high_impact: bool = False, approved: bool = False) -> None:
         super().__init__()
@@ -399,8 +527,13 @@ class tool(_SpanScope):
         self.high_impact = bool(high_impact)
         self.approved = bool(approved)
 
-    def _clone(self) -> tool:
-        return tool(self.name, high_impact=self.high_impact, approved=self.approved)
+    def _clone(self) -> _Tool:
+        return _Tool(self.name, high_impact=self.high_impact, approved=self.approved)
+
+    def __call__(self, fn: Callable) -> Callable:
+        if self.name is None:  # @tellproof.tool(high_impact=True): named after the function
+            self.name = clean(getattr(fn, "__name__", None))
+        return super().__call__(fn)
 
     _name = "execute_tool"
 
@@ -411,7 +544,23 @@ class tool(_SpanScope):
         return a
 
 
-class agent_run(_SpanScope):
+def tool(name: Any = None, *, high_impact: bool = False, approved: bool = False):
+    """A tool call: `with tellproof.tool("refund") as t:`, or a decorator,
+    `@tellproof.tool` or `@tellproof.tool(high_impact=True)`, named after the
+    function. An exception marks it failed."""
+    if callable(name):
+        return _Tool(None)(name)
+    return _Tool(name, high_impact=high_impact, approved=approved)
+
+
+def approve() -> None:
+    """The tool call in progress was approved by a person or a policy."""
+    f = _frame.get()
+    if f is not None and f.tool is not None:
+        f.tool.approved = True
+
+
+class _AgentRun(_SpanScope):
     """One run of an agent. Calls inside count toward this agent's model
     history (model transitions are tracked per agent)."""
 
@@ -421,8 +570,13 @@ class agent_run(_SpanScope):
         super().__init__()
         self.name = clean(name)
 
-    def _clone(self) -> agent_run:
-        return agent_run(self.name)
+    def _clone(self) -> _AgentRun:
+        return _AgentRun(self.name)
+
+    def __call__(self, fn: Callable) -> Callable:
+        if self.name is None:  # @tellproof.agent_run(): named after the function
+            self.name = clean(getattr(fn, "__name__", None))
+        return super().__call__(fn)
 
     def _inherit(self) -> dict:
         return {AGENT_NAME: self.name} if self.name else {}
@@ -432,6 +586,14 @@ class agent_run(_SpanScope):
         if self.name:
             a[AGENT_NAME] = self.name
         return a
+
+
+def agent_run(name: Any = None):
+    """One run of an agent: `with tellproof.agent_run("triage"):`, or a
+    decorator, `@tellproof.agent_run` or `@tellproof.agent_run("triage")`."""
+    if callable(name):
+        return _AgentRun(None)(name)
+    return _AgentRun(name)
 
 
 class llm_call(_SpanScope):
@@ -487,3 +649,82 @@ def escalation() -> None:
         record("tellproof.escalation", 1, now, now, {ESCALATION: True}, False)
     except Exception:
         _fail("escalation")
+
+
+def _decision_of(result: Any) -> str:
+    """A check's result as a decision: True or "block" blocks, "flag" flags,
+    anything else allows. Only compared, never kept."""
+    if result is True:
+        return "block"
+    if isinstance(result, str) and len(result) <= 5:
+        r = result.lower()
+        if r in ("block", "flag"):
+            return r
+    return "allow"
+
+
+def _decorate(fn: Callable, after: Callable[[Any], None]) -> Callable:
+    """Wrap fn (sync or async) so after(result) runs once it returns; the
+    app's result and exceptions pass through unchanged."""
+    def note(result: Any) -> None:
+        try:
+            after(result)
+        except Exception:
+            _fail("decorated")
+
+    if inspect.iscoroutinefunction(fn):
+        @functools.wraps(fn)
+        async def awrapper(*args, **kwargs):
+            result = await fn(*args, **kwargs)
+            note(result)
+            return result
+        return awrapper
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        result = fn(*args, **kwargs)
+        note(result)
+        return result
+    return wrapper
+
+
+_on_register: list = []  # set by the canary module: start canaries for a check registered after init()
+_on_first_async_call: list = []  # set by the canary module: an async check's canaries run on the app's loop
+
+
+def guardrail_check(fn: Callable | None = None, *, canaries: bool = True):
+    """Decorate the app's own guardrail check, a function of the text that
+    returns True (or "block" or "flag") when it would stop it. Each time it
+    runs, its decision counts for the current request's model calls, and,
+    unless canaries=False (an output-only check, say), the SDK sends it the
+    canary probes hourly. Its argument and result are never recorded."""
+    if fn is None:
+        return lambda f: guardrail_check(f, canaries=canaries)
+    try:
+        _checks.append((fn, bool(canaries)))
+        for start in list(_on_register):
+            start(fn, bool(canaries))
+    except Exception:
+        _fail("guardrail_check")
+    first = []
+
+    def after(result: Any) -> None:
+        decide(_decision_of(result))
+        if not first and inspect.iscoroutinefunction(fn):
+            first.append(True)
+            for hook in list(_on_first_async_call):
+                hook(fn)
+
+    wrapped = _decorate(fn, after)
+    try:
+        wrapped.__tellproof_check__ = fn  # the canaries call the app's function, not this wrapper
+    except Exception:
+        pass
+    return wrapped
+
+
+def redactor(fn: Callable) -> Callable:
+    """Decorate the app's own redaction function: once it has returned, the
+    current request's model calls count as handling personal data, redacted.
+    Its arguments and result are never read."""
+    return _decorate(fn, lambda result: mark_redacted())

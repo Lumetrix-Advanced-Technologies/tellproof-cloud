@@ -10,6 +10,7 @@ counts as personal data, a prompt version or an LLM call.
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import threading
 from typing import Any, Awaitable, Callable, Iterable
@@ -144,3 +145,62 @@ def schedule_canaries(check: Callable[[str], Any], every: float = 3600.0, kinds:
     except Exception:
         _core._fail("canary schedule")
         return None
+
+
+# Canaries through the checks decorated with @guardrail_check (D-069): started
+# by init() unless canaries=False, stopped by shutdown(). A sync check runs on
+# a daemon thread; an async one on the app's own event loop, from its first
+# call, since it may depend on that loop.
+_auto: dict = {"every": None, "schedules": [], "handles": [], "tasks": set()}
+
+
+def _start_sync(fn: Callable, canaries: bool) -> None:
+    if not canaries or _auto["every"] is None or inspect.iscoroutinefunction(fn):
+        return
+    s = schedule_canaries(fn, _auto["every"])
+    if s is not None:
+        _auto["schedules"].append(s)
+
+
+def _start_async(fn: Callable) -> None:
+    if _auto["every"] is None or not any(f is fn and c for f, c in _core._checks):
+        return
+    loop = asyncio.get_running_loop()
+    every = max(float(_auto["every"]), MIN_EVERY)
+
+    def tick() -> None:
+        if _auto["every"] is None or loop.is_closed():
+            return
+        try:
+            t = loop.create_task(arun_canaries(fn))
+            _auto["tasks"].add(t)
+            t.add_done_callback(_auto["tasks"].discard)
+            _auto["handles"].append(loop.call_later(every, tick))
+        except Exception:
+            _core._fail("canary tick")
+
+    _auto["handles"].append(loop.call_soon(tick))
+
+
+def start_auto(every: float) -> None:
+    stop_auto()
+    _auto["every"] = every
+    _core._on_register.append(_start_sync)
+    _core._on_first_async_call.append(_start_async)
+    for fn, canaries in list(_core._checks):
+        _start_sync(fn, canaries)
+
+
+def stop_auto() -> None:
+    _auto["every"] = None
+    for s in _auto["schedules"]:
+        s.stop()
+    for h in _auto["handles"]:
+        try:
+            h.cancel()
+        except Exception:
+            pass
+    _auto["schedules"], _auto["handles"] = [], []
+    for hooks, fn in ((_core._on_register, _start_sync), (_core._on_first_async_call, _start_async)):
+        while fn in hooks:
+            hooks.remove(fn)

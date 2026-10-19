@@ -181,46 +181,92 @@ npm audit signatures            # in a project that installed tellproof-agent or
 
 ## Instrument your app
 
-### Python
+### One line
 
 ```python
 import tellproof
 tellproof.init()
 ```
 
-`init()` takes optional arguments. It is safe to call more than once, and returns whether the SDK is on.
-
-| Argument | Default | Meaning |
-| --- | --- | --- |
-| `agent_url` | `TELLPROOF_AGENT_URL`, else `http://127.0.0.1:4318` | Where the agent listens. |
-| `service` | `TELLPROOF_SERVICE`, else `OTEL_SERVICE_NAME` | The service name on every span. |
-| `environment` | `TELLPROOF_ENVIRONMENT` | The deployment environment, such as `production`. |
-| `instrument` | `True` | Instrument the installed client libraries. `False` leaves only the helpers. |
-| `stream_usage` | `False` | Ask OpenAI for usage on streamed chat completions (`stream_options.include_usage`) when the app has not set `stream_options`. The stream then ends with one extra chunk that has no `choices`. |
-
-Other functions: `tellproof.flush(timeout=2.0)` sends buffered spans now; `tellproof.shutdown()` flushes and stops (it also runs at exit); `tellproof.is_enabled()`; `tellproof.stats()` returns counters (`spans`, `exported`, `dropped`, `export_errors`, `instrumentation_errors`, `instrumented`). `TELLPROOF_DISABLED=1` turns the SDK off without a code change. It works across threads, `asyncio` tasks and forked workers (gunicorn, uWSGI).
-
-### Node.js and TypeScript
-
 ```js
 import * as tellproof from 'tellproof';          // or: const tellproof = require('tellproof');
-tellproof.init({ service: 'claims-api', environment: 'production' });
+tellproof.init();
 ```
 
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `agentUrl` | `TELLPROOF_AGENT_URL`, else `http://127.0.0.1:4318` | Where the agent listens. |
-| `service` | `TELLPROOF_SERVICE`, else `OTEL_SERVICE_NAME` | The service name on every span. |
-| `environment` | `TELLPROOF_ENVIRONMENT` | The deployment environment. |
-| `instrument` | `true` | Instrument the installed client libraries. |
-| `streamUsage` | `false` | As `stream_usage` in Python. |
+For most apps that is all. Every OpenAI, Anthropic and Amazon Bedrock call is recorded (models, regions, tokens, errors; never content), each web request is its own trace (Flask, FastAPI, Starlette and Django in Python; any Node.js HTTP server, so Express, Fastify, Koa, Nest and Next.js), and guardrails the SDK can see are recorded on their own: [OpenAI moderation, Bedrock Guardrails, Azure OpenAI content filters](#detected-without-code). `init()` is safe to call more than once and returns whether the SDK is on; `TELLPROOF_DISABLED=1` turns it off without a code change.
 
-Other functions:
+### Settings, in `init()`
 
-- `await tellproof.flush()`: call it before a serverless handler or a short script returns.
-- `await tellproof.shutdown()`, `tellproof.isEnabled()`, `tellproof.stats()`.
-- `await tellproof.ready()`: resolves once the ES-module copies of the client libraries are instrumented; await it if a module calls a model straight after `init()`.
-- `tellproof.instrument({ openai: OpenAI, anthropic: Anthropic, bedrock: await import('@aws-sdk/client-bedrock-runtime') })`: for bundled apps, or strict package managers, where the SDK cannot find the libraries itself.
+| Python | Node.js | Environment | Meaning |
+| --- | --- | --- | --- |
+| `agent` | `agent` | `TELLPROOF_AGENT_NAME` | The agent every model call belongs to (model changes are tracked per agent). |
+| `prompt`, `prompt_version` | `prompt`, `promptVersion` | `TELLPROOF_PROMPT`, `TELLPROOF_PROMPT_VERSION` | The prompt (its name and version, never its text) every model call uses. Set the version from your deploy, so every prompt change shows in the evidence (and the change check asks for it in the register). |
+| `personal_data` | `personalData` | `TELLPROOF_PERSONAL_DATA=1` | Every model call handles personal data. It counts as redacted only in requests where your [`redactor`](#mark-the-functions-you-already-have) ran. |
+| `service`, `environment` | `service`, `environment` | `TELLPROOF_SERVICE` (or `OTEL_SERVICE_NAME`), `TELLPROOF_ENVIRONMENT` | The service name and deployment environment on every span. |
+| `agent_url` | `agentUrl` | `TELLPROOF_AGENT_URL` | Where the agent listens (default `http://127.0.0.1:4318`). |
+| `requests` | `requests` | | `False` leaves web frameworks alone (no trace per request). |
+| `canaries` | `canaries` | | `False` turns the [canaries](#guardrail-canaries) off; a number is the interval (seconds in Python, milliseconds in Node.js; default an hour). |
+| `instrument` | `instrument` | | `False` leaves the client libraries alone. |
+| `stream_usage` | `streamUsage` | | Ask OpenAI for usage on streamed chat completions the app has not configured. The stream then ends with one extra chunk with no `choices`. |
+
+Settings in a scope (below) or on a call win over `init()`'s.
+
+### Mark the functions you already have
+
+Your app already has a guardrail check, a redaction step and tools. Mark each once, where it is defined, and the SDK records what it does for the request it runs in; no call site changes.
+
+```python
+@tellproof.guardrail_check              # your guardrail: returns True (or "block"/"flag") to stop the text
+def check(text): ...
+
+@tellproof.redactor                     # your redaction step
+def redact(messages): ...
+
+@tellproof.tool(high_impact=True)       # a tool with real-world effect
+def issue_refund(claim):
+    if approved_by_policy(claim):
+        tellproof.approve()             # a person or a policy approved this call
+    ...
+```
+
+```js
+const check = tellproof.guardrailCheck(myGuardrail.check);
+const redact = tellproof.redactor(redactPII);
+const issueRefund = tellproof.tool(async function issueRefund(claim) {
+  if (approvedByPolicy(claim)) tellproof.approve();
+  ...
+}, { highImpact: true });
+```
+
+Then your request handlers need no Tellproof code at all:
+
+```python
+@app.post("/claims/{claim_id}/triage")
+def triage(claim_id: str, req: Request):
+    if check(req.text):                 # blocked: recorded as one blocked call
+        return refusal()
+    r = client.chat.completions.create(model="gpt-4.1-mini", messages=redact(req.messages))
+    if check(r.choices[0].message.content):
+        return refusal()                # an output check that blocks: this request's call counts as blocked
+    return r
+```
+
+How the decisions count:
+
+- **Per request.** A check's decision applies to the model calls of the request it ran in, before or after them; with several checks, the strictest wins (block, then flag, then allow). A request that is blocked before any model call is recorded as one blocked call. `True` or `"block"` blocks, `"flag"` flags, anything else allows; the text and the result are never recorded.
+- **Canaries come with it.** Each `guardrail_check` also receives the [canary probes](#guardrail-canaries) hourly. Mark an output-only check `@tellproof.guardrail_check(canaries=False)` (`guardrailCheck(fn, { canaries: false })`) if it is not meant to catch prompt injections.
+- **A `redactor`** that returns normally marks its request's model calls as personal data, redacted. With `init(personal_data=True)`, calls in requests where it did not run count as unredacted.
+- **Outside a web request** (a queue worker, a script), give each unit of work its own request: `@tellproof.trace` on the handler, or `with tellproof.trace():` (`tellproof.trace(() => ...)` in Node.js). Until then a check's allow or flag is not attributed to anything (a block still counts as one blocked call), and `stats()["unscoped"]` counts what was left out: Tellproof never guesses which call a decision was for.
+- Also: `@tellproof.agent_run` (`tellproof.agentRun(fn)`) makes a function one agent run; `tellproof.escalation()` records that a request was handed to a person.
+
+### Detected without code
+
+| What your app already does | What is recorded |
+| --- | --- |
+| OpenAI moderation (`moderations.create`) | A guardrail decision for the request: flag when a result is flagged, else allow. Only the `flagged` booleans are read. |
+| Bedrock Guardrails: `ApplyGuardrail`, or `guardrailConfig` on a Converse call | Block when the guardrail intervened, else allow. Only the action and the stop reason are read. |
+| Azure OpenAI (content filters on by default) | Each call is guarded: block when a choice ended on `content_filter` or the prompt was refused with the error code `content_filter`, else allow. Only the presence of the filter results, the finish reasons and the error code are read. |
+| OpenAI stored prompts (`responses.create(prompt={"id": ..., "version": ...})`) | The prompt's ID and version as the call's prompt name and version; never its text or variables. |
 
 ### What is instrumented automatically
 
@@ -228,65 +274,20 @@ Other functions:
 | --- | --- |
 | `openai` (Python and Node.js) | `chat.completions.create` / `parse` / `stream`, `responses.create` / `parse` / `stream`, `embeddings.create`, `completions.create`; sync, async and streaming. Azure OpenAI is reported as `azure.ai.openai`, other OpenAI-compatible endpoints by their host name. |
 | `anthropic` / `@anthropic-ai/sdk` | `messages.create` and `messages.stream`, and `beta.messages`. `AnthropicBedrock` and `AnthropicVertex` are reported as `aws.bedrock` and `gcp.vertex_ai`, with their region. |
-| `boto3` Bedrock Runtime / `@aws-sdk/client-bedrock-runtime` | `converse`, `converse_stream`, `invoke_model`, `invoke_model_with_response_stream` (in Node.js, the matching `*Command`s through `client.send()`). A Converse call with `guardrailConfig` is a guarded call, blocked when the stop reason is `guardrail_intervened`. |
+| `boto3` Bedrock Runtime / `@aws-sdk/client-bedrock-runtime` | `converse`, `converse_stream`, `invoke_model`, `invoke_model_with_response_stream` (in Node.js, the matching `*Command`s through `client.send()`). |
+| Web frameworks | One trace per request: Flask, FastAPI and Starlette, Django; in Node.js every server on `node:http` or `node:https`. |
 
 Per call, the SDK reads the request's model and stream flag, and from the response only the model, the usage block, the stop reason and Bedrock's token-count headers. Input tokens follow what the provider bills (Anthropic: uncached + cache writes + cache reads), so traced tokens can be reconciled with billed usage. Streams are recorded once, when they end. Calls through `invoke_model_with_response_stream` and `with_raw_response` are counted without tokens, because their counts sit only inside bodies the SDK never reads.
 
-### Record what no client library knows
-
-Tellproof's evidence objectives need a few facts only your code knows. In Python, each helper is a context manager (`with` / `async with`) and a decorator. In Node.js, it is a callback scope that returns whatever the callback returns, and follows `await`, timers and callbacks.
-
-| Python | Node.js | Records |
-| --- | --- | --- |
-| `tellproof.trace()` | `trace(fn)` | Groups everything inside into one trace, for example one web request. |
-| `tellproof.prompt(name, version)` | `prompt(name, version, fn)` | The prompt (name and version, never its text) used by calls inside. |
-| `tellproof.personal_data(redacted=False)` | `personalData({ redacted }, fn)` | Spans inside handle personal data; `redacted` means it was removed or masked before the model saw it. |
-| `tellproof.guardrail(decision=None)` | `guardrail(decision?, fn)` | The guardrail decision for calls inside: `allow`, `block` or `flag`, set later with `g.allow()`, `g.block()`, `g.flag()`. A block with no call inside counts as one blocked call. |
-| `tellproof.tool(name, high_impact=False, approved=False)` | `tool(name, { highImpact, approved }, fn)` | A tool call; an exception marks it failed. Set `t.approved = True` once a person or policy approves it. |
-| `tellproof.agent_run(name)` | `agentRun(name, fn)` | One agent run; model changes are tracked per agent. |
-| `tellproof.escalation()` | `escalation()` | The request was handed to a person. |
-| `tellproof.llm_call(provider, model, operation="chat", region=None)` | `llmCall({ provider, model, operation, region }, fn)` | A model call the SDK does not instrument; report its usage with `c.usage(input_tokens, output_tokens)`. |
-
-```python
-@app.post("/claims/{claim_id}/triage")
-def triage(claim_id: str, req: Request):
-    with tellproof.trace(), tellproof.prompt("claims-triage", "14"), tellproof.personal_data(redacted=True):
-        with tellproof.guardrail() as g:
-            if not input_policy_ok(req):
-                g.block()                      # one blocked call; the model was never called
-                return refusal()
-            r = client.chat.completions.create(model="gpt-4.1-mini", messages=redact(req.messages))
-            g.flag() if needs_review(r) else g.allow()
-            return r
-
-@tellproof.tool("issue_refund", high_impact=True)
-def issue_refund(claim):
-    ...
-```
-
-```js
-app.post('/claims/:id/triage', (req, res) =>
-  tellproof.trace(() =>
-    tellproof.prompt('claims-triage', '14', () =>
-      tellproof.personalData({ redacted: true }, () =>
-        tellproof.guardrail(async (g) => {
-          if (!inputPolicyOk(req.body)) { g.block(); return res.status(422).end(); }
-          const r = await openai.chat.completions.create({ model: 'gpt-4.1-mini', messages: redact(req.body.messages) });
-          needsReview(r) ? g.flag() : g.allow();
-          res.json(r);
-        })))));
-```
-
-Calls inside a `guardrail` scope are held until it ends, so a decision made after the call (an output check) still applies. Names and versions are capped at 128 characters.
+Other functions: `flush()` sends buffered spans now (in Node.js, `await tellproof.flush()` before a serverless handler or a short script returns); `shutdown()` flushes and stops (Python also runs it at exit); `is_enabled()` / `isEnabled()`; `stats()` returns counters (`spans`, `exported`, `dropped`, `export_errors`, `instrumentation_errors`, `unscoped`, `instrumented`). In Node.js, `await tellproof.ready()` once the ES-module copies of the client libraries are instrumented, if a module calls a model straight after `init()`, and `tellproof.instrument({ openai: OpenAI, anthropic: Anthropic, bedrock: await import('@aws-sdk/client-bedrock-runtime') })` for bundled apps or strict package managers where the SDK cannot find the libraries itself. The Python SDK works across threads, `asyncio` tasks and forked workers (gunicorn, uWSGI).
 
 ### Guardrail canaries
 
-Guardrail coverage (EO-GRD-01) shows a guardrail *ran* on every call. It cannot show the guardrail *works*: a guardrail that allows everything has full coverage. Canaries close that gap. The SDK passes a few synthetic, known-bad probes (a prompt injection, a jailbreak, made-up personal data, a documented example AWS key) to **your own guardrail check**, and records only the kind and whether it was caught. EO-CAN-01 passes when every canary was caught; a missed one fails it and names the kind.
+Guardrail coverage (EO-GRD-01) shows a guardrail *ran* on every call; it cannot show the guardrail *works*. Canaries close that gap: the SDK passes a few synthetic, known-bad probes (a prompt injection, a jailbreak, made-up personal data, a documented example AWS key) to **your own guardrail check**, and records only the kind and whether it was caught. EO-CAN-01 passes when every canary was caught; a missed one fails it and names the kind. ([Why](HOW-IT-WORKS.md#evidence-that-can-fail-canaries-and-the-self-test).)
+
+With `@tellproof.guardrail_check` (`guardrailCheck`) they run on their own: now, then hourly (a sync Python check on a daemon thread, an async one on your app's event loop from its first call; in Node.js on an unref'd timer). To run them yourself instead:
 
 ```python
-def guardrail_check(text: str) -> bool:      # your guardrail; True (or "block"/"flag") means it would stop the text
-    return my_guardrail.scan(text).blocked
-
 tellproof.schedule_canaries(guardrail_check, every=3600)   # now, then hourly, on a daemon thread
 tellproof.run_canaries(guardrail_check)                     # or once, e.g. from a health check: {"pii": True, ...}
 await tellproof.arun_canaries(async_guardrail_check)        # for an async check
@@ -294,17 +295,44 @@ tellproof.canary("toxicity", caught=True)                   # a canary you run y
 ```
 
 ```js
-const check = async (text) => (await myGuardrail.scan(text)).blocked;
 tellproof.scheduleCanaries(check, { every: 3_600_000 });   // now, then hourly, on an unref'd timer
 await tellproof.runCanaries(check);                        // { prompt_injection: true, ... }
 tellproof.canary('toxicity', true);
 ```
 
-- **Only the result leaves.** The probe text stays in the process (it is in `tellproof.PROBES` and [`spec/canaries.json`](spec/canaries.json)); the span carries `tellproof.canary.kind` and `tellproof.canary.caught`, in its own trace, outside any scope of yours, so it never counts as a model call, personal data or a prompt version.
-- **Send probes to the guardrail only, never to the model.** The check you pass should call your guardrail and nothing else.
+- **Only the result leaves.** The probe text stays in the process (it is in `tellproof.PROBES` and [`spec/canaries.json`](spec/canaries.json)); the span carries `tellproof.canary.kind` and `tellproof.canary.caught`, in its own trace, so it never counts as a model call, a decision, personal data or a prompt version.
+- **Probes go to the guardrail only, never to the model.** The check should call your guardrail and nothing else.
 - **A check that throws, or returns anything but `True`, `"block"` or `"flag"`, counts the canary as missed.** If your guardrail raises to block, catch that and return `True`.
 - **Off means off.** With the SDK disabled the check is never called. Scheduled runs are at least a minute apart.
 - Without canaries, EO-CAN-01 is *attention* ("No guardrail canaries run"), never fail.
+
+### Scopes, for everything else
+
+The decorators above cover most apps. Scopes say the same things explicitly for a block of code, and win over `init()` and the decorators. In Python each is a context manager (`with` / `async with`) and a decorator; in Node.js a callback scope that returns whatever the callback returns, and follows `await`, timers and callbacks.
+
+<details>
+<summary><b>Every scope</b></summary>
+
+| Python | Node.js | Records |
+| --- | --- | --- |
+| `tellproof.trace()` | `trace(fn)` | One request: a trace of its own, the request's decisions and redaction. Automatic for web requests. |
+| `tellproof.prompt(name, version)` | `prompt(name, version, fn)` | The prompt (name and version, never its text) used by calls inside. |
+| `tellproof.personal_data(redacted=False)` | `personalData({ redacted }, fn)` | Spans inside handle personal data; `redacted` means it was removed or masked before the model saw it. |
+| `tellproof.guardrail(decision=None)` | `guardrail(decision?, fn)` | The guardrail decision for calls inside: `allow`, `block` or `flag`, set later with `g.allow()`, `g.block()`, `g.flag()`. A block with no call inside counts as one blocked call. |
+| `tellproof.tool(name, high_impact=False, approved=False)` | `tool(name, { highImpact, approved }, fn)` | A tool call; an exception marks it failed. Set `t.approved = True`, or call `tellproof.approve()`, once a person or policy approves it. |
+| `tellproof.agent_run(name)` | `agentRun(name, fn)` | One agent run; model changes are tracked per agent. |
+| `tellproof.llm_call(provider, model, operation="chat", region=None)` | `llmCall({ provider, model, operation, region }, fn)` | A model call the SDK does not instrument; report its usage with `c.usage(input_tokens, output_tokens)`. |
+
+```python
+with tellproof.prompt("claims-triage", "14"), tellproof.personal_data(redacted=True):
+    with tellproof.guardrail() as g:
+        r = client.chat.completions.create(model="gpt-4.1-mini", messages=redact(req.messages))
+        g.flag() if needs_review(r) else g.allow()
+```
+
+Calls inside a `guardrail` scope are held until it ends, so a decision made after the call (an output check) still applies. Names and versions are capped at 128 characters.
+
+</details>
 
 ### For model vendors and inference providers
 
