@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-19 · P8-3a · Content spellings counted
+
+**Built.** `spec/semconv-map.json` v4: fourteen exact names and two prefixes added to the presence-only lists (the newer GenAI names, OpenInference, Traceloop, Langfuse, Vercel AI SDK), chosen with the founders. `uncounted_content_attributes` in `spec/leak-corpus.json` lists the corpus spellings that deliberately do not count. Tests: the agent's leak test now builds one span per content spelling per marker and requires the dry run's and the signed batches' `content_present_spans` to count exactly the counted ones; `TestEveryLeakCorpusContentSpellingCounts` checks each spelling in a span's attributes and in its events; `TestContentSpellingsParityWithConcierge` runs the agent and the concierge over a fixture of every spelling (the existing parity test now shares its body); a concierge test checks each spelling and the recorded map version. README (the list, and how to turn capture off), architecture, changelog. Choices in D-066.
+
+**Problems.** None in the parsers: both read the map, so the change is data only. The first version of the parity test left `parseSample` unused, which staticcheck caught, and `internal/spec`'s broken-spec test anchors on the version line, so it moved to v4. The single-content spans sit milliseconds apart, so the leak test's spans stay inside the same first seventeen seconds and the test is no more likely to straddle an hour.
+
+**Verified.** With the v3 map restored, the new agent tests fail: 32 spelling cases (16 names, attribute and event) do not count, and the dry run and the batches count 176 content spans instead of 432. With v4 they pass. The concierge suite passes. `make check` with the local database and `make oss-check` (below).
+
 ## 2026-10-19 · P8-3 · Content-leak regression suite
 
 **Built.** `spec/leak-corpus.json`, `spec/identifiers.json` (embedded in `spec/embed.go`), `internal/otlp/identifiers.go` applied in the normaliser to the provider, model, region, prompt version and canary kind, the same rule in `concierge/ingest.py`; tests: `cmd/agent/leak_test.go` (end to end), `internal/otlp/identifiers_test.go` (vectors, Go against Python, the spec file's own checks, content in read attributes), `internal/langfuse/leak_test.go`, `sdk/python/tests/test_leak.py`, a corpus test in `sdk/js/test/instrument.test.mjs`; `make leak-test`; README, architecture, changelog. Choices in D-065.

@@ -12,9 +12,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/lumetrix-advanced-technologies/tellproof/internal/otlp"
 )
 
 // leakCorpus is spec/leak-corpus.json (D-065).
@@ -23,8 +26,17 @@ type leakCorpus struct {
 		Kind, Needle, Text string
 	} `json:"markers"`
 	ContentAttributes []string `json:"content_attributes"`
-	FactAttributes    []string `json:"fact_attributes"`
-	TraceIDs          []string `json:"trace_ids"`
+	// UncountedContentAttributes are the content attributes that are not
+	// message content and do not count towards content_present_spans (D-066).
+	UncountedContentAttributes []string `json:"uncounted_content_attributes"`
+	FactAttributes             []string `json:"fact_attributes"`
+	TraceIDs                   []string `json:"trace_ids"`
+}
+
+// counted reports whether a span carrying the content attribute must count
+// towards content_present_spans.
+func (c leakCorpus) counted(attr string) bool {
+	return !slices.Contains(c.UncountedContentAttributes, attr)
 }
 
 func loadLeakCorpus(t *testing.T) leakCorpus {
@@ -42,6 +54,11 @@ func loadLeakCorpus(t *testing.T) leakCorpus {
 			t.Fatalf("marker %s: needle %q is not in its text", m.Kind, m.Needle)
 		}
 	}
+	for _, a := range c.UncountedContentAttributes {
+		if !slices.Contains(c.ContentAttributes, a) {
+			t.Fatalf("uncounted content attribute %q is not a content attribute", a)
+		}
+	}
 	return c
 }
 
@@ -52,8 +69,9 @@ func kv(k string, v map[string]any) map[string]any { return map[string]any{"key"
 // leakExports builds one OTLP JSON export per marker that puts the marker in
 // every place a span can carry text: every content attribute spelling (as a
 // string, an array and a key-value list), the span and event names, event
-// attributes, the status message, links, the scope and the resource, and,
-// one span each, every attribute whose value the agent reads.
+// attributes, the status message, links, the scope and the resource; one
+// span each, every content attribute on its own; and, one span each, every
+// attribute whose value the agent reads.
 func leakExports(c leakCorpus, start time.Time) [][]byte {
 	var out [][]byte
 	ns := func(d time.Duration) string { return fmt.Sprint(start.Add(d).UnixNano()) }
@@ -87,6 +105,13 @@ func leakExports(c leakCorpus, start time.Time) [][]byte {
 			spans = append(spans, map[string]any{"traceId": traceID, "spanId": spanID(j + 1), "name": "chat",
 				"startTimeUnixNano": ns(time.Duration(j+1) * time.Second), "endTimeUnixNano": ns(time.Duration(j+2) * time.Second), "attributes": attrs})
 		}
+		for k, a := range c.ContentAttributes {
+			attrs := append([]any{}, base...)
+			attrs = append(attrs, kv(a, str(m.Text)))
+			at := time.Duration(k+1) * 10 * time.Millisecond
+			spans = append(spans, map[string]any{"traceId": traceID, "spanId": spanID(200 + k), "name": "chat",
+				"startTimeUnixNano": ns(at), "endTimeUnixNano": ns(at + time.Millisecond), "attributes": attrs})
+		}
 		res := []any{kv("service.name", str("leak-test")), kv("host.name", str(m.Text)), kv("gen_ai.prompt", str(m.Text))}
 		body, _ := json.Marshal(map[string]any{"resourceSpans": []any{map[string]any{
 			"resource":   map[string]any{"attributes": res},
@@ -113,6 +138,65 @@ func assertNoLeak(t *testing.T, c leakCorpus, where, haystack string) {
 		for _, form := range []string{strings.ToLower(id), base64.StdEncoding.EncodeToString(b), base64.RawURLEncoding.EncodeToString(b)} {
 			if strings.Contains(lower, strings.ToLower(form)) {
 				t.Errorf("%s: raw trace ID %s leaked (as %s)", where, id, form)
+			}
+		}
+	}
+}
+
+// payloadMetrics decodes a batch file's (or a dry-run document's) DSSE
+// payload and returns its content_present_spans and LLM call count.
+func payloadMetrics(t *testing.T, raw []byte) (content, llmCalls int64) {
+	t.Helper()
+	var file struct {
+		Envelope struct {
+			Payload []byte `json:"payload"`
+		} `json:"envelope"`
+	}
+	var payload struct {
+		Metrics struct {
+			ContentPresentSpans int64 `json:"content_present_spans"`
+			Guardrails          struct {
+				LLMCalls int64 `json:"llm_calls"`
+			} `json:"guardrails"`
+		} `json:"metrics"`
+	}
+	if err := json.Unmarshal(raw, &file); err != nil {
+		t.Fatalf("batch: %v %.200s", err, raw)
+	}
+	if err := json.Unmarshal(file.Envelope.Payload, &payload); err != nil {
+		t.Fatalf("batch payload: %v", err)
+	}
+	return payload.Metrics.ContentPresentSpans, payload.Metrics.Guardrails.LLMCalls
+}
+
+// Acceptance (D-066): a span that carries any content attribute of the corpus
+// counts towards content_present_spans, unless the corpus lists it as
+// uncounted (developer definitions, generic OTel fields), and its value is
+// never read either way.
+func TestEveryLeakCorpusContentSpellingCounts(t *testing.T) {
+	c := loadLeakCorpus(t)
+	m, err := otlp.DefaultMapping()
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now().UTC().Add(-time.Minute)
+	for _, a := range c.ContentAttributes {
+		for _, inEvent := range []bool{false, true} {
+			span := map[string]any{"traceId": c.TraceIDs[0], "spanId": "00000000000000a1", "name": "chat",
+				"startTimeUnixNano": fmt.Sprint(start.UnixNano()), "endTimeUnixNano": fmt.Sprint(start.Add(time.Second).UnixNano()),
+				"attributes": []any{kv("gen_ai.operation.name", str("chat"))}}
+			if inEvent {
+				span["events"] = []any{map[string]any{"name": "content", "timeUnixNano": fmt.Sprint(start.UnixNano()), "attributes": []any{kv(a, str(c.Markers[0].Text))}}}
+			} else {
+				span["attributes"] = append(span["attributes"].([]any), kv(a, str(c.Markers[0].Text)))
+			}
+			body, _ := json.Marshal(map[string]any{"resourceSpans": []any{map[string]any{"scopeSpans": []any{map[string]any{"spans": []any{span}}}}}})
+			res, err := otlp.Parse(body, m)
+			if err != nil || len(res.Spans) != 1 {
+				t.Fatalf("%s: %v (%d spans)", a, err, len(res.Spans))
+			}
+			if got, want := res.Spans[0].ContentPresent, c.counted(a); got != want {
+				t.Errorf("a span with %s (in an event: %v) counts as content: %v, want %v", a, inEvent, got, want)
 			}
 		}
 	}
@@ -147,9 +231,18 @@ func decodedEnvelopes(t *testing.T, raw []byte) string {
 func TestNothingOfTheLeakCorpusLeavesTheAgent(t *testing.T) {
 	c := loadLeakCorpus(t)
 	exports := leakExports(c, time.Now().UTC().Add(-2*time.Minute))
-	// The span with content, and each fact span but the one whose
-	// gen_ai.operation.name the marker replaces, is an LLM call.
-	llmSpans := len(c.Markers) * len(c.FactAttributes)
+	// The span with content, each single-content span, and each fact span
+	// but the one whose gen_ai.operation.name the marker replaces, is an LLM
+	// call. The span with every content attribute and each single-content
+	// span of a counted attribute carry content (D-066).
+	llmSpans := len(c.Markers) * (len(c.FactAttributes) + len(c.ContentAttributes))
+	contentSpans := 1
+	for _, a := range c.ContentAttributes {
+		if c.counted(a) {
+			contentSpans++
+		}
+	}
+	contentSpans *= len(c.Markers)
 
 	// 1. Dry run over the corpus: what would be sent, decoded.
 	replay := filepath.Join(t.TempDir(), "leak.jsonl")
@@ -167,6 +260,18 @@ func TestNothingOfTheLeakCorpusLeavesTheAgent(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), `"invalid"`) || !strings.Contains(out.String(), "content_present_spans") {
 		t.Errorf("dry run shows no invalid identifiers or no content count:\n%.500s", out.String())
+	}
+	var dryContent int64
+	for dec := json.NewDecoder(bytes.NewReader(out.Bytes())); dec.More(); {
+		var doc json.RawMessage
+		if err := dec.Decode(&doc); err != nil {
+			t.Fatalf("dry-run output: %v", err)
+		}
+		n, _ := payloadMetrics(t, doc)
+		dryContent += n
+	}
+	if dryContent != int64(contentSpans) {
+		t.Errorf("dry run: content_present_spans = %d, want %d (every span that carried a counted content attribute)", dryContent, contentSpans)
 	}
 	assertNoLeak(t, c, "dry-run output", out.String())
 	assertNoLeak(t, c, "dry-run log", errb.String())
@@ -221,20 +326,26 @@ func TestNothingOfTheLeakCorpusLeavesTheAgent(t *testing.T) {
 
 	// Wait until a batch holds every LLM span.
 	var batches string
+	var batchContent, batchLLM int64
 	for i := 0; ; i++ {
 		files, _ := filepath.Glob(filepath.Join(dataDir, "local", "*.batch.json"))
-		batches = ""
+		batches, batchContent, batchLLM = "", 0, 0
 		for _, f := range files {
 			b, _ := os.ReadFile(f)
 			batches += decodedEnvelopes(t, b) + "\n"
+			n, l := payloadMetrics(t, b)
+			batchContent, batchLLM = batchContent+n, batchLLM+l
 		}
-		if strings.Contains(batches, fmt.Sprintf(`"llm_calls":%d`, llmSpans)) {
+		if batchLLM == int64(llmSpans) {
 			break
 		}
 		if i == 200 {
 			t.Fatalf("no batch with all %d LLM calls: %s\n%s", llmSpans, logs, batches)
 		}
 		time.Sleep(50 * time.Millisecond)
+	}
+	if batchContent != int64(contentSpans) {
+		t.Errorf("signed batches: content_present_spans = %d, want %d (every span that carried a counted content attribute)", batchContent, contentSpans)
 	}
 	assertNoLeak(t, c, "receiver answers", answers.String())
 	assertNoLeak(t, c, "signed batches", batches)

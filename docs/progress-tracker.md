@@ -64,6 +64,7 @@ Claude Code updates this file at the end of every task. Humans update the milest
 | P8-1 | Workflow hardening, Scorecard and community files | in review | 2026-10-19 | Every action in both repos pinned to a commit SHA (tag in a comment) and checked by a test; `persist-credentials: false`; per-job permissions; Dependabot; Scorecard workflow and badge; CONTRIBUTING, CODE_OF_CONDUCT, PR template, CODEOWNERS (D-063) |
 | P8-2 | `init`, `doctor` and `demo` | in review | 2026-10-19 | init detects Python/Node (CJS or ESM) and the entry file, prints the SDK line, writes the policy, offers .gitignore, starts local mode; doctor: 12 checks with fixes, probe sends no spans, `--json`; demo: synthetic week + policy (6 pass, 4 fail, 1 attention), `internal/demolog` shared with tools/demolog (D-064) |
 | P8-3 | Content-leak regression suite | in review | 2026-10-19 | `spec/leak-corpus.json` (16 markers, 35 content spellings, 16 read attributes, trace IDs) through the agent end to end, Langfuse, and both SDKs; found that read attributes (model, provider, region, prompt version, canary kind) carried any text into batches: now identifiers only (`spec/identifiers.json`, Go and Python agree on shared vectors), else `invalid`/`other` (D-065); `make leak-test` |
+| P8-3a | Content spellings counted | in review | 2026-10-19 | Semconv map v4: OpenInference, Traceloop, Langfuse, Vercel AI SDK and newer GenAI prompt/completion names count towards `content_present_spans` (still never read); tool definitions, prompt templates and generic OTel fields deliberately not (corpus `uncounted_content_attributes`); leak test requires every span with a counted spelling to count; agent/concierge parity over every spelling (D-066) |
 
 Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
@@ -71,6 +72,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-19 · P8-3a · PR pending · EO-CNT-01 now sees prompts and completions exported under OpenInference, Traceloop, Langfuse and Vercel AI SDK names, so an app that exports content can no longer pass it by using another library.
 - 2026-10-19 · P8-3 · PR pending · A shared corpus of prompts, personal data and keys in every position proves nothing of it leaves the agent or the SDKs, and closed the one gap it found: text in a model or region attribute.
 - 2026-10-19 · P8-2 · PR pending · `tellproof-agent init` takes an app from nothing to a batch on the dashboard, `doctor` explains what is wrong and how to fix it, and `demo` shows a full dashboard in seconds.
 - 2026-10-19 · P8-1 · PR pending · Every workflow action is pinned to a reviewed commit, checkouts keep no token, and the public repo has a Scorecard, contribution guide and code of conduct.

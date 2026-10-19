@@ -171,6 +171,8 @@ The roadmap in `docs/handoff.md` §4–6, in the order the founders chose. Each 
 
 **P8-3 Content-leak regression suite.** Spans and SDK calls stuffed with secrets, personal data and prompts across every provider and attribute spelling; nothing of it in batches, dry-run output, logs or the dashboard API, in CI for the agent and both SDKs (§4.3-4). Acceptance: one shared corpus file; the agent test covers every text position of an OTLP span (attributes as strings, arrays and lists, names, events, status, links, scope, resource) and every attribute the agent reads, over plain and gzip posts and refused bodies, and scans the dry run, logs, receiver answers, signed batches (decoded), dashboard API, report, check, self-test, AI-BOM and doctor for every needle and raw trace ID; Langfuse and both SDKs the same; removing a defence makes the suite fail; whatever it finds is fixed.
 
+**P8-3a Content spellings counted.** (Added 19 Oct 2026, the follow-up of D-065.) The corpus's prompt and completion spellings that the semconv map does not list count towards `content_present_spans`, as the founders decide, with the map version bumped. Acceptance: the agent's leak test requires every span that carried a counted spelling to count and every uncounted one not to; the agent and the concierge aggregate a fixture of every spelling identically; values still never read.
+
 **P8-4 Shareable reports and the CI-evidence Action.** `check --html`, `--markdown`, `--sarif`; a GitHub Action wrapping `ci run/canary/attest` (§4.2-1, 4.2-6).
 
 **P8-5 Integrations.** LiteLLM, LangChain/LangGraph, Vercel AI SDK and an OpenTelemetry Collector exporter, each with a fake-client test and a README snippet (§4.1-4).
