@@ -3,7 +3,8 @@
 // those (docs/architecture.md §3).
 //
 //	tellproof-agent init                          # set up the project in the working directory
-//	tellproof-agent run --local                   # no server: keep signed batches locally, with a dashboard
+//	tellproof-agent start | stop | status          # the local agent in the background, with a dashboard
+//	tellproof-agent run --local                   # the same in the foreground
 //	tellproof-agent doctor                        # diagnose the installation, with a fix for each problem
 //	tellproof-agent demo                          # the dashboard on a synthetic, signed week
 //	tellproof-agent report [--json]               # verify and summarise the local evidence log
@@ -49,6 +50,7 @@ var version = "dev"
 const usage = `usage:
   tellproof-agent                    (in a terminal: the welcome banner and first steps)
   tellproof-agent init | doctor | demo ...   (set up a project, diagnose, a dashboard on synthetic data)
+  tellproof-agent start | stop | restart | status | logs ...   (the local agent in the background)
   tellproof-agent run --local [--config <agent.json>]
   tellproof-agent report [--config <agent.json>] [--data-dir <dir>] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
   tellproof-agent dashboard [--config <agent.json>] [--data-dir <dir>] [--listen <host:port>]
@@ -62,6 +64,7 @@ const usage = `usage:
 run --local (or just local) runs with no server and no token: batches are
 signed with the agent's own key and kept in <data-dir>/local, a dashboard is
 served on http://127.0.0.1:4319, and report verifies and summarises the log.
+start runs the same in the background and stop ends it.
 The enrolment token is read from TELLPROOF_ENROL_TOKEN when --token is not
 given. Secrets are read from the environment variables the config names.
 Exit status: 0 ok, 1 runtime error, 2 usage or config error.
@@ -83,6 +86,9 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 	}
 	if isSetup(args) {
 		return setupCommand(ctx, args, getenv, stdout, stderr)
+	}
+	if isLifecycle(args) {
+		return lifecycle(ctx, args, getenv, stdout, stderr)
 	}
 	if len(args) == 0 && welcome(stdout, getenv) {
 		return 0 // in a terminal, no arguments shows the welcome; elsewhere it still means run
@@ -295,6 +301,16 @@ func local(ctx context.Context, configPath string, getenv func(string) string, s
 		}
 		cfg.SaltSecretFile = path
 	}
+	if other, err := running(cfg.DataDir); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	} else if other != nil && other.PID != os.Getpid() {
+		fmt.Fprintf(stderr, "tellproof-agent: an agent already runs on %s (pid %d, since %s). Stop it with: %s stop\n",
+			cfg.DataDir, other.PID, other.Started.Local().Format("15:04"), progName())
+		return 1
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	a, err := agent.New(cfg, agent.Options{Local: true, Out: stdout, Log: log, Getenv: getenv, TickEvery: tickEvery})
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -307,6 +323,20 @@ func local(ctx context.Context, configPath string, getenv func(string) string, s
 	}
 	defer stopDash()
 	logDir := filepath.Join(cfg.DataDir, agent.LocalDir)
+	// While it listens, the agent records itself for start, stop and status
+	// (D-067) and watches for a stop request.
+	release := func() {}
+	defer func() { release() }()
+	a.OnListening(func() {
+		r, err := claimRun(cfg.DataDir, runState{AgentID: a.AgentID(), OTLP: cfg.OTLPListen, Dashboard: url, Evidence: logDir,
+			Background: getenv("TELLPROOF_BACKGROUND") != ""})
+		if err != nil {
+			log.Warn("not recorded as running, so stop and status will not find this agent", "error", err.Error())
+			return
+		}
+		release = r
+		go watchStop(ctx, cfg.DataDir, cancel)
+	})
 	if showBanner(stdout, getenv, "Local mode") {
 		localStatus(stdout, getenv, a.AgentID(), cfg.OTLPListen, url, logDir)
 	} else {
@@ -315,7 +345,7 @@ func local(ctx context.Context, configPath string, getenv func(string) string, s
 		if url != "" {
 			fmt.Fprintf(stdout, "Dashboard: %s\n", url)
 		}
-		fmt.Fprintln(stdout, "In a terminal: tellproof-agent report")
+		fmt.Fprintf(stdout, "In a terminal: %s report. To stop: Ctrl-C, or %s stop\n", progName(), progName())
 	}
 	if err := a.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		log.Error("agent stopped", "error", err.Error())

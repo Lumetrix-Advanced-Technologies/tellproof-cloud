@@ -28,7 +28,7 @@ jobs:
           [ "$py" = "$v" ] && [ "$js" = "$v" ] || { echo "tag $v, pyproject $py, package.json $js"; exit 1; }
           echo "version=$v" >> "$GITHUB_OUTPUT"
       - run: python -m unittest discover -s sdk/python/tests
-      - run: node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs
+      - run: node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs sdk/js/test/cli.test.mjs
       - name: Smoke test (build both packages, install them, import them)
         env: { V: "${{ steps.v.outputs.version }}" }
         run: |
@@ -40,6 +40,11 @@ jobs:
           mkdir -p /tmp/npm && cd /tmp/npm && npm init -y > /dev/null && npm install --no-audit --no-fund "/tmp/tellproof-$V.tgz" > /dev/null
           node -e 'const t = require("tellproof"); if (t.VERSION !== process.env.V) process.exit(1); console.log("node", t.VERSION)'
           node --input-type=module -e 'import t from "tellproof"; console.log("esm", t.VERSION)'
+          # One install brings the agent (D-067): the extra on PyPI, the optional dependency on npm.
+          # The agent release the extra names must be published first.
+          /tmp/py/bin/pip install --quiet "$(ls /tmp/dist/tellproof-*.whl)[agent]"
+          /tmp/py/bin/tellproof version | grep '^tellproof-agent v'
+          npx --no-install tellproof version | grep '^tellproof-agent v'
 
   pypi:
     needs: check

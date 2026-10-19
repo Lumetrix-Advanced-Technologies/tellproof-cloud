@@ -154,7 +154,7 @@ func doctor(ctx context.Context, configPath, dataDir, policyPath string, asJSON 
 	case mode == "connected":
 		add("evidence log", "info", "connected mode: batches go to "+cfg.Server+" (the Tellproof app shows them)", "")
 	case err != nil || s.Batches == 0:
-		add("evidence log", "info", "no batches yet: the first comes about a minute after the agent receives its first span", "start the agent (tellproof-agent run --local), then make a model call in the app")
+		add("evidence log", "info", "no batches yet: the first comes about a minute after the agent receives its first span", "start the agent ("+progName()+" start), then make a model call in the app")
 	case !s.Verified:
 		add("evidence log", "fail", "verification failed: "+s.Problem+"; figures cover only the batches before it", "restore the data directory from a backup (tellproof-agent report names the batch)")
 	default:
@@ -246,7 +246,7 @@ func probeReceiver(ctx context.Context, addr string, add func(check, status, det
 	resp, err := doctorHTTP.Do(req)
 	if err != nil {
 		if free(addr) {
-			add("receiver", "warn", "the agent is not running: nothing listens on "+addr, "start it: tellproof-agent run --local")
+			add("receiver", "warn", "the agent is not running: nothing listens on "+addr, "start it: "+progName()+" start")
 		} else {
 			add("receiver", "fail", addr+" is taken, but not by an HTTP server", "stop what holds the port, or set TELLPROOF_OTLP_LISTEN (and TELLPROOF_AGENT_URL in the app)")
 		}
@@ -278,7 +278,7 @@ func probeDashboard(ctx context.Context, addr string, agentRunning bool, add fun
 		case free(addr) && agentRunning:
 			add("dashboard", "warn", "the agent runs but nothing serves the dashboard on "+addr+" (an agent not in local mode, or with dashboard_listen set elsewhere)", "tellproof-agent dashboard")
 		case free(addr):
-			add("dashboard", "info", "not running; run --local serves it on http://"+dialAddr(addr)+"/", "")
+			add("dashboard", "info", "not running; "+progName()+" start serves it on http://"+dialAddr(addr)+"/", "")
 		default:
 			add("dashboard", "fail", "port "+addr+" is taken by something else", "TELLPROOF_DASHBOARD_LISTEN=127.0.0.1:4329 (or off)")
 		}

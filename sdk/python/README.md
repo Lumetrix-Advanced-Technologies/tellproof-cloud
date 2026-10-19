@@ -3,7 +3,8 @@
 One line to send evidence telemetry from an AI product to the local Tellproof evidence agent.
 
 ```bash
-pip install tellproof
+pip install "tellproof[agent]"   # the SDK and the agent, in one step
+tellproof start                  # the agent, in the background, with a dashboard on http://127.0.0.1:4319
 ```
 
 ```python
@@ -11,9 +12,11 @@ import tellproof
 tellproof.init()
 ```
 
-The SDK records one span per model call with provider, model, region, token counts, operation, timing and error status, and sends it as OTLP JSON to the agent on `http://127.0.0.1:4318` (or `TELLPROOF_AGENT_URL`). The agent aggregates per hour and signs the aggregates: it keeps them in a local evidence log (`tellproof-agent local`) or sends them to Tellproof (`tellproof-agent connect`). **The SDK never reads prompts, completions, function arguments, return values or exception messages**, so there is no content to filter.
+`tellproof stop` stops the agent, `tellproof status` says whether it runs. In production the agent usually runs beside the app (a sidecar or a service), so the app needs only `pip install tellproof`.
 
-- No dependencies: standard library only, Python 3.10+.
+The SDK records one span per model call with provider, model, region, token counts, operation, timing and error status, and sends it as OTLP JSON to the agent on `http://127.0.0.1:4318` (or `TELLPROOF_AGENT_URL`). The agent aggregates per hour and signs the aggregates: it keeps them in a local evidence log (`tellproof start`) or sends them to Tellproof (`tellproof-agent connect`). **The SDK never reads prompts, completions, function arguments, return values or exception messages**, so there is no content to filter.
+
+- No dependencies: standard library only, Python 3.10+. The `[agent]` extra adds the agent package, which the SDK never imports.
 - Never slows or breaks the app: spans go to a bounded background buffer; when it is full, spans are dropped and counted (`tellproof.stats()`). SDK errors are swallowed and counted.
 - `TELLPROOF_DISABLED=1` turns it off. `init()` is safe to call more than once.
 - Proxies are never used: the agent is local.

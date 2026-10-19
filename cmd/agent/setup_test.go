@@ -80,8 +80,8 @@ func TestInitSetsUpAPythonProject(t *testing.T) {
 	if code := run(context.Background(), []string{"init", "--yes", "--name", "Claims API", "--timezone", "Australia/Sydney"}, envOf(nil), out, out); code != 0 {
 		t.Fatalf("exit %d: %s", code, out)
 	}
-	for _, want := range []string{"Python project (app.py)", "pip install tellproof", "At the top of app.py", `tellproof.init(service="claims-api")`,
-		"Added /.tellproof-agent/ to .gitignore", "Next: tellproof-agent run --local"} {
+	for _, want := range []string{"Python project (app.py)", `pip install "tellproof[agent]"`, "At the top of app.py", `tellproof.init(service="claims-api")`,
+		"Added /.tellproof-agent/ to .gitignore", "Next: tellproof-agent start"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
@@ -151,7 +151,7 @@ func TestInitAsksInATerminal(t *testing.T) {
 	if code := run(context.Background(), []string{"init"}, envOf(nil), out, out); code != 0 {
 		t.Fatalf("exit %d: %s", code, out)
 	}
-	for _, want := range []string{"Name of the AI system [", "Its time zone (IANA, for daily figures) [UTC]: ", `service="fraud-screen"`, "Start the agent now, in local mode (y/n) [y]: ", "Next: tellproof-agent run --local"} {
+	for _, want := range []string{"Name of the AI system [", "Its time zone (IANA, for daily figures) [UTC]: ", `service="fraud-screen"`, "Start the agent now, in the background (y/n) [y]: ", "Next: tellproof-agent start"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
@@ -226,7 +226,7 @@ func TestDoctorOnAFreshMachine(t *testing.T) {
 	}
 	expect(t, fs, "config", "ok", "defaults")
 	expect(t, fs, "data directory", "info", "does not exist yet")
-	expect(t, fs, "receiver", "warn", "tellproof-agent run --local")
+	expect(t, fs, "receiver", "warn", "tellproof-agent start")
 	expect(t, fs, "SDK target", "warn", "TELLPROOF_AGENT_URL=http://"+env["TELLPROOF_OTLP_LISTEN"])
 	expect(t, fs, "dashboard", "info", "not running")
 	expect(t, fs, "evidence log", "info", "no batches yet")

@@ -303,7 +303,7 @@ func initProject(ctx context.Context, o initOptions, getenv func(string) string,
 		if p.pyEntry != "" {
 			where = p.pyEntry
 		}
-		fmt.Fprintf(stdout, "  %d. pip install tellproof          (and add tellproof to your dependencies)\n", step)
+		fmt.Fprintf(stdout, "  %d. pip install \"tellproof[agent]\"   (the SDK and the agent; your app's dependencies need only tellproof)\n", step)
 		fmt.Fprintf(stdout, "  %d. At the top of %s, before the first model call:\n\n", step+1, where)
 		fmt.Fprintf(stdout, "         import tellproof\n         tellproof.init(service=%q)\n\n", service)
 		step += 2
@@ -313,7 +313,7 @@ func initProject(ctx context.Context, o initOptions, getenv func(string) string,
 		if p.nodeEntry != "" {
 			where = p.nodeEntry
 		}
-		fmt.Fprintf(stdout, "  %d. npm install tellproof\n", step)
+		fmt.Fprintf(stdout, "  %d. npm install tellproof            (the SDK, with the agent as an optional dependency)\n", step)
 		fmt.Fprintf(stdout, "  %d. At the top of %s, before the first model call:\n\n", step+1, where)
 		if p.nodeESM {
 			fmt.Fprintf(stdout, "         import * as tellproof from 'tellproof';\n         tellproof.init({ service: '%s' });\n         await tellproof.ready();   // when a model is called straight away\n\n", service)
@@ -360,15 +360,19 @@ func initProject(ctx context.Context, o initOptions, getenv func(string) string,
 	// Never block a script: without a terminal, --yes stops here.
 	start := !o.noStart && (o.ask != nil || o.yes && stdinIsTerminal())
 	if start && o.ask != nil {
-		start = yesNo("Start the agent now, in local mode")
+		start = yesNo("Start the agent now, in the background")
 	}
+	n := progName()
 	if !start {
-		fmt.Fprintln(stdout, "\nNext: tellproof-agent run --local, then start your app and open http://127.0.0.1:4319. Something not arriving? tellproof-agent doctor")
+		fmt.Fprintf(stdout, "\nNext: %s start, then start your app and open http://127.0.0.1:4319. Something not arriving? %s doctor\n", n, n)
 		return 0
 	}
-	fmt.Fprintln(stdout, "\nStarting the agent. Start your app in another terminal: the first batch shows on the dashboard about a minute after the first model call.")
-	log := slog.New(slog.NewJSONHandler(stderr, nil))
-	return local(ctx, o.config, getenv, stdout, stderr, log)
+	fmt.Fprintln(stdout)
+	if code := startAgent(ctx, cfg, o.config, false, getenv, stdout, stderr); code != 0 {
+		return code
+	}
+	fmt.Fprintln(stdout, "\nNow start your app: the first batch shows on the dashboard about a minute after the first model call.")
+	return 0
 }
 
 // gitIgnored reports whether path is ignored in the git work tree that holds
