@@ -55,7 +55,7 @@ Allowed: `github.com/jackc/pgx/v5`; `github.com/aws/aws-sdk-go-v2/config`; `gith
 
 ## Python
 
-SDK (`sdk/python`): Python 3.10+, standard library only, no runtime dependencies (D-025). It must never raise into or block the app; every internal path is wrapped and counted (D-033).
+SDK (`sdk/python`): Python 3.10+, standard library only, no runtime dependencies (D-025); the agent is only an opt-in extra that the SDK never imports (D-067). It must never raise into or block the app; every internal path is wrapped and counted (D-033).
 
 Concierge: Python 3.12, `cryptography` and `boto3` only. Frozen after M1: bug fixes only, and every fix gets a matching vector so the Go code inherits it.
 

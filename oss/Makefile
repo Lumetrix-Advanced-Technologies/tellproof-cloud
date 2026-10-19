@@ -38,7 +38,7 @@ vectors:
 
 sdk-test:
 	python3 -m unittest discover -s sdk/python/tests
-	node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs sdk/js/test/real-libs.test.mjs
+	node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs sdk/js/test/real-libs.test.mjs sdk/js/test/cli.test.mjs
 
 # The content-leak regression suite alone (D-065): spec/leak-corpus.json through the
 # agent (dry run, receiver, signed log, dashboard, reports), Langfuse, the identifier

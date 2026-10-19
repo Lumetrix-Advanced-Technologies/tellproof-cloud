@@ -67,7 +67,12 @@ type Agent struct {
 	pulledThru time.Time       // Langfuse hours pulled up to here
 	firstSpans time.Time       // when the first spans of this run arrived
 	firstSent  bool            // the early first batch has been sent
+
+	onListening func() // called by Run once the receiver listens
 }
+
+// OnListening sets a function Run calls once the OTLP receiver listens.
+func (a *Agent) OnListening(f func()) { a.onListening = f }
 
 // LocalDir is the local evidence log in the data directory (localreport reads it).
 const LocalDir = localreport.Dir
@@ -382,6 +387,9 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 60 * time.Second}
 	go func() { _ = srv.Serve(ln) }()
+	if a.onListening != nil {
+		a.onListening()
+	}
 	a.opt.Log.Info("agent started", "agent_id", a.id.AgentID, "otlp", a.cfg.OTLPListen, "server", a.cfg.Server, "dry_run", a.opt.DryRun, "local", a.opt.Local)
 
 	every := a.opt.TickEvery

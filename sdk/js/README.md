@@ -3,7 +3,8 @@
 One line to send evidence telemetry from an AI product to the local Tellproof evidence agent.
 
 ```bash
-npm install tellproof
+npm install tellproof    # the SDK, with the agent as an optional dependency
+npx tellproof start      # the agent, in the background, with a dashboard on http://127.0.0.1:4319
 ```
 
 ```js
@@ -11,9 +12,11 @@ import * as tellproof from 'tellproof'; // or: const tellproof = require('tellpr
 tellproof.init();
 ```
 
-The SDK records one span per model call with provider, model, region, token counts, operation, timing and error status, and sends it as OTLP JSON to the agent on `http://127.0.0.1:4318` (or `TELLPROOF_AGENT_URL`). The agent aggregates per hour and signs the aggregates: it keeps them in a local evidence log (`tellproof-agent local`) or sends them to Tellproof (`tellproof-agent connect`). **The SDK never reads prompts, completions, function arguments, return values or error messages.**
+`npx tellproof stop` stops the agent, `npx tellproof status` says whether it runs. In production the agent usually runs beside the app (a sidecar or a service): `npm ci --omit=optional` leaves it out of the app's image.
 
-- No dependencies: Node 18+ built-ins only (`fetch`, `AsyncLocalStorage`). Plain JavaScript with TypeScript types; no build step. `import` and `require` share one instance.
+The SDK records one span per model call with provider, model, region, token counts, operation, timing and error status, and sends it as OTLP JSON to the agent on `http://127.0.0.1:4318` (or `TELLPROOF_AGENT_URL`). The agent aggregates per hour and signs the aggregates: it keeps them in a local evidence log (`npx tellproof start`) or sends them to Tellproof (`tellproof-agent connect`). **The SDK never reads prompts, completions, function arguments, return values or error messages.**
+
+- No dependencies: Node 18+ built-ins only (`fetch`, `AsyncLocalStorage`). The one optional dependency, `tellproof-agent`, is the agent and its binary for your platform; the SDK never loads it. Plain JavaScript with TypeScript types; no build step. `import` and `require` share one instance.
 - Never slows or breaks the app: spans go to a bounded buffer; when it is full they are dropped and counted (`tellproof.stats()`). SDK errors are swallowed and counted. Its timers never keep the process alive.
 - `TELLPROOF_DISABLED=1` turns it off. `init()` is safe to call more than once.
 - Buffered spans are flushed when the event loop drains. In serverless handlers and short scripts, `await tellproof.flush()` before returning.

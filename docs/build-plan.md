@@ -173,6 +173,10 @@ The roadmap in `docs/handoff.md` §4–6, in the order the founder chose (Lumetr
 
 **P8-3a Content spellings counted.** (Added 19 Oct 2026, the follow-up of D-065.) The corpus's prompt and completion spellings that the semconv map does not list count towards `content_present_spans`, as the founders decide, with the map version bumped. Acceptance: the agent's leak test requires every span that carried a counted spelling to count and every uncounted one not to; the agent and the concierge aggregate a fixture of every spelling identically; values still never read.
 
+**P8-7 One install and the background agent.** (Added 19 Oct 2026 at the founder's request.) One install gives the SDK and the agent (`pip install "tellproof[agent]"`, `npm install tellproof`) and a `tellproof` command; `start`, `stop`, `restart`, `status` and `logs` for the local agent; `init` starts it in the background. Acceptance: from a clean environment, one install then `tellproof start` gives a listening agent and its dashboard, `tellproof stop` ends it and keeps the evidence, both through pip and npm; stop also ends a foreground agent, never signals a stale pid, and refuses nothing it cannot verify; a second agent on one data directory is refused; the SDK manifests carry no dependency but the optional agent, and no SDK module loads it (D-067).
+
+**P8-8 README split.** The README keeps installation, setup and usage; how it works (the evidence model, batches, the chain, verification, the trust model, objectives, the wire formats) moves to its own document, linked from the README. Acceptance: nothing is lost (every section of the old README is in one of the two), every link resolves, the export carries both.
+
 **P8-4 Shareable reports and the CI-evidence Action.** `check --html`, `--markdown`, `--sarif`; a GitHub Action wrapping `ci run/canary/attest` (§4.2-1, 4.2-6).
 
 **P8-5 Integrations.** LiteLLM, LangChain/LangGraph, Vercel AI SDK and an OpenTelemetry Collector exporter, each with a fake-client test and a README snippet (§4.1-4).

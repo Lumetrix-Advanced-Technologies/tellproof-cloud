@@ -37,7 +37,7 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: "${{ matrix.node }}" }
-      - run: node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs
+      - run: node --test sdk/js/test/sdk.test.mjs sdk/js/test/instrument.test.mjs sdk/js/test/cli.test.mjs
 
   agent-image:
     runs-on: ubuntu-latest
