@@ -75,18 +75,23 @@ This page is the setup and usage guide. For the architecture, the evidence model
 
 ## Quick start: two minutes, no account
 
-**1. Install the SDK and the agent, in one step.**
+**1. Install the SDK and the agent, and set up**, in your app's directory.
+
+Python 3.10+:
 
 ```bash
-pip install "tellproof[agent]"     # Python 3.10+
-npm install tellproof              # Node.js 18+ (the agent comes as an optional dependency)
+pip install "tellproof[agent]"
+tellproof init
 ```
 
-**2. Set up and start.** In your app's directory:
+Node.js 18+ (npm keeps a package's commands in `node_modules/.bin`, not on your PATH, so run them with `npx`):
 
 ```bash
-tellproof init                     # from npm: npx tellproof init
+npm install tellproof
+npx tellproof init
 ```
+
+The agent comes with the SDK (on npm as an optional dependency). Prefer a plain `tellproof` command in Node.js too? `npm install -g tellproof` puts it on your PATH; keep the project's own `npm install tellproof` for the SDK.
 
 `init` recognises a Python or Node.js project, shows the one line to add and the file it goes in, writes `tellproof.policy.json`, offers to add the agent's data directory to `.gitignore`, and starts the agent in the background. It changes no source file. The line it shows is:
 
@@ -100,9 +105,9 @@ import * as tellproof from 'tellproof';
 tellproof.init();
 ```
 
-**3. Run your app, make a model call, and open http://127.0.0.1:4319.** The first batch appears about a minute after the first call, and every hour after that. Nothing showing? `tellproof doctor` checks the setup and prints a fix for each problem.
+**2. Run your app, make a model call, and open http://127.0.0.1:4319.** The first batch appears about a minute after the first call, and every hour after that. Nothing showing? `tellproof doctor` checks the setup and prints a fix for each problem.
 
-**4. When you are done:** `tellproof stop`. `tellproof start` brings it back; `tellproof status` says whether it runs and where.
+**3. When you are done:** `tellproof stop` (`npx tellproof stop` in a Node.js project). `tellproof start` brings it back; `tellproof status` says whether it runs and where; `tellproof --version` shows the agent's and the SDK's versions.
 
 > [!TIP]
 > Only looking? `tellproof demo` serves the dashboard on a synthetic, signed week (nothing from your system), with a policy, so you can try `report`, `check` and `check --self-test` on it. Next steps: declare what the system may use and check the evidence against the eleven objectives with `tellproof policy init`, then `tellproof check` ([governance as code](#governance-as-code-policy-check-and-ai-bom)).
