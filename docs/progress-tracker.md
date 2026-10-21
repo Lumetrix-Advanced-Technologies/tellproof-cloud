@@ -76,6 +76,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-21 · Docs · PR pending · The quick start shows npm users `npx tellproof init` on its own line (npm keeps commands in `node_modules/.bin`), with `npm install -g tellproof` for a plain `tellproof`; the site and `init`'s output say the same.
 - 2026-10-20 · Release · SDK 0.3.2 released (PyPI; npm staged) with the agent floor at 0.5.1: `pip install -U "tellproof[agent]"` takes an old 0.3.0 + 0.5.0 install to 0.3.2 + 0.5.1 with a working `--version`. npm 0.5.1 and 0.3.1 approved. Scorecard 6.6 → 7.7.
 - 2026-10-20 · Release · v0.5.1 released (GitHub, ghcr, PyPI; npm staged) and SDK 0.3.1 (PyPI; npm staged); its provenance asset and npx-based staging worked on their first run. SDK 0.3.2 raises the agent floor to 0.5.1, since 0.3.1 with a 0.5.0 agent has no `--version`.
 - 2026-10-20 · Scorecard · PR pending · Provenance attached to every release, workflow tools pinned by hash and digest, a fuller security policy, and branch protection as a ruleset Scorecard can read (D-070).
