@@ -126,6 +126,7 @@ class Packaging(unittest.TestCase):
         r = subprocess.run([node, str(launcher), "version"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 1)
         self.assertIn("no binary for", r.stderr)
+        self.assertIn("https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases.", r.stderr)  # a page that exists
         shutil.copytree(out / f"tellproof-agent-{os_}-{cpu}", nm / f"tellproof-agent-{os_}-{cpu}")
         r = subprocess.run([node, str(launcher), "run", "--local"], capture_output=True, text=True)
         self.assertEqual((r.returncode, r.stdout.strip()), (3, "stub agent: run --local"), r.stderr)

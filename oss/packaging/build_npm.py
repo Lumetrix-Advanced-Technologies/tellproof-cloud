@@ -28,6 +28,7 @@ PLATFORMS = {
 # repository exactly as GitHub does.
 REPO = {"type": "git", "url": "git+https://github.com/Lumetrix-Advanced-Technologies/tellproof.git"}
 HOME = "https://lumetrix-advanced-technologies.github.io/tellproof/"
+RELEASES = "https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases"
 
 LAUNCHER = r"""#!/usr/bin/env node
 // The Tellproof evidence agent, installed with npm. The platform's binary
@@ -45,7 +46,7 @@ try {
 } catch {
   console.error(`tellproof-agent: no binary for ${process.platform}-${process.arch}. ` +
     `Supported: linux, darwin and win32 on x64 and arm64. If you installed with --omit=optional or --no-optional, ` +
-    `install again without it, or download a binary from ${"__HOME__"}/releases.`);
+    `install again without it, or download a binary from ${"__RELEASES__"}.`);
   process.exit(1);
 }
 const child = spawn(bin, process.argv.slice(2), { stdio: "inherit" });
@@ -107,7 +108,7 @@ def build(dist: Path, version: str, out: Path, license_file: Path) -> list:
     d = out / "tellproof-agent"
     (d / "bin").mkdir(parents=True, exist_ok=True)
     launcher = d / "bin" / "tellproof-agent.js"
-    launcher.write_text(LAUNCHER.replace("__HOME__", HOME))
+    launcher.write_text(LAUNCHER.replace("__RELEASES__", RELEASES))
     launcher.chmod(0o755)
     shutil.copyfile(license_file, d / "LICENSE")
     (d / "README.md").write_text(README)
