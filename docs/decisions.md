@@ -606,3 +606,11 @@ At the founder's request: Tellproof should run on the smallest machine. Measured
 - **GC.** The agent sets `GOGC=50` unless the environment sets `GOGC`: collection when the heap has grown by half, not doubled. A default `GOMEMLIMIT` was rejected: a busy deployment whose live data exceeded it would spend up to half a CPU collecting. It is documented for small devices instead.
 - **Result.** 100,000 calls in one hour, each in its own trace: 99 MB → 38 MB RSS (37 MB with `GOMEMLIMIT=32MiB`); 300,000: 66 MB. Retained per span 384 → 143 bytes; the trace map kept for two hours after a window, 9.5 → 6.3 MB per 100,000 traces.
 - **Left as is.** The transition records are still one per model call; changing what a model change is (see the open question in the progress tracker) would remove them.
+
+## D-073 Python SDK: patch each module when the app imports it (30 Oct 2026)
+
+Found while measuring memory for D-072: `init()` imported every patch target of every installed library: openai's lazily loaded resources (responses, embeddings, moderations, legacy completions), `botocore.client` whenever boto3 was installed, and Flask, Starlette or Django when present. In an app using openai, Anthropic and Flask with boto3 installed: 162 modules and +12.5 MB, and `stats()["instrumented"]` claimed `bedrock`.
+
+- A module already imported is patched at once (so `init()` after the app's imports behaves as before). Any other is patched right after the app imports it: a finder at the front of `sys.meta_path` answers None for every name except the eleven patch targets; for those it finds the spec through the other finders, replaces the loader's `exec_module` on that loader instance for one call (then deletes the instance attribute, so the loader is as it was), and runs the patcher after the module executes. Any error in the finder returns None, so it can never stop an import. A loader that already has an instance `exec_module`, or none, is left alone.
+- `stats()["instrumented"]` lists the libraries patched in a module the app loaded, as it loads them; `install()` returns those patched at once. `instrument_openai()` and the others still import and patch at once, for explicit use.
+- Measured on the same app: +1.4 MB and 6 modules; botocore never loaded. Same principle as D-071 for Node.js.
