@@ -796,6 +796,8 @@ The agent polls the providers' usage APIs with an admin key (limit it to this sy
 
 For development, `tellproof-agent start`. For a server, run the agent as a service (systemd, launchd, or a container with `--restart unless-stopped`) and leave the defaults: the SDK finds it on `127.0.0.1:4318`.
 
+**Memory.** The agent adds spans up as they arrive and keeps no span: about 12 MB idle, and around 40 MB with 100,000 model calls in one hour, each in its own trace. On a small device, cap it with Go's soft limit, `GOMEMLIMIT=32MiB`; it collects garbage sooner as it nears the limit. The SDKs buffer at most 2,048 spans and drop new ones while the buffer is full (the agent is away), so the app never grows waiting for it.
+
 ### Docker Compose
 
 ```yaml
