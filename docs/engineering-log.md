@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-30 · P8-14, P8-15 · What a change is; trust fixes
+
+**Built.** D-074: model and prompt changes as values new to their slot, with `history.json` carrying the slots across restarts, in the agent and the concierge. D-075: the self-test tells an honest short-period register from a blanket one; a replaced `agent.pub` fails verification; `ci keygen` creates its directory.
+
+**Problems.** The first cut of the honest-register check matched entries to changes "within a day" and so passed the existing blanket-register test (three daily entries around one real change); entries now need one distinct observed change each. The randomized differential test against the old aggregator now compares everything but transitions, which changed meaning on purpose; transitions have their own tests (`history_test.go`) and a Go/Python parity fixture.
+
+**Verified.** `make check` with the database and `make oss-check` on Go 1.27.3; the adopter test project with the local builds (see `results-local/REPORT.md` there).
+
 ## 2026-10-30 · P8-11 to P8-13 · Found by testing as an adopter
 
 **Built.** A test project outside the repo (`~/WORK/LUMETRIX/tellproof_test`) that installs only the published packages (`tellproof[agent]` 0.3.2 + 0.5.1, npm `tellproof` 0.3.2) with the newest openai and Anthropic clients, runs a Flask app and a Node.js app against a mock provider that logs ground truth, taps the SDK-to-agent traffic, and checks the evidence end to end (`harness.py`, `results/REPORT.md`). Then the fixes for what it found: P8-11 (D-071), P8-12 (D-072), P8-13 (D-073).

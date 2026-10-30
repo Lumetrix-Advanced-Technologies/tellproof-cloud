@@ -206,7 +206,7 @@ For most apps that is all. Every OpenAI, Anthropic and Amazon Bedrock call is re
 
 | Python | Node.js | Environment | Meaning |
 | --- | --- | --- | --- |
-| `agent` | `agent` | `TELLPROOF_AGENT_NAME` | The agent every model call belongs to (model changes are tracked per agent). |
+| `agent` | `agent` | `TELLPROOF_AGENT_NAME` | The agent every model call belongs to. Model changes are tracked per agent and operation: a model new to the agent is a change, models it uses side by side are not ([what a change is](HOW-IT-WORKS.md#from-a-model-call-to-a-signed-batch)). |
 | `prompt`, `prompt_version` | `prompt`, `promptVersion` | `TELLPROOF_PROMPT`, `TELLPROOF_PROMPT_VERSION` | The prompt (its name and version, never its text) every model call uses. Set the version from your deploy, so every prompt change shows in the evidence (and the change check asks for it in the register). |
 | `personal_data` | `personalData` | `TELLPROOF_PERSONAL_DATA=1` | Every model call handles personal data. It counts as redacted only in requests where your [`redactor`](#mark-the-functions-you-already-have) ran. |
 | `service`, `environment` | `service`, `environment` | `TELLPROOF_SERVICE` (or `OTEL_SERVICE_NAME`), `TELLPROOF_ENVIRONMENT` | The service name and deployment environment on every span. |

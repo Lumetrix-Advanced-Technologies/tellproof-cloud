@@ -12,8 +12,8 @@ import (
 
 // Acceptance (D-072): adding spans up as they arrive gives exactly the windows
 // the old sort-everything-at-close aggregator gave, whatever the arrival
-// order: same metrics, same transitions in the same order, same leaves in the
-// same order. Random traffic with the awkward cases: spans out of order, equal
+// order: same metrics and the same leaves in the same order (transitions
+// changed meaning in D-074 and are tested on their own). Random traffic with the awkward cases: spans out of order, equal
 // start times, OTLP, Langfuse and missing trace IDs, more canary kinds than a
 // window keeps, several slots, models and prompt versions, late spans and
 // early flushes.
@@ -84,8 +84,15 @@ func TestIncrementalMatchesReference(t *testing.T) {
 	}
 }
 
+// same compares everything but transitions, whose meaning changed on purpose
+// (D-074) and which history_test.go tests.
 func same(t *testing.T, seed uint64, step int, got, want []Window) {
 	t.Helper()
+	for _, ws := range [][]Window{got, want} {
+		for i := range ws {
+			ws[i].Metrics.Transitions = nil
+		}
+	}
 	g, _ := json.Marshal(got)
 	w, _ := json.Marshal(want)
 	if string(g) != string(w) {
