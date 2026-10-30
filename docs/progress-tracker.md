@@ -81,6 +81,7 @@ Status values: `not started`, `in progress`, `done`, `blocked (reason)`.
 
 Newest first. One line per finished task: date, task, PR, one-sentence outcome.
 
+- 2026-10-31 · Release prep · PR pending · v0.5.2 notes in `oss/CHANGELOG.md`; the Action and README pin v0.5.2; SDKs 0.3.3 require agent 0.5.2 (P8-11 to P8-15, Go 1.27.3).
 - 2026-10-30 · Adopter test project · `~/WORK/LUMETRIX/tellproof_test` (outside this repo): Flask and Node apps on the published packages, real openai/anthropic clients against a mock provider, one harness (`harness.py`) checking accuracy against ground truth, no content anywhere (wire, decoded batches, data dir, report, check, aibom, dashboard API, dry run), governance, tampering, robustness and memory: 75 checks. It found P8-11 and the memory issues fixed in P8-12/13, and three open questions below.
 - 2026-10-30 · P8-11, P8-12, P8-13 · PRs pending (stacked: `node-esm-instrument` → `agent-memory` → `sdk-lazy-python`).
 - 2026-10-30 · P8-14, P8-15 · PR pending (stacked on `sdk-lazy-python`: `change-history`) · The founder chose the recommended change rule (D-074); the self-test and key-mismatch fixes (D-075). Local Go is 1.27.3 (GO-2026-6809); the next release must be built with 1.27.3+ (v0.5.1 used 1.27.2).
