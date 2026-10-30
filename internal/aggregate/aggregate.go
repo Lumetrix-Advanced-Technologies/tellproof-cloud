@@ -56,7 +56,7 @@ type open struct {
 	canaries            map[string]*canaryAcc
 	traceIdx            map[traceKey]uint32
 	traces              []traceEntry
-	changes             []change // model calls with a model or a prompt version, for transitions
+	uses                map[useKey]*use // per slot, each model (or prompt version) used: first and last call
 	strIdx              map[string]uint32
 	strs                []string // interned slots, models, prompt names and versions; strs[0] = ""
 	seq                 uint32   // arrival order: the tie-break of a stable sort
@@ -125,15 +125,19 @@ type canaryAcc struct {
 	run, caught int64
 }
 
-type change struct {
-	at                           pos
-	slot, model, prompt, version uint32 // interned; slot includes the operation
+// useKey is a model in a slot (kind "model": the agent or service, and the
+// operation) or a version of a prompt (kind "prompt": the prompt name).
+type useKey struct {
+	kind        string
+	slot, value uint32 // interned
 }
+
+type use struct{ first, last pos }
 
 func newOpen() *open {
 	return &open{tokens: map[tokenKey]*batch.TokenCount{}, models: map[batch.ObservedModel]struct{}{},
 		versions: map[batch.ObservedVersion]struct{}{}, canaries: map[string]*canaryAcc{},
-		traceIdx: map[traceKey]uint32{}, strIdx: map[string]uint32{"": 0}, strs: []string{""}}
+		traceIdx: map[traceKey]uint32{}, uses: map[useKey]*use{}, strIdx: map[string]uint32{"": 0}, strs: []string{""}}
 }
 
 func (w *open) intern(s string) uint32 {
@@ -240,23 +244,19 @@ func (w *open) add(s otlp.Span) {
 				m.Guardrails.Blocked++
 			}
 		}
-		if s.Model != "unknown" || s.PromptVersion != "" {
-			c := change{at: p}
-			if s.Model != "unknown" {
-				slot := s.Slot
-				if slot == "" {
-					slot = "default"
-				}
-				c.slot, c.model = w.intern(slot+"\x00"+s.Operation), w.intern(s.Model)
+		if s.Model != "unknown" {
+			slot := s.Slot
+			if slot == "" {
+				slot = "default"
 			}
-			if s.PromptVersion != "" {
-				name := s.PromptName
-				if name == "" {
-					name = "default"
-				}
-				c.prompt, c.version = w.intern(name), w.intern(s.PromptVersion)
+			w.used(useKey{"model", w.intern(slot + "\x00" + s.Operation), w.intern(s.Model)}, p)
+		}
+		if s.PromptVersion != "" {
+			name := s.PromptName
+			if name == "" {
+				name = "default"
 			}
-			w.changes = append(w.changes, c)
+			w.used(useKey{"prompt", w.intern(name), w.intern(s.PromptVersion)}, p)
 		}
 		if s.Model != "unknown" {
 			w.models[batch.ObservedModel{Provider: s.Provider, Model: s.Model}] = struct{}{}
@@ -264,6 +264,18 @@ func (w *open) add(s otlp.Span) {
 				w.versions[batch.ObservedVersion{Model: s.Model, PromptVersion: s.PromptVersion}] = struct{}{}
 			}
 		}
+	}
+}
+
+func (w *open) used(k useKey, p pos) {
+	u := w.uses[k]
+	switch {
+	case u == nil:
+		w.uses[k] = &use{first: p, last: p}
+	case w.compare(p, u.first) < 0:
+		u.first = p
+	case w.compare(p, u.last) > 0:
+		u.last = p
 	}
 }
 
@@ -275,14 +287,12 @@ type Aggregator struct {
 	windows      map[time.Time]*open
 	closedBefore time.Time          // every hour before this is closed
 	traceFirst   map[traceKey]int64 // trace ID -> hour (Unix seconds) of its first span, for leaves
-	lastModel    map[string]string  // slot -> model, for transitions
-	lastPrompt   map[string]string  // prompt name -> version
+	history      History            // what each slot has in use, for changes (D-074)
 }
 
 // New returns an empty aggregator.
 func New(cfg Config) *Aggregator {
-	return &Aggregator{cfg: cfg, windows: map[time.Time]*open{}, traceFirst: map[traceKey]int64{},
-		lastModel: map[string]string{}, lastPrompt: map[string]string{}}
+	return &Aggregator{cfg: cfg, windows: map[time.Time]*open{}, traceFirst: map[traceKey]int64{}, history: NewHistory()}
 }
 
 func hour(t time.Time) time.Time { return t.UTC().Truncate(time.Hour) }
@@ -456,10 +466,7 @@ func (a *Aggregator) build(h time.Time, w *open) Window {
 	}
 	slices.SortFunc(m.Canaries, func(x, y batch.Canary) int { return cmp.Compare(x.Kind, y.Kind) })
 
-	slices.SortStableFunc(w.changes, func(x, y change) int { return w.compare(x.at, y.at) })
-	for _, c := range w.changes {
-		a.transitions(&m, w, c)
-	}
+	m.Transitions = a.changes(w)
 
 	m.Guardrails.LLMCalls = w.llmCalls
 	for _, tc := range w.tokens {
@@ -490,25 +497,4 @@ func (a *Aggregator) build(h time.Time, w *open) Window {
 		return cmp.Or(cmp.Compare(x.Model, y.Model), cmp.Compare(x.PromptVersion, y.PromptVersion))
 	})
 	return Window{Window: batch.Window{Start: iso(h), End: iso(end)}, Start: h, Metrics: m, Observed: obs, TraceIDs: traces}
-}
-
-// transitions records a model change within the call's slot and operation
-// (so a chat model and an embeddings model used side by side are not read as
-// changes, D-033) and a prompt version change within its prompt name.
-func (a *Aggregator) transitions(m *batch.Metrics, w *open, c change) {
-	at := iso(time.Unix(0, c.at.start))
-	if c.model != 0 {
-		slot, model := w.strs[c.slot], w.strs[c.model]
-		if prev, ok := a.lastModel[slot]; ok && prev != model {
-			m.Transitions = append(m.Transitions, batch.Transition{At: at, Kind: "model", From: prev, To: model})
-		}
-		a.lastModel[slot] = model
-	}
-	if c.version != 0 {
-		name, version := w.strs[c.prompt], w.strs[c.version]
-		if prev, ok := a.lastPrompt[name]; ok && prev != version {
-			m.Transitions = append(m.Transitions, batch.Transition{At: at, Kind: "prompt", From: prev, To: version})
-		}
-		a.lastPrompt[name] = version
-	}
 }
