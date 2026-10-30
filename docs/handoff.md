@@ -14,10 +14,10 @@ Paste the prompt below into a new session (Claude Code or a person) to continue.
 
 | Channel | State |
 | --- | --- |
-| GitHub release | [v0.5.1](https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases/tag/v0.5.1), attested binaries for six platforms, provenance attached as `tellproof-v0.5.1.intoto.jsonl` |
-| Docker | `ghcr.io/lumetrix-advanced-technologies/tellproof-agent:v0.5.1` / `:latest`, public |
-| PyPI | `tellproof-agent` 0.5.1; `tellproof` (SDK) 0.3.2 |
-| npm | `tellproof-agent` + 6 platform packages: 0.5.1, live; `tellproof` (SDK) 0.3.1 live, 0.3.2 staged for approval (check `npm view tellproof version`) |
+| GitHub release | [v0.5.2](https://github.com/Lumetrix-Advanced-Technologies/tellproof/releases/tag/v0.5.2), attested binaries for six platforms, provenance attached as `tellproof-v0.5.2.intoto.jsonl` |
+| Docker | `ghcr.io/lumetrix-advanced-technologies/tellproof-agent:v0.5.2` / `:latest`, public |
+| PyPI | `tellproof-agent` 0.5.2; `tellproof` (SDK) 0.3.3 |
+| npm | `tellproof-agent` + 6 platform packages: 0.5.2, live; `tellproof` (SDK) 0.3.3 staged for approval (check `npm view tellproof version`) |
 | Website | https://lumetrix-advanced-technologies.github.io/tellproof/ (GitHub Pages, `web/`, `pages.yml`) |
 
 **Features shipped in Phase 7** (details in the ADRs):
@@ -32,6 +32,8 @@ Paste the prompt below into a new session (Claude Code or a person) to continue.
 - M1 (the trials) is **not** passed. Never write `M1: PASSED` until its criteria are met.
 
 Resolved since this handoff was written (19 Oct 2026): npm 0.4.0 is approved and live for all seven agent packages; GitHub billing is fixed and the private repo's CI runs again; P8-1, P8-2, P8-3 and P8-3a are merged (#72 to #77) but not yet exported to the public repo or released.
+
+Update 31 Oct 2026: v0.5.2 and SDK 0.3.3 (PRs #93 to #97): the Node.js ES module fix, model changes across restarts and side by side (D-074), the memory work (D-072, D-073), self-test and key-mismatch fixes (D-075), Go 1.27.3. An adopter-style end-to-end test lives outside the repo in `~/WORK/LUMETRIX/tellproof_test` (`harness.py`, 75 checks; `run-with-local-builds.sh` for unreleased code): run it before every release. The local test database is `docker start plumbline-test-pg` (recreate with `docker run -d --name plumbline-test-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55432:5432 postgres:16` if gone).
 
 ## 2. How to do the routine things
 
