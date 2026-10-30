@@ -2,6 +2,14 @@
 
 What was built, what went wrong, and how it was verified, one entry per task. Newest first. Decisions with lasting consequences go in `decisions.md`; the one-line status lives in `progress-tracker.md`. This log is for the next engineer (or reviewer) who wants to know why the code looks the way it does.
 
+## 2026-10-30 · P8-11 to P8-13 · Found by testing as an adopter
+
+**Built.** A test project outside the repo (`~/WORK/LUMETRIX/tellproof_test`) that installs only the published packages (`tellproof[agent]` 0.3.2 + 0.5.1, npm `tellproof` 0.3.2) with the newest openai and Anthropic clients, runs a Flask app and a Node.js app against a mock provider that logs ground truth, taps the SDK-to-agent traffic, and checks the evidence end to end (`harness.py`, `results/REPORT.md`). Then the fixes for what it found: P8-11 (D-071), P8-12 (D-072), P8-13 (D-073).
+
+**Problems.** The Node.js ES module bug hid behind a test that graded the finder with the finder's own answer: when `esmEntry` returned null the test imported the CommonJS URL, so "esm" tested the CommonJS copy. The real-library test now asks Node (`import.meta.resolve`). The incremental aggregator's first cut took a canary kind's first position at arrival instead of the minimum; the randomized differential test against the old aggregator caught it on seed 3. The local `plumbline-test-pg` container was gone; recreated as before (`docker run -d --name plumbline-test-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55432:5432 postgres:16`). `govulncheck` now flags Go 1.27.2 (GO-2026-6809): run `make check` with `GOTOOLCHAIN=go1.27.3+auto`.
+
+**Verified.** `make check` with the database and `make oss-check`; the JS real-library test against openai 7.45, @anthropic-ai/sdk 1.3 and the Bedrock client (fails 3 tests on 0.3.2's code); the Python real-library tests against openai 3.41, anthropic 2.3, boto3 and Flask; the differential test over 2,000 seeds; the test project with the fixed builds: 72 of 75 checks pass, the three left are the open model-change question.
+
 ## 2026-10-20 · Scorecard, `--version` and v0.5.1
 
 **Built.** `tellproof --version` (#86), the Scorecard work (#87, D-070), and the port of the public repository's Dependabot pull request #1 (13 action updates, merged there directly) into `oss/.github/workflows`, so the next export does not undo it.
