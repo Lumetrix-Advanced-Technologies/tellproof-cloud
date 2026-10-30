@@ -618,14 +618,14 @@ Is tampering with the log detected?
 The repository is also a GitHub Action. Validate the policy on every pull request that changes it:
 
 ```yaml
-- uses: Lumetrix-Advanced-Technologies/tellproof@v0.5.1
+- uses: Lumetrix-Advanced-Technologies/tellproof@v0.5.2
   with: { command: validate, policy: tellproof.policy.json }
 ```
 
 Or gate a release on the evidence, with a copy of the agent's data directory (from a scheduled job, an artifact or a volume snapshot):
 
 ```yaml
-- uses: Lumetrix-Advanced-Technologies/tellproof@v0.5.1
+- uses: Lumetrix-Advanced-Technologies/tellproof@v0.5.2
   with: { command: check, policy: tellproof.policy.json, data-dir: evidence/, strict: "true" }
 ```
 
